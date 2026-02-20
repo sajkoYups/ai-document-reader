@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { TaskType } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
 import { useChatStore } from "@/store/chatStore";
+import { useEmbeddingStore } from "@/store/embeddingStore";
 import { useAiTask } from "@/hooks/useAiTask";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSessionCleanup } from "@/hooks/useSessionCleanup";
@@ -11,7 +12,7 @@ import { validateFileSize, getSupportedFileType } from "@/lib/documentParser";
 import { extractTextFromPdf } from "@/lib/pdfExtractor";
 import {
   buildChatHistory,
-  truncateDocumentForContext,
+  assembleContext,
   extractEvidence,
 } from "@/lib/chatPipeline";
 import { TASK_LABELS } from "@/lib/prompts";
@@ -29,9 +30,11 @@ export default function App() {
   const doc = useDocumentStore();
   const ai = useAiStore();
   const chat = useChatStore();
+  const embedding = useEmbeddingStore();
   const task = useAiTask();
 
   const [selectedTask, setSelectedTask] = useState<TaskType>("summarize");
+  const lastIndexedText = useRef<string>("");
 
   const compat = useMemo(() => checkBrowserCompatibility(), []);
 
@@ -42,6 +45,17 @@ export default function App() {
       ai.initWorker();
     }
   }, [compat.allPassed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const text = doc.rawText.trim();
+    if (text.length > 0 && text !== lastIndexedText.current) {
+      lastIndexedText.current = text;
+      embedding.indexDocument(doc.rawText);
+    } else if (text.length === 0 && lastIndexedText.current !== "") {
+      lastIndexedText.current = "";
+      embedding.clear();
+    }
+  }, [doc.rawText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasDocument = doc.rawText.trim().length > 0;
   const isChat = selectedTask === "chat";
@@ -87,12 +101,26 @@ export default function App() {
     [doc],
   );
 
-  const handleRun = useCallback(() => {
+  const handleRun = useCallback(async () => {
     if (!hasDocument || ai.modelStatus !== "ready" || task.isProcessing) return;
-    task.run(selectedTask, doc.rawText);
-  }, [hasDocument, ai.modelStatus, task, selectedTask, doc.rawText]);
 
-  const handleChatSend = (message: string) => {
+    if (selectedTask === "extract" && embedding.status === "ready") {
+      try {
+        const chunks = await embedding.retrieveChunks(
+          "key points obligations risks dates terms price cost amount payment",
+          8,
+        );
+        const context = assembleContext(chunks);
+        task.run(selectedTask, context);
+      } catch {
+        task.run(selectedTask, doc.rawText);
+      }
+    } else {
+      task.run(selectedTask, doc.rawText);
+    }
+  }, [hasDocument, ai.modelStatus, task, selectedTask, doc.rawText, embedding]);
+
+  const handleChatSend = async (message: string) => {
     chat.addUserMessage(message);
     chat.startAssistantMessage();
 
@@ -101,11 +129,22 @@ export default function App() {
       { role: "user" as const, content: message },
     ];
     const history = buildChatHistory(allMessages);
-    const truncatedDoc = truncateDocumentForContext(doc.rawText);
+
+    let contextDoc: string;
+    if (embedding.status === "ready") {
+      try {
+        const chunks = await embedding.retrieveChunks(message, 6);
+        contextDoc = assembleContext(chunks);
+      } catch {
+        contextDoc = doc.rawText;
+      }
+    } else {
+      contextDoc = doc.rawText;
+    }
 
     ai.runTask(
       "chat",
-      truncatedDoc,
+      contextDoc,
       history,
       (token) => chat.appendToLastAssistant(token),
       (result) => {
@@ -122,8 +161,10 @@ export default function App() {
     doc.clear();
     task.reset();
     chat.clear();
+    embedding.clear();
+    lastIndexedText.current = "";
     showToast("Session cleared", "info");
-  }, [doc, task, chat]);
+  }, [doc, task, chat, embedding]);
 
   const handleTaskSwitch = (newTask: TaskType) => {
     setSelectedTask(newTask);
@@ -182,6 +223,19 @@ export default function App() {
               ai.currentFile
                 ? `Downloading: ${ai.currentFile.split("/").pop()}`
                 : "Loading AI model"
+            }
+          />
+        </div>
+      )}
+
+      {(embedding.status === "loading-model" || embedding.status === "indexing") && (
+        <div className="mb-6 animate-fade-in">
+          <ProgressBar
+            progress={embedding.status === "indexing" ? 90 : embedding.downloadProgress}
+            label={
+              embedding.status === "indexing"
+                ? "Indexing document for search..."
+                : "Downloading search model..."
             }
           />
         </div>

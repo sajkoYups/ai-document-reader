@@ -9,8 +9,25 @@ import { SYSTEM_PROMPTS } from "@/lib/prompts";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let generator: any = null;
 let activeDevice: "webgpu" | "wasm" = "wasm";
+let loadedConfig: ModelConfig | null = null;
+let pendingGpuError = false;
+let inferenceGeneration = 0;
 
-const MAX_INPUT_CHARS = 6000;
+const MAX_INPUT_CHARS = 20000;
+const FIRST_TOKEN_TIMEOUT_MS = 30_000;
+
+self.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
+  const msg = String(event.reason?.message ?? event.reason ?? "");
+  if (
+    msg.includes("GPUDevice") ||
+    msg.includes("GPUBuffer") ||
+    msg.includes("unsigned long long") ||
+    msg.includes("createBuffer")
+  ) {
+    pendingGpuError = true;
+  }
+  event.preventDefault();
+});
 
 function post(msg: WorkerMessageFromWorker) {
   self.postMessage(msg);
@@ -27,34 +44,38 @@ function progressCallback(progress: Record<string, unknown>) {
   });
 }
 
-async function createPipeline(config: ModelConfig, device: "webgpu" | "wasm") {
-  return await pipeline("text-generation", config.modelId, {
-    dtype: config.dtype,
-    device,
-    progress_callback: progressCallback,
-  });
-}
-
 async function loadModel(config: ModelConfig) {
+  loadedConfig = config;
+
   try {
     let device: "webgpu" | "wasm" = "wasm";
 
     try {
       if (typeof navigator !== "undefined" && "gpu" in navigator) {
-        const adapter = await (navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown> } }).gpu.requestAdapter();
+        const adapter = await (
+          navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown> } }
+        ).gpu.requestAdapter();
         if (adapter) device = "webgpu";
       }
     } catch {
-      // WebGPU probe failed, stay on WASM
+      // WebGPU not available
     }
 
     try {
-      generator = await createPipeline(config, device);
+      generator = await pipeline("text-generation", config.modelId, {
+        dtype: config.dtype,
+        device,
+        progress_callback: progressCallback,
+      });
       activeDevice = device;
     } catch (e) {
       if (device === "webgpu") {
         console.warn("WebGPU pipeline failed, falling back to WASM:", e);
-        generator = await createPipeline(config, "wasm");
+        generator = await pipeline("text-generation", config.modelId, {
+          dtype: config.dtype,
+          device: "wasm",
+          progress_callback: progressCallback,
+        });
         activeDevice = "wasm";
       } else {
         throw e;
@@ -70,9 +91,71 @@ async function loadModel(config: ModelConfig) {
   }
 }
 
-function truncateText(text: string): string {
+async function rebuildOnWasm(): Promise<void> {
+  if (!loadedConfig) throw new Error("No model config available for rebuild");
+  generator = await pipeline("text-generation", loadedConfig.modelId, {
+    dtype: loadedConfig.dtype,
+    device: "wasm",
+    progress_callback: progressCallback,
+  });
+  activeDevice = "wasm";
+}
+
+function prepareText(text: string): string {
   if (text.length <= MAX_INPUT_CHARS) return text;
-  return text.slice(0, MAX_INPUT_CHARS) + "\n\n[... text truncated to fit model context window ...]";
+  return text.slice(0, MAX_INPUT_CHARS) + "\n\n[... text truncated to fit context window ...]";
+}
+
+/**
+ * Runs inference with a first-token timeout when on WebGPU.
+ * Uses an inferenceGeneration counter so stale callbacks from an
+ * orphaned WebGPU run are ignored after fallback.
+ */
+function runInference(
+  messages: Array<{ role: string; content: string }>,
+): Promise<string> {
+  const myGen = ++inferenceGeneration;
+
+  return new Promise<string>((resolve, reject) => {
+    let fullResult = "";
+    let gotFirstToken = false;
+
+    const timeout =
+      activeDevice === "webgpu"
+        ? setTimeout(() => {
+            if (!gotFirstToken) reject(new Error("INFERENCE_TIMEOUT"));
+          }, FIRST_TOKEN_TIMEOUT_MS)
+        : null;
+
+    const streamer = new TextStreamer(generator.tokenizer, {
+      skip_prompt: true,
+      callback_function: (token: string) => {
+        if (myGen !== inferenceGeneration) return;
+        if (!gotFirstToken) {
+          gotFirstToken = true;
+          if (timeout) clearTimeout(timeout);
+        }
+        fullResult += token;
+        post({ type: "token", token });
+      },
+    });
+
+    generator(messages, {
+      max_new_tokens: 1024,
+      temperature: 0.3,
+      top_p: 0.9,
+      do_sample: true,
+      streamer,
+    })
+      .then(() => {
+        if (timeout) clearTimeout(timeout);
+        if (myGen === inferenceGeneration) resolve(fullResult);
+      })
+      .catch((err: unknown) => {
+        if (timeout) clearTimeout(timeout);
+        if (myGen === inferenceGeneration) reject(err);
+      });
+  });
 }
 
 async function runTask(
@@ -85,28 +168,34 @@ async function runTask(
     return;
   }
 
-  const safeText = truncateText(text);
+  const safeText = prepareText(text);
   const messages = buildMessages(taskType, safeText, conversationHistory);
+  pendingGpuError = false;
 
   try {
     const result = await runInference(messages);
+
+    if (pendingGpuError && activeDevice === "webgpu") {
+      throw new Error("WebGPU error detected during inference");
+    }
+
     post({ type: "task-complete", result });
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
-    const isGpuError =
-      errMsg.includes("GPUDevice") ||
-      errMsg.includes("GPUBuffer") ||
-      errMsg.includes("unsigned long long");
+    const needsFallback =
+      activeDevice === "webgpu" &&
+      (pendingGpuError ||
+        errMsg === "INFERENCE_TIMEOUT" ||
+        errMsg.includes("GPUDevice") ||
+        errMsg.includes("GPUBuffer") ||
+        errMsg.includes("unsigned long long") ||
+        errMsg.includes("createBuffer"));
 
-    if (isGpuError && activeDevice === "webgpu") {
-      console.warn("WebGPU inference failed, retrying with WASM:", errMsg);
-      post({ type: "token", token: "" });
+    if (needsFallback) {
+      console.warn("WebGPU inference failed, rebuilding on WASM:", errMsg);
+      pendingGpuError = false;
       try {
-        generator = await createPipeline(
-          { modelId: generator.model.config._name_or_path ?? "onnx-community/Qwen2.5-0.5B-Instruct", displayName: "", dtype: "q4" },
-          "wasm",
-        );
-        activeDevice = "wasm";
+        await rebuildOnWasm();
         const result = await runInference(messages);
         post({ type: "task-complete", result });
       } catch (retryErr) {
@@ -119,29 +208,6 @@ async function runTask(
       post({ type: "task-error", error: errMsg });
     }
   }
-}
-
-async function runInference(
-  messages: Array<{ role: string; content: string }>,
-): Promise<string> {
-  let fullResult = "";
-  const streamer = new TextStreamer(generator.tokenizer, {
-    skip_prompt: true,
-    callback_function: (token: string) => {
-      fullResult += token;
-      post({ type: "token", token });
-    },
-  });
-
-  await generator(messages, {
-    max_new_tokens: 512,
-    temperature: 0.3,
-    top_p: 0.9,
-    do_sample: true,
-    streamer,
-  });
-
-  return fullResult;
 }
 
 function buildMessages(

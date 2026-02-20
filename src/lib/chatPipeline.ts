@@ -1,6 +1,7 @@
 import type { ChatMessage, DocumentSection } from "@/types";
+import type { DocumentChunk } from "./documentChunker";
 
-const MAX_CONTEXT_CHARS = 3000;
+const MAX_CONTEXT_CHARS = 16000;
 
 export function buildChatHistory(
   messages: ChatMessage[],
@@ -8,9 +9,37 @@ export function buildChatHistory(
   return messages.map((m) => ({ role: m.role, content: m.content }));
 }
 
-export function truncateDocumentForContext(rawText: string): string {
-  if (rawText.length <= MAX_CONTEXT_CHARS) return rawText;
-  return rawText.slice(0, MAX_CONTEXT_CHARS) + "\n\n[... document truncated for context window ...]";
+/**
+ * Assembles context from pre-retrieved chunks, inserting [...] markers
+ * between non-contiguous sections so the model knows there are gaps.
+ */
+export function assembleContext(
+  chunks: DocumentChunk[],
+  maxChars: number = MAX_CONTEXT_CHARS,
+): string {
+  if (chunks.length === 0) return "";
+
+  const parts: string[] = [];
+  let prevEnd = 0;
+  let budget = maxChars;
+
+  for (const chunk of chunks) {
+    if (budget <= 0) break;
+
+    if (chunk.startChar > prevEnd + 100 && parts.length > 0) {
+      parts.push("\n[...]\n");
+    }
+
+    const text = chunk.text.length > budget
+      ? chunk.text.slice(0, budget) + "\n[... chunk truncated ...]"
+      : chunk.text;
+
+    parts.push(text);
+    budget -= text.length;
+    prevEnd = chunk.endChar;
+  }
+
+  return parts.join("");
 }
 
 export function extractEvidence(

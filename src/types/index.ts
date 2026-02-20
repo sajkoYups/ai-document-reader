@@ -7,6 +7,13 @@ export type ModelStatus =
   | "ready"
   | "error";
 
+export type EmbeddingStatus =
+  | "idle"
+  | "loading-model"
+  | "indexing"
+  | "ready"
+  | "error";
+
 export interface DocumentSection {
   heading: string | null;
   content: string;
