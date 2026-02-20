@@ -47,7 +47,7 @@ export default function OutputPanel({
           Running {taskLabel}...
         </div>
         {content ? (
-          <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap font-body">
+          <div className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap font-body">
             {content}
             <span className="inline-block w-1.5 h-4 bg-accent/60 animate-pulse ml-0.5 align-text-bottom" />
           </div>
@@ -88,7 +88,7 @@ export default function OutputPanel({
           {copied ? "Copied!" : "Copy"}
         </Button>
       </div>
-      <div className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap font-body">
+      <div className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap font-body">
         {content}
       </div>
     </Card>
