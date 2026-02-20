@@ -101,21 +101,37 @@ export default function App() {
     [doc],
   );
 
+  const MAX_DIRECT_CHARS = 10000;
+
   const handleRun = useCallback(async () => {
     if (!hasDocument || ai.modelStatus !== "ready" || task.isProcessing) return;
 
-    if (selectedTask === "extract" && embedding.status === "ready") {
-      try {
+    const isShortDoc = doc.rawText.length <= MAX_DIRECT_CHARS;
+
+    if (isShortDoc || embedding.status !== "ready") {
+      task.run(selectedTask, doc.rawText);
+      return;
+    }
+
+    try {
+      let context: string;
+
+      if (selectedTask === "summarize" || selectedTask === "explain") {
+        const spread = embedding.getSpreadChunks(MAX_DIRECT_CHARS);
+        context = assembleContext(spread, MAX_DIRECT_CHARS);
+      } else if (selectedTask === "extract") {
         const chunks = await embedding.retrieveChunks(
           "key points obligations risks dates terms price cost amount payment",
           8,
         );
-        const context = assembleContext(chunks);
-        task.run(selectedTask, context);
-      } catch {
+        context = assembleContext(chunks, MAX_DIRECT_CHARS);
+      } else {
         task.run(selectedTask, doc.rawText);
+        return;
       }
-    } else {
+
+      task.run(selectedTask, context);
+    } catch {
       task.run(selectedTask, doc.rawText);
     }
   }, [hasDocument, ai.modelStatus, task, selectedTask, doc.rawText, embedding]);

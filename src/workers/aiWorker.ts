@@ -13,7 +13,7 @@ let loadedConfig: ModelConfig | null = null;
 let pendingGpuError = false;
 let inferenceGeneration = 0;
 
-const MAX_INPUT_CHARS = 20000;
+const MAX_INPUT_CHARS = 12000;
 const FIRST_TOKEN_TIMEOUT_MS = 30_000;
 
 self.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {

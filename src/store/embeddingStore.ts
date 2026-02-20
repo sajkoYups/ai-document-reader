@@ -19,6 +19,7 @@ interface EmbeddingStore {
   initWorker: () => void;
   indexDocument: (rawText: string) => void;
   retrieveChunks: (query: string, topK: number) => Promise<DocumentChunk[]>;
+  getSpreadChunks: (maxChars: number) => DocumentChunk[];
   clear: () => void;
 }
 
@@ -114,6 +115,38 @@ export const useEmbeddingStore = create<EmbeddingStore>((set, get) => ({
       worker.addEventListener("message", handleMessage);
       worker.postMessage({ type: "embed-query", text: query });
     });
+  },
+
+  getSpreadChunks: (maxChars: number): DocumentChunk[] => {
+    const { chunks } = get();
+    if (chunks.length === 0) return [];
+
+    let totalChars = chunks.reduce((sum, c) => sum + c.text.length, 0);
+    if (totalChars <= maxChars) return chunks;
+
+    const selected: DocumentChunk[] = [chunks[0]!];
+    let budget = maxChars - chunks[0]!.text.length;
+
+    if (chunks.length > 1) {
+      const last = chunks[chunks.length - 1]!;
+      selected.push(last);
+      budget -= last.text.length;
+    }
+
+    if (budget > 0 && chunks.length > 2) {
+      const middle = chunks.slice(1, -1);
+      const step = Math.max(1, Math.floor(middle.length / Math.ceil(budget / 1500)));
+      for (let i = 0; i < middle.length && budget > 0; i += step) {
+        const chunk = middle[i]!;
+        if (chunk.text.length <= budget) {
+          selected.push(chunk);
+          budget -= chunk.text.length;
+        }
+      }
+    }
+
+    selected.sort((a, b) => a.index - b.index);
+    return selected;
   },
 
   clear: () => {
