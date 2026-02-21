@@ -14,6 +14,7 @@ interface EmbeddingStore {
   error: string | null;
   chunks: DocumentChunk[];
   chunkEmbeddings: number[][];
+  totalDocChars: number;
   worker: Worker | null;
 
   initWorker: () => void;
@@ -29,6 +30,7 @@ export const useEmbeddingStore = create<EmbeddingStore>((set, get) => ({
   error: null,
   chunks: [],
   chunkEmbeddings: [],
+  totalDocChars: 0,
   worker: null,
 
   initWorker: () => {
@@ -51,7 +53,7 @@ export const useEmbeddingStore = create<EmbeddingStore>((set, get) => ({
     if (!worker) return;
 
     const chunks = chunkDocument(rawText);
-    set({ chunks, chunkEmbeddings: [], status: "loading-model", downloadProgress: 0, error: null });
+    set({ chunks, chunkEmbeddings: [], totalDocChars: rawText.length, status: "loading-model", downloadProgress: 0, error: null });
 
     const handleMessage = (e: MessageEvent<EmbeddingWorkerMessageFromWorker>) => {
       const msg = e.data;
@@ -156,6 +158,7 @@ export const useEmbeddingStore = create<EmbeddingStore>((set, get) => ({
       error: null,
       chunks: [],
       chunkEmbeddings: [],
+      totalDocChars: 0,
     });
   },
 }));

@@ -3,6 +3,13 @@ import type { DocumentChunk } from "./documentChunker";
 
 const MAX_CONTEXT_CHARS = 16000;
 
+export interface AssembleContextMeta {
+  chunksIncluded: number;
+  totalChars: number;
+  truncatedChunks: number;
+  gapMarkers: number;
+}
+
 export function buildChatHistory(
   messages: ChatMessage[],
 ): Array<{ role: string; content: string }> {
@@ -16,30 +23,41 @@ export function buildChatHistory(
 export function assembleContext(
   chunks: DocumentChunk[],
   maxChars: number = MAX_CONTEXT_CHARS,
-): string {
-  if (chunks.length === 0) return "";
+): { text: string; meta: AssembleContextMeta } {
+  if (chunks.length === 0) return { text: "", meta: { chunksIncluded: 0, totalChars: 0, truncatedChunks: 0, gapMarkers: 0 } };
 
   const parts: string[] = [];
   let prevEnd = 0;
   let budget = maxChars;
+  let truncatedChunks = 0;
+  let gapMarkers = 0;
+  let chunksIncluded = 0;
 
   for (const chunk of chunks) {
     if (budget <= 0) break;
 
     if (chunk.startChar > prevEnd + 100 && parts.length > 0) {
       parts.push("\n[...]\n");
+      gapMarkers++;
     }
 
-    const text = chunk.text.length > budget
-      ? chunk.text.slice(0, budget) + "\n[... chunk truncated ...]"
-      : chunk.text;
+    if (chunk.text.length > budget) {
+      parts.push(chunk.text.slice(0, budget) + "\n[... chunk truncated ...]");
+      truncatedChunks++;
+    } else {
+      parts.push(chunk.text);
+    }
 
-    parts.push(text);
-    budget -= text.length;
+    budget -= Math.min(chunk.text.length, budget);
     prevEnd = chunk.endChar;
+    chunksIncluded++;
   }
 
-  return parts.join("");
+  const text = parts.join("");
+  return {
+    text,
+    meta: { chunksIncluded, totalChars: text.length, truncatedChunks, gapMarkers },
+  };
 }
 
 export function extractEvidence(

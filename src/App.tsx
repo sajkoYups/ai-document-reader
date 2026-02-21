@@ -25,6 +25,7 @@ import ChatPanel from "./components/ChatPanel";
 import Button from "./components/Button";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer, { showToast } from "./components/Toast";
+import DebugPanel, { type RagDebugInfo } from "./components/DebugPanel";
 
 export default function App() {
   const doc = useDocumentStore();
@@ -34,6 +35,7 @@ export default function App() {
   const task = useAiTask();
 
   const [selectedTask, setSelectedTask] = useState<TaskType>("summarize");
+  const [debugInfo, setDebugInfo] = useState<RagDebugInfo | null>(null);
   const lastIndexedText = useRef<string>("");
 
   const compat = useMemo(() => checkBrowserCompatibility(), []);
@@ -106,32 +108,65 @@ export default function App() {
   const handleRun = useCallback(async () => {
     if (!hasDocument || ai.modelStatus !== "ready" || task.isProcessing) return;
 
-    const isShortDoc = doc.rawText.length <= MAX_DIRECT_CHARS;
+    const totalDocChars = doc.rawText.length;
+    const totalDocChunks = embedding.chunks.length;
+    const isShortDoc = totalDocChars <= MAX_DIRECT_CHARS;
 
     if (isShortDoc || embedding.status !== "ready") {
+      setDebugInfo({
+        method: "direct",
+        retrievedChunks: [],
+        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+        totalDocChars,
+        totalDocChunks,
+        timestamp: Date.now(),
+      });
       task.run(selectedTask, doc.rawText);
       return;
     }
 
     try {
-      let context: string;
+      let contextText: string;
+      let retrievedChunks: import("@/lib/documentChunker").DocumentChunk[];
+      let method: RagDebugInfo["method"];
+      let query: string | undefined;
 
       if (selectedTask === "summarize" || selectedTask === "explain") {
-        const spread = embedding.getSpreadChunks(MAX_DIRECT_CHARS);
-        context = assembleContext(spread, MAX_DIRECT_CHARS);
+        retrievedChunks = embedding.getSpreadChunks(MAX_DIRECT_CHARS);
+        const { text, meta } = assembleContext(retrievedChunks, MAX_DIRECT_CHARS);
+        contextText = text;
+        method = "spread";
+        setDebugInfo({ method, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
       } else if (selectedTask === "extract") {
-        const chunks = await embedding.retrieveChunks(
-          "key points obligations risks dates terms price cost amount payment",
-          8,
-        );
-        context = assembleContext(chunks, MAX_DIRECT_CHARS);
+        query = "key points obligations risks dates terms price cost amount payment";
+        retrievedChunks = await embedding.retrieveChunks(query, 8);
+        const { text, meta } = assembleContext(retrievedChunks, MAX_DIRECT_CHARS);
+        contextText = text;
+        method = "semantic";
+        setDebugInfo({ method, query, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
       } else {
+        setDebugInfo({
+          method: "direct",
+          retrievedChunks: [],
+          contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+          totalDocChars,
+          totalDocChunks,
+          timestamp: Date.now(),
+        });
         task.run(selectedTask, doc.rawText);
         return;
       }
 
-      task.run(selectedTask, context);
+      task.run(selectedTask, contextText);
     } catch {
+      setDebugInfo({
+        method: "fallback",
+        retrievedChunks: [],
+        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+        totalDocChars,
+        totalDocChunks,
+        timestamp: Date.now(),
+      });
       task.run(selectedTask, doc.rawText);
     }
   }, [hasDocument, ai.modelStatus, task, selectedTask, doc.rawText, embedding]);
@@ -139,6 +174,9 @@ export default function App() {
   const handleChatSend = async (message: string) => {
     chat.addUserMessage(message);
     chat.startAssistantMessage();
+
+    const totalDocChars = doc.rawText.length;
+    const totalDocChunks = embedding.chunks.length;
 
     const allMessages = [
       ...chat.messages,
@@ -149,13 +187,33 @@ export default function App() {
     let contextDoc: string;
     if (embedding.status === "ready") {
       try {
-        const chunks = await embedding.retrieveChunks(message, 6);
-        contextDoc = assembleContext(chunks);
+        const retrievedChunks = await embedding.retrieveChunks(message, 6);
+        const { text, meta } = assembleContext(retrievedChunks);
+        contextDoc = text;
+        setDebugInfo({ method: "semantic", query: message, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
       } catch {
         contextDoc = doc.rawText;
+        setDebugInfo({
+          method: "fallback",
+          query: message,
+          retrievedChunks: [],
+          contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+          totalDocChars,
+          totalDocChunks,
+          timestamp: Date.now(),
+        });
       }
     } else {
       contextDoc = doc.rawText;
+      setDebugInfo({
+        method: "direct",
+        query: message,
+        retrievedChunks: [],
+        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+        totalDocChars,
+        totalDocChunks,
+        timestamp: Date.now(),
+      });
     }
 
     ai.runTask(
@@ -414,6 +472,7 @@ export default function App() {
               error={task.error}
             />
           )}
+          <DebugPanel debugInfo={debugInfo} />
         </div>
       </div>
     </Layout>
