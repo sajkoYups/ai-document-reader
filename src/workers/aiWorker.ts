@@ -13,7 +13,7 @@ let loadedConfig: ModelConfig | null = null;
 let pendingGpuError = false;
 let inferenceGeneration = 0;
 
-const MAX_INPUT_CHARS = 12000;
+const MAX_INPUT_CHARS = 20000;
 const FIRST_TOKEN_TIMEOUT_MS = 30_000;
 
 self.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
@@ -111,8 +111,16 @@ function prepareText(text: string): string {
  * Uses an inferenceGeneration counter so stale callbacks from an
  * orphaned WebGPU run are ignored after fallback.
  */
+function getInferenceParams(taskType: string) {
+  if (taskType === "chat") {
+    return { max_new_tokens: 2048, temperature: 0.3, top_p: 0.9, do_sample: true, repetition_penalty: 1.1 };
+  }
+  return { max_new_tokens: 2048, temperature: 0.1, top_p: 0.9, do_sample: true, repetition_penalty: 1.1 };
+}
+
 function runInference(
   messages: Array<{ role: string; content: string }>,
+  taskType: string,
 ): Promise<string> {
   const myGen = ++inferenceGeneration;
 
@@ -141,10 +149,7 @@ function runInference(
     });
 
     generator(messages, {
-      max_new_tokens: 1024,
-      temperature: 0.3,
-      top_p: 0.9,
-      do_sample: true,
+      ...getInferenceParams(taskType),
       streamer,
     })
       .then(() => {
@@ -173,7 +178,7 @@ async function runTask(
   pendingGpuError = false;
 
   try {
-    const result = await runInference(messages);
+    const result = await runInference(messages, taskType);
 
     if (pendingGpuError && activeDevice === "webgpu") {
       throw new Error("WebGPU error detected during inference");
@@ -196,7 +201,7 @@ async function runTask(
       pendingGpuError = false;
       try {
         await rebuildOnWasm();
-        const result = await runInference(messages);
+        const result = await runInference(messages, taskType);
         post({ type: "task-complete", result });
       } catch (retryErr) {
         post({

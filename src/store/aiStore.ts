@@ -17,6 +17,7 @@ interface AiStore {
 
   initWorker: () => void;
   loadModel: () => void;
+  initAndLoad: () => void;
   runTask: (
     taskType: string,
     text: string,
@@ -78,7 +79,8 @@ export const useAiStore = create<AiStore>((set, get) => ({
   },
 
   loadModel: () => {
-    const { worker, modelConfig } = get();
+    const { worker, modelConfig, modelStatus } = get();
+    if (modelStatus === "downloading" || modelStatus === "loading") return;
     if (!worker) {
       get().initWorker();
     }
@@ -87,6 +89,11 @@ export const useAiStore = create<AiStore>((set, get) => ({
 
     set({ modelStatus: "downloading", downloadProgress: 0, error: null });
     w.postMessage({ type: "load-model", config: modelConfig });
+  },
+
+  initAndLoad: () => {
+    get().initWorker();
+    get().loadModel();
   },
 
   runTask: (taskType, text, conversationHistory, onToken, onComplete, onError) => {

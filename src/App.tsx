@@ -42,7 +42,7 @@ export default function App() {
 
   useEffect(() => {
     if (compat.allPassed) {
-      ai.initWorker();
+      ai.initAndLoad();
     }
   }, [compat.allPassed]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -328,16 +328,6 @@ export default function App() {
 
           {!isChat && (
             <div className="space-y-2">
-              {ai.modelStatus === "idle" && (
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onClick={() => ai.loadModel()}
-                  className="w-full"
-                >
-                  Load AI Model
-                </Button>
-              )}
               {ai.modelStatus === "error" && (
                 <div className="space-y-2">
                   <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
@@ -366,7 +356,9 @@ export default function App() {
               >
                 {task.isProcessing
                   ? "Processing..."
-                  : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
+                  : ai.modelStatus !== "ready" && ai.modelStatus !== "error"
+                    ? "Model loading..."
+                    : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
               </Button>
 
               {ai.modelStatus === "ready" && (
@@ -384,15 +376,20 @@ export default function App() {
             </div>
           )}
 
-          {isChat && ai.modelStatus === "idle" && (
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => ai.loadModel()}
-              className="w-full"
-            >
-              Load AI Model to Chat
-            </Button>
+          {isChat && ai.modelStatus === "error" && (
+            <div className="space-y-2">
+              <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
+                {ai.error ?? "Failed to load model"}
+              </div>
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => ai.loadModel()}
+                className="w-full"
+              >
+                Retry
+              </Button>
+            </div>
           )}
         </div>
 
