@@ -95,7 +95,7 @@ export default function FileUpload({
           <span className="text-accent font-medium">Upload a file</span> or
           drag and drop
         </p>
-        <p className="text-xs text-text-muted mt-1">PDF, TXT, or Markdown</p>
+        <p className="text-xs text-text-muted mt-1">PDF, TXT, or Markdown (up to 50MB)</p>
       </div>
     </div>
   );

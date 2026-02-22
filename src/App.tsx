@@ -15,11 +15,13 @@ import {
   assembleContext,
   extractEvidence,
 } from "@/lib/chatPipeline";
+import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import { TASK_LABELS } from "@/lib/prompts";
 import Layout from "./components/Layout";
 import TextArea from "./components/TextArea";
 import FileUpload from "./components/FileUpload";
 import TaskSelector from "./components/TaskSelector";
+import ModeToggle from "./components/ModeToggle";
 import OutputPanel from "./components/OutputPanel";
 import ChatPanel from "./components/ChatPanel";
 import Button from "./components/Button";
@@ -40,13 +42,31 @@ export default function App() {
 
   const compat = useMemo(() => checkBrowserCompatibility(), []);
 
-  useSessionCleanup();
+  const { setWarningCallback, forceCleanup } = useSessionCleanup();
+
+  useEffect(() => {
+    setWarningCallback(() => {
+      showToast("Session will be cleared in 60 seconds due to inactivity. Move your mouse to stay active.", "info");
+    });
+  }, [setWarningCallback]);
 
   useEffect(() => {
     if (compat.allPassed) {
       ai.initAndLoad();
     }
   }, [compat.allPassed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    checkApiHealth().then((ok) => ai.setApiAvailable(ok));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const isSecure =
+      location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    if (!isSecure) {
+      showToast("Not on HTTPS — encryption and privacy guarantees require a secure connection.", "error");
+    }
+  }, []);
 
   useEffect(() => {
     const text = doc.rawText.trim();
@@ -105,8 +125,10 @@ export default function App() {
 
   const MAX_DIRECT_CHARS = 10000;
 
+  const isModelReady = ai.processingMode === "api" || ai.modelStatus === "ready";
+
   const handleRun = useCallback(async () => {
-    if (!hasDocument || ai.modelStatus !== "ready" || task.isProcessing) return;
+    if (!hasDocument || !isModelReady || task.isProcessing) return;
 
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
@@ -169,7 +191,7 @@ export default function App() {
       });
       task.run(selectedTask, doc.rawText);
     }
-  }, [hasDocument, ai.modelStatus, task, selectedTask, doc.rawText, embedding]);
+  }, [hasDocument, isModelReady, task, selectedTask, doc.rawText, embedding]);
 
   const handleChatSend = async (message: string) => {
     chat.addUserMessage(message);
@@ -177,6 +199,43 @@ export default function App() {
 
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
+
+    if (ai.processingMode === "api") {
+      const allMessages = [
+        ...chat.messages,
+        { role: "user" as const, content: message },
+      ];
+      const history = buildChatHistory(allMessages);
+
+      setDebugInfo({
+        method: "direct",
+        query: message,
+        retrievedChunks: [],
+        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+        totalDocChars,
+        totalDocChunks,
+        timestamp: Date.now(),
+      });
+
+      chatViaApi(
+        doc.rawText,
+        message,
+        history,
+        (token) => chat.appendToLastAssistant(token),
+      )
+        .then((result) => {
+          const evidence = extractEvidence(result, doc.sections);
+          chat.finalizeAssistantMessage(
+            evidence.length > 0 ? evidence : undefined,
+          );
+        })
+        .catch((err) =>
+          chat.setAssistantError(
+            err instanceof Error ? err.message : String(err),
+          ),
+        );
+      return;
+    }
 
     const allMessages = [
       ...chat.messages,
@@ -237,8 +296,9 @@ export default function App() {
     chat.clear();
     embedding.clear();
     lastIndexedText.current = "";
+    forceCleanup();
     showToast("Session cleared", "info");
-  }, [doc, task, chat, embedding]);
+  }, [doc, task, chat, embedding, forceCleanup]);
 
   const handleTaskSwitch = (newTask: TaskType) => {
     setSelectedTask(newTask);
@@ -375,6 +435,13 @@ export default function App() {
 
           <div className="space-y-3">
             <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
+              Processing Mode
+            </label>
+            <ModeToggle />
+          </div>
+
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
               Task
             </label>
             <TaskSelector
@@ -408,18 +475,18 @@ export default function App() {
                 disabled={
                   !hasDocument ||
                   task.isProcessing ||
-                  ai.modelStatus !== "ready"
+                  !isModelReady
                 }
                 className="w-full"
               >
                 {task.isProcessing
                   ? "Processing..."
-                  : ai.modelStatus !== "ready" && ai.modelStatus !== "error"
+                  : !isModelReady
                     ? "Model loading..."
                     : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
               </Button>
 
-              {ai.modelStatus === "ready" && (
+              {isModelReady && (
                 <p className="text-xs text-text-muted text-center">
                   <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">
                     Ctrl+Enter
@@ -462,7 +529,7 @@ export default function App() {
               isGenerating={chat.isGenerating}
               onSend={handleChatSend}
               onClear={() => chat.clear()}
-              disabled={!hasDocument || ai.modelStatus !== "ready"}
+              disabled={!hasDocument || !isModelReady}
             />
           ) : (
             <OutputPanel

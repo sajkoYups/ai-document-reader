@@ -115,6 +115,8 @@ export default function ChatPanel({
         <div className="flex gap-2">
           <input
             type="text"
+            autoComplete="off"
+            spellCheck={false}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

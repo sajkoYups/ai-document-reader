@@ -6,7 +6,11 @@ import {
   type WorkerMessageFromWorker,
 } from "@/lib/modelManager";
 
+export type ProcessingMode = "local" | "api";
+
 interface AiStore {
+  processingMode: ProcessingMode;
+  apiAvailable: boolean | null;
   modelStatus: ModelStatus;
   downloadProgress: number;
   currentFile: string | null;
@@ -15,6 +19,8 @@ interface AiStore {
   modelConfig: ModelConfig;
   worker: Worker | null;
 
+  setProcessingMode: (mode: ProcessingMode) => void;
+  setApiAvailable: (available: boolean) => void;
   initWorker: () => void;
   loadModel: () => void;
   initAndLoad: () => void;
@@ -29,6 +35,8 @@ interface AiStore {
 }
 
 export const useAiStore = create<AiStore>((set, get) => ({
+  processingMode: "local",
+  apiAvailable: null,
   modelStatus: "idle",
   downloadProgress: 0,
   currentFile: null,
@@ -36,6 +44,9 @@ export const useAiStore = create<AiStore>((set, get) => ({
   inferenceDevice: null,
   modelConfig: DEFAULT_MODEL,
   worker: null,
+
+  setProcessingMode: (mode) => set({ processingMode: mode }),
+  setApiAvailable: (available) => set({ apiAvailable: available }),
 
   initWorker: () => {
     if (get().worker) return;

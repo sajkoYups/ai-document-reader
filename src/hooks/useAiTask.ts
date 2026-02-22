@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import { useAiStore } from "@/store/aiStore";
+import { analyzeViaApi } from "@/lib/apiClient";
+import type { TaskType } from "@/types";
 
 interface UseAiTaskReturn {
   output: string;
@@ -14,12 +16,27 @@ export function useAiTask(): UseAiTaskReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const runTask = useAiStore((s) => s.runTask);
+  const processingMode = useAiStore((s) => s.processingMode);
 
   const run = useCallback(
     (taskType: string, text: string) => {
       setOutput("");
       setError(null);
       setIsProcessing(true);
+
+      if (processingMode === "api") {
+        analyzeViaApi(
+          taskType as TaskType,
+          text,
+          (token) => setOutput((prev) => prev + token),
+        )
+          .then(() => setIsProcessing(false))
+          .catch((err) => {
+            setError(err instanceof Error ? err.message : String(err));
+            setIsProcessing(false);
+          });
+        return;
+      }
 
       runTask(
         taskType,
@@ -33,7 +50,7 @@ export function useAiTask(): UseAiTaskReturn {
         },
       );
     },
-    [runTask],
+    [runTask, processingMode],
   );
 
   const reset = useCallback(() => {

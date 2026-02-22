@@ -17,6 +17,8 @@ export default function TextArea({
         </label>
       )}
       <textarea
+        autoComplete="off"
+        spellCheck={false}
         className={`
           w-full bg-surface-0 border border-border rounded-lg
           px-4 py-3 text-sm text-text-primary placeholder:text-text-muted

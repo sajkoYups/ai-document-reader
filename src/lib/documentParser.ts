@@ -48,11 +48,11 @@ export function parseIntoSections(text: string): DocumentSection[] {
   return sections;
 }
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function validateFileSize(file: File): string | null {
   if (file.size > MAX_FILE_SIZE) {
-    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 2MB.`;
+    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 50MB.`;
   }
   return null;
 }
