@@ -8,7 +8,16 @@ export default function WhoIsThisFor() {
           Doc Analyzer is for anyone who needs to understand documents quickly and privately: contracts, reports, policies, or any text you don’t want to paste into a public AI tool.
         </p>
         <p>
-          Add more about your target users, use cases, and personas here.
+          If you work with sensitive or confidential material — legal drafts, internal memos, health or financial info — you need a way to get summaries and plain-language explanations without sending that content to third parties. We built Doc Analyzer for you. Your document stays on your device or is handled under encryption; we don’t store it.
+        </p>
+        <p>
+          Small teams and solo professionals often don’t have enterprise contracts or compliance budgets. You still deserve private AI. The standard version is free and runs in your browser, so you can understand contracts, terms, and reports without signing up for yet another SaaS or agreeing to data mining.
+        </p>
+        <p>
+          Students and researchers who care about privacy can use Doc Analyzer to summarize papers, explain dense sections, or extract key points — without feeding your reading list into someone else’s training data. Same idea for journalists, writers, and anyone who handles unpublished or sensitive text.
+        </p>
+        <p>
+          If you’re simply tired of pasting confidential stuff into chatbots and wondering where it goes, Doc Analyzer is for you too. We believe everyone who wants to use AI privately should be able to. No sign-up required for the free version; when you’re done, refresh and it’s gone.
         </p>
       </div>
     </SimplePageLayout>
