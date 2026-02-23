@@ -355,7 +355,7 @@ export default function App() {
             progress={ai.downloadProgress}
             label={
               ai.currentFile
-                ? `Downloading: ${ai.currentFile.split("/").pop()}`
+                ? `Building model: ${ai.currentFile.split("/").pop()}`
                 : "Loading AI model"
             }
           />
@@ -383,7 +383,7 @@ export default function App() {
               Your Document
             </h2>
             <p className="text-sm text-text-muted">
-              Paste text or upload a file to get started.
+              Paste text or add a file to get started.
             </p>
           </div>
 

@@ -12,7 +12,7 @@ interface LayoutProps {
 
 const statusLabel: Record<ModelStatus, { text: string; color: string }> = {
   idle: { text: "Model not loaded", color: "bg-text-muted" },
-  downloading: { text: "Downloading model...", color: "bg-warning" },
+  downloading: { text: "Building model...", color: "bg-warning" },
   loading: { text: "Loading model...", color: "bg-warning" },
   ready: { text: "Model ready", color: "bg-accent" },
   error: { text: "Model error", color: "bg-danger" },
