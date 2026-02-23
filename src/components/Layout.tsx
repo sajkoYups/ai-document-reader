@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import PrivacyBadge from "./PrivacyBadge";
 import type { ModelStatus } from "@/types";
 
@@ -26,9 +27,12 @@ export default function Layout({ children, modelStatus, inferenceDevice }: Layou
       <header className="sticky top-0 z-50 border-b border-border bg-surface-0/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="font-display text-xl text-text-primary tracking-tight">
+            <Link to="/" className="font-display text-xl text-text-primary tracking-tight hover:text-accent transition-colors">
               Doc Analyzer
-            </h1>
+            </Link>
+            <Link to="/" className="text-sm text-text-muted hover:text-text-secondary transition-colors">
+              Home
+            </Link>
             <div className="hidden sm:block h-4 w-px bg-border" />
             <div className="hidden sm:flex items-center gap-2 text-xs text-text-muted">
               <span className={`w-1.5 h-1.5 rounded-full ${status.color}`} />
