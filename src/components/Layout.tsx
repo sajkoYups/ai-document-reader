@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import PrivacyBadge from "./PrivacyBadge";
+import Footer from "./Footer";
 import type { ModelStatus } from "@/types";
 
 interface LayoutProps {
@@ -22,7 +23,7 @@ export default function Layout({ children, modelStatus, inferenceDevice }: Layou
   const deviceLabel = inferenceDevice === "webgpu" ? "GPU" : inferenceDevice === "wasm" ? "CPU" : null;
 
   return (
-    <div className="min-h-screen bg-surface-0 grain">
+    <div className="min-h-screen bg-surface-0 grain flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-surface-0/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -50,9 +51,10 @@ export default function Layout({ children, modelStatus, inferenceDevice }: Layou
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-6 py-6">
+      <main className="max-w-7xl mx-auto px-6 py-6 flex-1">
         {children}
       </main>
+      <Footer />
     </div>
   );
 }

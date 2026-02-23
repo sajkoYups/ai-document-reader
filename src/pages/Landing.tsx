@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
+import Footer from "@/components/Footer";
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-surface-0 grain">
+    <div className="min-h-screen bg-surface-0 grain flex flex-col">
       <header className="sticky top-0 z-50 border-b border-border bg-surface-0/80 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <h1 className="font-display text-xl text-text-primary tracking-tight">
@@ -73,7 +74,16 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="animate-fade-in mb-16 md:mb-24 p-6 rounded-xl border border-border bg-surface-1" style={{ animationDelay: "0.2s" }}>
+        <section className="animate-fade-in mb-16 md:mb-24 rounded-xl bg-surface-0" style={{ animationDelay: "0.18s" }}>
+          <h3 className="font-display text-2xl text-text-primary tracking-tight mb-4">
+            Standard is free — and always will be
+          </h3>
+          <p className="text-text-secondary">
+            The Standard version is free. Our goal is for everyone who wants to use AI privately to be able to do so.
+          </p>
+        </section>
+
+        <section className="animate-fade-in mb-16 md:mb-24 rounded-xl bg-surface-0" style={{ animationDelay: "0.2s" }}>
           <h3 className="font-display text-xl text-text-primary tracking-tight mb-2">
             Deep analysis — coming soon
           </h3>
@@ -91,6 +101,7 @@ export default function Landing() {
           </Link>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }
