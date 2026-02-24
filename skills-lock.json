@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "71cc23e9ec5fc6361e12453495fa8c683f6cf26f3efaf9b230b0f43e0a32cc96"
     },
+    "programmatic-seo": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "computedHash": "aae6ed1dda8bacf4980860e3ee2cc3c181f31e31d6b524cfd452015930d16a1f"
+    },
     "prompt-engineering-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",
@@ -15,6 +20,11 @@
       "source": "wshobson/agents",
       "sourceType": "github",
       "computedHash": "593f3b12b946a67978bccd5c2ddd599b060aec60d35f83fbda5764dfd982f099"
+    },
+    "seo-audit": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "computedHash": "6bd4cde58bb701b5dc90a0fae2f0ea3efc7c3e6fd2ae754083fa659930e7d39f"
     }
   }
 }
