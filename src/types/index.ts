@@ -18,6 +18,9 @@ export interface DocumentSection {
   heading: string | null;
   content: string;
   index: number;
+  /** Character offset in the document (set by parser for section-aware retrieval). */
+  startChar?: number;
+  endChar?: number;
 }
 
 export interface DocumentState {

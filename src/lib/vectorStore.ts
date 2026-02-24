@@ -31,3 +31,46 @@ export function findTopK(
 
   return scored.slice(0, topK).map((s) => s.idx);
 }
+
+/**
+ * Maximal Marginal Relevance: rerank candidate indices to balance relevance and diversity.
+ * score(d) = λ * sim(q, d) - (1-λ) * max over selected of sim(d, d_selected).
+ * @param lambdaMult 1 = relevance only, 0 = diversity only; 0.5 is a common balance.
+ */
+export function findTopKWithMMR(
+  queryEmbedding: number[],
+  chunkEmbeddings: number[][],
+  candidateIndices: number[],
+  topK: number,
+  lambdaMult: number = 0.5,
+): number[] {
+  if (candidateIndices.length <= topK) return [...candidateIndices].sort((a, b) => a - b);
+
+  const selected: number[] = [];
+  let remaining = [...candidateIndices];
+
+  while (selected.length < topK && remaining.length > 0) {
+    let bestIdx = remaining[0]!;
+    let bestScore = -Infinity;
+
+    for (const idx of remaining) {
+      const emb = chunkEmbeddings[idx]!;
+      const rel = cosineSimilarity(queryEmbedding, emb);
+      let maxSim = 0;
+      for (const s of selected) {
+        const sim = cosineSimilarity(emb, chunkEmbeddings[s]!);
+        if (sim > maxSim) maxSim = sim;
+      }
+      const score = lambdaMult * rel - (1 - lambdaMult) * maxSim;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = idx;
+      }
+    }
+
+    selected.push(bestIdx);
+    remaining = remaining.filter((i) => i !== bestIdx);
+  }
+
+  return selected.sort((a, b) => a - b);
+}

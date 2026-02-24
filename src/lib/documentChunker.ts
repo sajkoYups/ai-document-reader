@@ -1,5 +1,7 @@
-const CHUNK_TARGET_CHARS = 1500;
-const CHUNK_OVERLAP_CHARS = 200;
+/** Target size per chunk (~375–500 tokens). Tune down (e.g. 1200) for finer retrieval, up for more context per chunk. */
+export const CHUNK_TARGET_CHARS = 1500;
+/** Overlap between consecutive chunks. Skill suggests 10–20%; increase (e.g. 300) if boundary cuts hurt quality. */
+export const CHUNK_OVERLAP_CHARS = 200;
 
 export interface DocumentChunk {
   text: string;
@@ -131,4 +133,53 @@ export function retrieveRelevantChunks(
 
   selected.sort((a, b) => a.index - b.index);
   return selected;
+}
+
+/**
+ * Returns chunk indices in keyword-relevance order (best first), for use in RRF fusion.
+ * Stops after collecting indices whose total text length reaches maxChars.
+ */
+export function retrieveRelevantChunkIndices(
+  chunks: DocumentChunk[],
+  query: string,
+  maxChars: number,
+): number[] {
+  const queryTokens = tokenize(query);
+  if (queryTokens.length === 0) return chunks.slice(0, 3).map((c) => c.index);
+
+  const querySet = new Set(queryTokens);
+
+  const scored = chunks.map((chunk) => {
+    const chunkTokens = tokenize(chunk.text);
+    let matchScore = 0;
+
+    for (const token of chunkTokens) {
+      if (querySet.has(token)) matchScore += 1;
+    }
+
+    for (const qt of queryTokens) {
+      if (chunk.text.toLowerCase().includes(qt)) matchScore += 2;
+    }
+
+    const numberPattern = /\$[\d,.]+|[\d,.]+\s*(?:usd|eur|gbp|dollars?|euros?|percent|%)/gi;
+    const hasNumbers = numberPattern.test(chunk.text);
+    if (queryTokens.some((t) => /price|cost|amount|fee|payment|total|sum|rate|salary|value/i.test(t)) && hasNumbers) {
+      matchScore += 5;
+    }
+
+    return { chunk, score: matchScore };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  const indices: number[] = [];
+  let charBudget = maxChars;
+
+  for (const { chunk } of scored) {
+    if (charBudget <= 0) break;
+    indices.push(chunk.index);
+    charBudget -= chunk.text.length;
+  }
+
+  return indices;
 }

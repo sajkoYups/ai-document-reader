@@ -10,6 +10,11 @@
       "source": "wshobson/agents",
       "sourceType": "github",
       "computedHash": "4ffe23560a80e45aec947fbd3e7c54a8c180bfa40985b81065f1e0e326af1e62"
+    },
+    "rag-implementation": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "593f3b12b946a67978bccd5c2ddd599b060aec60d35f83fbda5764dfd982f099"
     }
   }
 }

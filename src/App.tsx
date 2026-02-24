@@ -15,6 +15,7 @@ import {
   assembleContext,
   extractEvidence,
 } from "@/lib/chatPipeline";
+import { CHAT_TOP_K, EXTRACT_TOP_K } from "@/lib/retrieval";
 import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import { TASK_LABELS } from "@/lib/prompts";
 import Layout from "./components/Layout";
@@ -134,7 +135,20 @@ export default function App() {
     const totalDocChunks = embedding.chunks.length;
     const isShortDoc = totalDocChars <= MAX_DIRECT_CHARS;
 
-    if (isShortDoc || embedding.status !== "ready") {
+    if (isShortDoc) {
+      setDebugInfo({
+        method: "direct",
+        retrievedChunks: [],
+        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+        totalDocChars,
+        totalDocChunks,
+        timestamp: Date.now(),
+      });
+      task.run(selectedTask, doc.rawText);
+      return;
+    }
+
+    if ((selectedTask === "summarize" || selectedTask === "explain") && embedding.status !== "ready") {
       setDebugInfo({
         method: "direct",
         retrievedChunks: [],
@@ -154,18 +168,31 @@ export default function App() {
       let query: string | undefined;
 
       if (selectedTask === "summarize" || selectedTask === "explain") {
-        retrievedChunks = embedding.getSpreadChunks(MAX_DIRECT_CHARS);
+        retrievedChunks = embedding.getSpreadChunks(MAX_DIRECT_CHARS, doc.sections);
         const { text, meta } = assembleContext(retrievedChunks, MAX_DIRECT_CHARS);
         contextText = text;
         method = "spread";
         setDebugInfo({ method, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
       } else if (selectedTask === "extract") {
         query = "key points obligations risks dates terms price cost amount payment";
-        retrievedChunks = await embedding.retrieveChunks(query, 8);
-        const { text, meta } = assembleContext(retrievedChunks, MAX_DIRECT_CHARS);
-        contextText = text;
-        method = "semantic";
-        setDebugInfo({ method, query, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
+        if (embedding.chunks.length > 0) {
+          retrievedChunks = await embedding.retrieveChunksHybrid(query, EXTRACT_TOP_K, { useMMR: false });
+          const { text, meta } = assembleContext(retrievedChunks, MAX_DIRECT_CHARS);
+          contextText = text;
+          method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
+          setDebugInfo({ method, query, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
+        } else {
+          setDebugInfo({
+            method: "direct",
+            retrievedChunks: [],
+            contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+            totalDocChars,
+            totalDocChunks,
+            timestamp: Date.now(),
+          });
+          task.run(selectedTask, doc.rawText);
+          return;
+        }
       } else {
         setDebugInfo({
           method: "direct",
@@ -191,7 +218,7 @@ export default function App() {
       });
       task.run(selectedTask, doc.rawText);
     }
-  }, [hasDocument, isModelReady, task, selectedTask, doc.rawText, embedding]);
+  }, [hasDocument, isModelReady, task, selectedTask, doc.rawText, doc.sections, embedding]);
 
   const handleChatSend = async (message: string) => {
     chat.addUserMessage(message);
@@ -244,12 +271,13 @@ export default function App() {
     const history = buildChatHistory(allMessages);
 
     let contextDoc: string;
-    if (embedding.status === "ready") {
+    if (embedding.chunks.length > 0) {
       try {
-        const retrievedChunks = await embedding.retrieveChunks(message, 6);
+        const retrievedChunks = await embedding.retrieveChunksHybrid(message, CHAT_TOP_K);
         const { text, meta } = assembleContext(retrievedChunks);
         contextDoc = text;
-        setDebugInfo({ method: "semantic", query: message, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
+        const method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
+        setDebugInfo({ method, query: message, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
       } catch {
         contextDoc = doc.rawText;
         setDebugInfo({

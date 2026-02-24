@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { DocumentChunk } from "@/lib/documentChunker";
 import type { AssembleContextMeta } from "@/lib/chatPipeline";
 
-export type RetrievalMethod = "direct" | "spread" | "semantic" | "fallback";
+export type RetrievalMethod = "direct" | "spread" | "semantic" | "hybrid" | "keyword-fallback" | "fallback";
 
 export interface RagDebugInfo {
   method: RetrievalMethod;
@@ -28,6 +28,8 @@ const METHOD_LABELS: Record<RetrievalMethod, string> = {
   direct: "Direct (full text)",
   spread: "Spread sampling",
   semantic: "Semantic search",
+  hybrid: "Hybrid (semantic + keyword)",
+  "keyword-fallback": "Keyword (embeddings not ready)",
   fallback: "Fallback (full text)",
 };
 

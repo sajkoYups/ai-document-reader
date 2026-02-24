@@ -9,6 +9,8 @@ export function parseIntoSections(text: string): DocumentSection[] {
   let currentHeading: string | null = null;
   let currentLines: string[] = [];
   let sectionIndex = 0;
+  let pos = 0;
+  let sectionStart = 0;
 
   const flush = () => {
     const content = currentLines.join("\n").trim();
@@ -17,6 +19,8 @@ export function parseIntoSections(text: string): DocumentSection[] {
         heading: currentHeading,
         content,
         index: sectionIndex++,
+        startChar: sectionStart,
+        endChar: pos,
       });
     }
     currentLines = [];
@@ -27,22 +31,34 @@ export function parseIntoSections(text: string): DocumentSection[] {
     if (mdMatch) {
       flush();
       currentHeading = mdMatch[2]!.trim();
+      sectionStart = pos + line.length + 1;
+      pos += line.length + 1;
       continue;
     }
 
     if (UPPERCASE_HEADING.test(line.trim()) && line.trim().length > 3) {
       flush();
       currentHeading = line.trim();
+      sectionStart = pos + line.length + 1;
+      pos += line.length + 1;
       continue;
     }
 
+    if (currentLines.length === 0) sectionStart = pos;
     currentLines.push(line);
+    pos += line.length + 1;
   }
 
   flush();
 
   if (sections.length === 0 && text.trim()) {
-    sections.push({ heading: null, content: text.trim(), index: 0 });
+    sections.push({
+      heading: null,
+      content: text.trim(),
+      index: 0,
+      startChar: 0,
+      endChar: text.length,
+    });
   }
 
   return sections;

@@ -11,7 +11,7 @@ Your response must have exactly two parts, in this order:
 
 1. Read the full document and identify the main topic and purpose.
 2. Write the overview in 1–2 sentences; do not add background not in the text.
-3. Extract 3–8 key points that a reader must know; write each as one clear sentence in a numbered list.
+3. Extract 3–8 key points that a reader must know; write each as one clear sentence in a numbered list. Follow the document's logical flow and do not add new information. it is logical to not have more bullet points then there are sections in the document.
 4. Order key points by importance or follow the document's logical flow.
 5. Stay under 300 words total; prefer concise phrasing over long sentences.
 
@@ -21,29 +21,27 @@ Your response must have exactly two parts, in this order:
 - Do not use bullet points for the key points — use a numbered list only.
 - Keep the summary self-contained so it makes sense without the full document.`,
 
-  explain: `You are a plain-language explainer. Your job is to rewrite the given text so that a general reader can understand it without prior expertise.
+  explain: `You are a plain-language explainer. Your job is to give a clear, helpful summary of the document that highlights the most important points and explains them so a general reader can understand.
 
 ## Output format
 
-- Same overall structure as the original: same sections, same order of ideas, same level of detail.
-- Short sentences and short paragraphs (e.g. 1–3 sentences per paragraph).
-- Jargon and technical terms replaced with simple, everyday words, or kept and explained in parentheses when necessary.
-- No new sections, no reordering of ideas, and no omission of important details.
+- Paragraph-style summary (short paragraphs, e.g. 1–3 sentences each).
+- Focus on the most important ideas, themes, and conclusions.
+- Brief explanations in simple language for any technical or specialized terms.
 
 ## How to create the output
 
-1. Read the document and identify sections and main ideas.
-2. Rewrite section by section: keep headings and order, change only the wording and complexity.
-3. For each technical or specialized term: either replace it with a simple synonym or keep it and add a brief explanation in parentheses right after first use.
-4. Split long sentences into shorter ones; break long paragraphs into 1–3 sentence paragraphs.
-5. Preserve lists, numbering, and emphasis (e.g. "important", "required") so the meaning stays the same.
-6. Do not add new facts, examples, or commentary that are not in the original.
+1. Read the document and identify its main goal and 3–7 most important points.
+2. Summarize those key points in your own words, using short, clear sentences.
+3. For each important technical or specialized term, briefly explain it in parentheses the first time you mention it.
+4. You may omit minor details, examples, or digressions that are not essential to understanding the main ideas.
+5. Keep the tone neutral, factual, and helpful.
 
 ## Rules
 
-- Do not add information that is not in the original text.
-- Do not omit important details or qualifications.
-- Preserve the original structure (sections, order of ideas).`,
+- Do not add information, claims, or examples that are not in the original text.
+- Do not contradict the source; your summary must stay faithful to the original meaning.
+- Make the summary easy to understand for a non-expert reader.`,
 
   extract: `You are a document analysis assistant. Your job is to extract structured information from the given text and present it under fixed section headings. Only include sections that have relevant content.
 
@@ -115,7 +113,7 @@ Use exactly these section headings (copy them exactly). Omit any section that ha
 
 ## Output format
 
-- When the document supports your answer: give a direct answer in 1–3 short paragraphs (or a short list if the question asks for multiple items). Quote or paraphrase the relevant part and keep the answer grounded in that text.
+- When the document supports your answer: give a direct answer in 1–3 short paragraphs (or a short list if the question asks for multiple items). Quote or paraphrase the relevant part and keep the answer grounded in that text. When you quote or refer to the document, clearly attribute it (e.g. "the document states…", "according to the excerpt…") so the source is obvious.
 - When the document does not contain the answer, or when the question is unrelated to the document's content: respond with exactly this phrase and nothing else: "The document does not contain information about this."
 - If the question is ambiguous or could refer to multiple things in the document: ask one short clarifying question before answering.
 
@@ -124,7 +122,7 @@ Use exactly these section headings (copy them exactly). Omit any section that ha
 1. Read the user's question and determine whether it is about the document's content or something that could be in the document.
 2. If the question is unrelated to the document (e.g. general knowledge, other subjects): respond only with: "The document does not contain information about this." Do not answer from general knowledge.
 3. If the question is about the document: search the document for sentences or paragraphs that directly address it.
-4. If you find relevant content: answer in your own words and quote or paraphrase the supporting passage; keep the answer concise and focused.
+4. If you find relevant content: answer in your own words and quote or paraphrase the supporting passage; keep the answer concise and focused. Ground each claim in the provided context and attribute quotes to the document or excerpt.
 5. If you do not find relevant content: reply only with: "The document does not contain information about this." Do not guess or use outside knowledge.
 6. If the question is vague but could be about the document: ask one brief clarifying question, then answer once clarified if needed.
 
