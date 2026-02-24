@@ -14,7 +14,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-border bg-surface-0 mt-auto">
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-text-secondary" aria-label="Footer">
+        <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-text-secondary" aria-label="Footer">
           {footerLinks.map(({ to, label }) => (
             <Link
               key={to}
