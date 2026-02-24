@@ -548,9 +548,24 @@ export default function App() {
 
         {/* Right panel: Output or Chat */}
         <div
-          className="animate-fade-in min-h-[400px] lg:min-h-0"
+          className="animate-fade-in min-h-[400px] lg:min-h-0 space-y-3"
           style={{ animationDelay: "0.1s" }}
         >
+          {selectedTask === "summarize" && (
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Summarize produces a short overview and a numbered list of key points from your document. You’ll get a quick grasp of the main topic and the most important findings or actions. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response.
+            </p>
+          )}
+          {selectedTask === "explain" && (
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Explain gives you a plain-language summary that highlights the main ideas and briefly explains any technical or specialized terms so a general reader can follow. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response.
+            </p>
+          )}
+          {selectedTask === "chat" && (
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Chat lets you ask questions about your document and get answers grounded in its content. Use it to find specific information, clarify sections, or explore topics in the text. The AI can sometimes make mistakes—if an answer isn’t right, you can ask again or rephrase to get a better response.
+            </p>
+          )}
           {isChat ? (
             <ChatPanel
               messages={chat.messages}

@@ -6,13 +6,16 @@ interface TaskSelectorProps {
   disabled?: boolean;
 }
 
-const tasks: { id: TaskType; label: string; icon: string }[] = [
+const ALL_TASKS: { id: TaskType; label: string; icon: string }[] = [
   { id: "summarize", label: "Summarize", icon: "⊞" },
   { id: "explain", label: "Explain", icon: "◇" },
   { id: "extract", label: "Extract", icon: "⊡" },
   { id: "draft", label: "Draft", icon: "✎" },
   { id: "chat", label: "Chat", icon: "◌" },
 ];
+
+const VISIBLE_TASK_IDS: TaskType[] = ["summarize", "explain", "chat"];
+const tasks = ALL_TASKS.filter((t) => VISIBLE_TASK_IDS.includes(t.id));
 
 export default function TaskSelector({
   selected,
