@@ -397,7 +397,7 @@ export default function App() {
             label={
               embedding.status === "indexing"
                 ? "Indexing document for search..."
-                : "Downloading search model..."
+                : "Building search model..."
             }
           />
         </div>
