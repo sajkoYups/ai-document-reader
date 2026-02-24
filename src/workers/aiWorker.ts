@@ -6,12 +6,18 @@ import type {
 } from "@/lib/modelManager";
 import { SYSTEM_PROMPTS } from "@/lib/prompts";
 
+// Single pipeline instance reused for all runs. @huggingface/transformers does not
+// expose a generation-state reset between calls; reusing the same instance for
+// a second run (e.g. Explain after Summarize) may occasionally affect output.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let generator: any = null;
 let activeDevice: "webgpu" | "wasm" = "wasm";
 let loadedConfig: ModelConfig | null = null;
 let pendingGpuError = false;
 let inferenceGeneration = 0;
+let cancelRequested = false;
+let currentRunResolve: ((value: string) => void) | null = null;
+let resolvedByCancel = false;
 
 const MAX_INPUT_CHARS = 20000;
 const FIRST_TOKEN_TIMEOUT_MS = 30_000;
@@ -113,9 +119,20 @@ function prepareText(text: string): string {
  */
 function getInferenceParams(taskType: string) {
   if (taskType === "chat") {
-    return { max_new_tokens: 2048, temperature: 0.3, top_p: 0.9, do_sample: true, repetition_penalty: 1.1 };
+    console.log("chat");
+    return { max_new_tokens: 650, temperature: 0.0, top_p: 1.0, do_sample: false, repetition_penalty: 1.08 }
   }
-  return { max_new_tokens: 2048, temperature: 0.1, top_p: 0.9, do_sample: true, repetition_penalty: 1.1 };
+  if (taskType === "summarize") {
+    console.log("summarize");
+    return { max_new_tokens: 1650, temperature: 0.0, top_p: 0.9, do_sample: false, repetition_penalty: 1.12 }
+  }
+  if ( taskType === "explain") {
+    console.log("explain");
+    return { max_new_tokens: 2048, temperature: 0.1, top_p: 0.9, do_sample: true, repetition_penalty: 1.12 }
+  }else{
+    console.log("default");
+    return { max_new_tokens: 2048, temperature: 0.1, top_p: 0.9, do_sample: true, repetition_penalty: 1.1 };
+  }
 }
 
 function runInference(
@@ -123,8 +140,11 @@ function runInference(
   taskType: string,
 ): Promise<string> {
   const myGen = ++inferenceGeneration;
+  cancelRequested = false;
+  resolvedByCancel = false;
 
   return new Promise<string>((resolve, reject) => {
+    currentRunResolve = resolve;
     let fullResult = "";
     let gotFirstToken = false;
 
@@ -139,6 +159,12 @@ function runInference(
       skip_prompt: true,
       callback_function: (token: string) => {
         if (myGen !== inferenceGeneration) return;
+        if (cancelRequested && currentRunResolve) {
+          resolvedByCancel = true;
+          currentRunResolve(fullResult);
+          currentRunResolve = null;
+          return;
+        }
         if (!gotFirstToken) {
           gotFirstToken = true;
           if (timeout) clearTimeout(timeout);
@@ -154,11 +180,13 @@ function runInference(
     })
       .then(() => {
         if (timeout) clearTimeout(timeout);
-        if (myGen === inferenceGeneration) resolve(fullResult);
+        currentRunResolve = null;
+        if (myGen === inferenceGeneration && !resolvedByCancel) resolve(fullResult);
       })
       .catch((err: unknown) => {
         if (timeout) clearTimeout(timeout);
-        if (myGen === inferenceGeneration) reject(err);
+        currentRunResolve = null;
+        if (myGen === inferenceGeneration && !resolvedByCancel) reject(err);
       });
   });
 }
@@ -222,6 +250,16 @@ function buildMessages(
 ): Array<{ role: string; content: string }> {
   const system = SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS["summarize"]!;
 
+  if (
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV &&
+    (taskType === "summarize" || taskType === "explain")
+  ) {
+    console.log("[aiWorker] buildMessages", {
+      taskType,
+      systemPromptPreview: system
+    });
+  }
+
   if (taskType === "chat" && conversationHistory) {
     return [
       {
@@ -246,6 +284,9 @@ self.addEventListener("message", (e: MessageEvent<WorkerMessageToWorker>) => {
       break;
     case "run-task":
       runTask(msg.taskType, msg.text, msg.conversationHistory);
+      break;
+    case "cancel-task":
+      cancelRequested = true;
       break;
   }
 });

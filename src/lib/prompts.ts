@@ -5,15 +5,15 @@ export const SYSTEM_PROMPTS: Record<string, string> = {
 
 Your response must have exactly two parts, in this order:
 1. **Overview** — 1–2 sentences that state what the document is about and its main purpose.
-2. **Key points** — A numbered list of the most important findings, conclusions, and actionable items (if any).
+2. **Key points** — A numbered list of the most important findings in each section, conclusions, and actionable items (if any).
 
 ## How to create the output
 
 1. Read the full document and identify the main topic and purpose.
 2. Write the overview in 1–2 sentences; do not add background not in the text.
-3. Extract 3–8 key points that a reader must know; write each as one clear sentence in a numbered list. Follow the document's logical flow and do not add new information. it is logical to not have more bullet points then there are sections in the document.
+3. Explain each paragraph of the document so that a reader must know; Follow the document's logical flow and do not add new information. it is logical to not have more bullet points then there are sections in the document.
 4. Order key points by importance or follow the document's logical flow.
-5. Stay under 300 words total; prefer concise phrasing over long sentences.
+5. Stay under 600 words total; prefer concise phrasing over long sentences.
 
 ## Rules
 
@@ -36,12 +36,15 @@ Your response must have exactly two parts, in this order:
 3. For each important technical or specialized term, briefly explain it in parentheses the first time you mention it.
 4. You may omit minor details, examples, or digressions that are not essential to understanding the main ideas.
 5. Keep the tone neutral, factual, and helpful.
+5. Stay under 900 words total; prefer concise phrasing over long sentences.
+
 
 ## Rules
 
 - Do not add information, claims, or examples that are not in the original text.
 - Do not contradict the source; your summary must stay faithful to the original meaning.
-- Make the summary easy to understand for a non-expert reader.`,
+- Make the summary easy to understand for a non-expert reader.
+- Do not repeat the same information in the summary.`,
 
   extract: `You are a document analysis assistant. Your job is to extract structured information from the given text and present it under fixed section headings. Only include sections that have relevant content.
 

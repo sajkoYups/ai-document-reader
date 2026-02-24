@@ -20,7 +20,8 @@ export const EMBEDDING_MODEL: ModelConfig = {
 
 export type WorkerMessageToWorker =
   | { type: "load-model"; config: ModelConfig }
-  | { type: "run-task"; taskType: string; text: string; conversationHistory?: Array<{ role: string; content: string }> };
+  | { type: "run-task"; taskType: string; text: string; conversationHistory?: Array<{ role: string; content: string }> }
+  | { type: "cancel-task" };
 
 export type WorkerMessageFromWorker =
   | { type: "progress"; data: { status: string; progress?: number; file?: string } }

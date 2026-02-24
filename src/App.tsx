@@ -496,23 +496,42 @@ export default function App() {
                   </Button>
                 </div>
               )}
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleRun}
-                disabled={
-                  !hasDocument ||
-                  task.isProcessing ||
-                  !isModelReady
-                }
-                className="w-full"
-              >
-                {task.isProcessing
-                  ? "Processing..."
-                  : !isModelReady
-                    ? "Model loading..."
-                    : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                {task.isProcessing ? (
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    onClick={task.stop}
+                    className="flex-1 sm:flex-initial"
+                  >
+                    Stop
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={handleRun}
+                      disabled={!hasDocument || !isModelReady}
+                      className="flex-1"
+                    >
+                      {!isModelReady
+                        ? "Model loading..."
+                        : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
+                    </Button>
+                    {task.output && (
+                      <Button
+                        variant="secondary"
+                        size="lg"
+                        onClick={handleRun}
+                        disabled={!hasDocument || !isModelReady}
+                      >
+                        Regenerate
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
 
               {isModelReady && (
                 <p className="text-xs text-text-muted text-center">
@@ -553,12 +572,12 @@ export default function App() {
         >
           {selectedTask === "summarize" && (
             <p className="text-sm text-text-secondary leading-relaxed">
-              Summarize produces a short overview and a numbered list of key points from your document. You’ll get a quick grasp of the main topic and the most important findings or actions. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response.
+              Summarize produces a short overview and a numbered list of key points from your document. You’ll get a quick grasp of the main topic and the most important findings or actions. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response. If you run another task (e.g. Explain) in the same session, the second result can occasionally be less accurate; run again or refresh for a fresh start.
             </p>
           )}
           {selectedTask === "explain" && (
             <p className="text-sm text-text-secondary leading-relaxed">
-              Explain gives you a plain-language summary that highlights the main ideas and briefly explains any technical or specialized terms so a general reader can follow. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response.
+              Explain gives you a plain-language summary that highlights the main ideas and briefly explains any technical or specialized terms so a general reader can follow. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response. If you run another task (e.g. Summarize) in the same session, the second result can occasionally be less accurate; run again or refresh for a fresh start.
             </p>
           )}
           {selectedTask === "chat" && (
@@ -580,6 +599,7 @@ export default function App() {
               isLoading={task.isProcessing}
               taskLabel={TASK_LABELS[selectedTask] ?? selectedTask}
               error={task.error}
+              onStop={task.isProcessing ? task.stop : undefined}
             />
           )}
           <DebugPanel debugInfo={debugInfo} />

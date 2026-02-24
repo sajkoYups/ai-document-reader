@@ -7,6 +7,7 @@ interface OutputPanelProps {
   isLoading: boolean;
   taskLabel: string;
   error?: string | null;
+  onStop?: () => void;
 }
 
 export default function OutputPanel({
@@ -14,6 +15,7 @@ export default function OutputPanel({
   isLoading,
   taskLabel,
   error,
+  onStop,
 }: OutputPanelProps) {
   const [copied, setCopied] = useState(false);
 
@@ -42,9 +44,16 @@ export default function OutputPanel({
   if (isLoading) {
     return (
       <Card className="space-y-3">
-        <div className="flex items-center gap-2 text-xs text-text-muted font-medium tracking-wide uppercase">
-          <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" />
-          Running {taskLabel}...
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-text-muted font-medium tracking-wide uppercase">
+            <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" />
+            Running {taskLabel}...
+          </div>
+          {onStop && (
+            <Button variant="ghost" size="sm" onClick={onStop}>
+              Stop
+            </Button>
+          )}
         </div>
         {content ? (
           <div className="text-sm text-text-primary leading-relaxed whitespace-pre-wrap font-body">

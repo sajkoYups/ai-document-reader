@@ -8,6 +8,7 @@ interface UseAiTaskReturn {
   isProcessing: boolean;
   error: string | null;
   run: (taskType: string, text: string) => void;
+  stop: () => void;
   reset: () => void;
 }
 
@@ -16,6 +17,7 @@ export function useAiTask(): UseAiTaskReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const runTask = useAiStore((s) => s.runTask);
+  const cancelTask = useAiStore((s) => s.cancelTask);
   const processingMode = useAiStore((s) => s.processingMode);
 
   const run = useCallback(
@@ -43,7 +45,10 @@ export function useAiTask(): UseAiTaskReturn {
         text,
         undefined,
         (token) => setOutput((prev) => prev + token),
-        () => setIsProcessing(false),
+        (result) => {
+          setOutput(result);
+          setIsProcessing(false);
+        },
         (err) => {
           setError(err);
           setIsProcessing(false);
@@ -53,11 +58,15 @@ export function useAiTask(): UseAiTaskReturn {
     [runTask, processingMode],
   );
 
+  const stop = useCallback(() => {
+    cancelTask();
+  }, [cancelTask]);
+
   const reset = useCallback(() => {
     setOutput("");
     setError(null);
     setIsProcessing(false);
   }, []);
 
-  return { output, isProcessing, error, run, reset };
+  return { output, isProcessing, error, run, stop, reset };
 }

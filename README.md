@@ -50,6 +50,10 @@ The `dist/` folder contains a fully static site ready for deployment to Cloudfla
 | `Ctrl+Enter`  | Run task   |
 | `Escape`      | Clear all  |
 
+### Tips
+
+- For best results, run one analysis type per session (e.g. Summarize or Explain). If you run a second task in the same session (e.g. Summarize then Explain), the second result can occasionally be less accurate or repetitive—run again or refresh the page for a fresh start.
+
 ## Privacy
 
 All document processing happens locally in the browser via WebAssembly. Your files are never uploaded to any server. The only network requests are for:

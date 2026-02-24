@@ -32,6 +32,7 @@ interface AiStore {
     onComplete?: (result: string) => void,
     onError?: (error: string) => void,
   ) => void;
+  cancelTask: () => void;
 }
 
 export const useAiStore = create<AiStore>((set, get) => ({
@@ -133,5 +134,10 @@ export const useAiStore = create<AiStore>((set, get) => ({
 
     worker.addEventListener("message", handler);
     worker.postMessage({ type: "run-task", taskType, text, conversationHistory });
+  },
+
+  cancelTask: () => {
+    const { worker } = get();
+    if (worker) worker.postMessage({ type: "cancel-task" });
   },
 }));
