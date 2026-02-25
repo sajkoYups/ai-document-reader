@@ -1,6 +1,5 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary";
 import PageHelmet from "./components/PageHelmet";
@@ -17,21 +16,19 @@ import "./index.css";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <HelmetProvider>
-        <BrowserRouter>
-          <PageHelmet />
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/app" element={<App />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/who-is-this-for" element={<WhoIsThisFor />} />
-            <Route path="/how-does-it-work" element={<HowDoesItWork />} />
-            <Route path="/what-else-do-we-do" element={<WhatElseDoWeDo />} />
-            <Route path="/mission" element={<Mission />} />
-            <Route path="/vision" element={<Vision />} />
-          </Routes>
-        </BrowserRouter>
-      </HelmetProvider>
+      <BrowserRouter>
+        <PageHelmet />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/app" element={<App />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/who-is-this-for" element={<WhoIsThisFor />} />
+          <Route path="/how-does-it-work" element={<HowDoesItWork />} />
+          <Route path="/what-else-do-we-do" element={<WhatElseDoWeDo />} />
+          <Route path="/mission" element={<Mission />} />
+          <Route path="/vision" element={<Vision />} />
+        </Routes>
+      </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,
 );

@@ -14,7 +14,6 @@
     "pdfjs-dist": "^5.4.624",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-helmet-async": "^2.0.5",
     "react-router-dom": "^7.13.1",
     "tailwindcss": "^4.2.0",
     "zustand": "^5.0.11"

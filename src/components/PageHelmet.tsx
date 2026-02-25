@@ -1,12 +1,11 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
 import { getSeoForPath } from "@/seo";
 
 /**
  * Single source of truth for document head. Renders inside the Router so it
- * re-runs on every navigation. A useEffect syncs title/meta/canonical on every
- * route change so the tab and head update even when react-helmet-async does not.
+ * re-runs on every navigation. A useEffect syncs title/meta/canonical/JSON-LD
+ * on every route change.
  */
 export default function PageHelmet() {
   const { pathname } = useLocation();
@@ -14,45 +13,8 @@ export default function PageHelmet() {
   const canonical =
     typeof window !== "undefined" ? `${window.location.origin}${pathname}` : "";
 
-  // Sync document head on every navigation (fixes tab title when Helmet doesn't update)
-  useEffect(() => {
-    document.title = seo ? seo.title : "Doc Analyzer";
-
-    if (typeof document === "undefined") return;
-
-    if (seo) {
-      let metaDesc = document.querySelector('meta[name="description"]');
-      if (!metaDesc) {
-        metaDesc = document.createElement("meta");
-        metaDesc.setAttribute("name", "description");
-        document.head.appendChild(metaDesc);
-      }
-      metaDesc.setAttribute("content", seo.description);
-
-      if (typeof window !== "undefined") {
-        const href = `${window.location.origin}${pathname}`;
-        let link = document.querySelector('link[rel="canonical"]');
-        if (!link) {
-          link = document.createElement("link");
-          link.setAttribute("rel", "canonical");
-          document.head.appendChild(link);
-        }
-        link.setAttribute("href", href);
-      }
-    }
-  }, [pathname, seo]);
-
-  // /app and unknown routes: minimal title so we don't leave index.html default
-  if (!seo) {
-    return (
-      <Helmet>
-        <title>Doc Analyzer</title>
-      </Helmet>
-    );
-  }
-
   const websiteSchema =
-    pathname === "/" && canonical
+    pathname === "/" && canonical && seo
       ? {
           "@context": "https://schema.org",
           "@type": "WebSite",
@@ -61,6 +23,7 @@ export default function PageHelmet() {
           description: seo.description,
         }
       : null;
+
   const organizationSchema =
     pathname === "/" && canonical
       ? {
@@ -71,30 +34,101 @@ export default function PageHelmet() {
         }
       : null;
 
-  return (
-    <Helmet>
-      <title>{seo.title}</title>
-      <meta name="description" content={seo.description} />
-      {canonical && <link rel="canonical" href={canonical} />}
-      {canonical && seo.withSocial && (
-        <>
-          <meta property="og:type" content="website" />
-          <meta property="og:title" content={seo.title} />
-          <meta property="og:description" content={seo.description} />
-          <meta property="og:url" content={canonical} />
-          <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content={seo.title} />
-          <meta name="twitter:description" content={seo.description} />
-        </>
-      )}
-      {websiteSchema && (
-        <script type="application/ld+json">{JSON.stringify(websiteSchema)}</script>
-      )}
-      {organizationSchema && (
-        <script type="application/ld+json">
-          {JSON.stringify(organizationSchema)}
-        </script>
-      )}
-    </Helmet>
-  );
+  useEffect(() => {
+    if (typeof document === "undefined" || typeof window === "undefined") return;
+
+    const title = seo ? seo.title : "Doc Analyzer";
+    document.title = title;
+
+    const upsertMeta = (
+      attrName: "name" | "property",
+      attrValue: string,
+      content: string | null,
+    ) => {
+      const selector = `meta[${attrName}="${attrValue}"]`;
+      let el = document.head.querySelector(selector) as HTMLMetaElement | null;
+
+      if (!content) {
+        el?.parentNode?.removeChild(el);
+        return;
+      }
+
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attrName, attrValue);
+        document.head.appendChild(el);
+      }
+
+      el.setAttribute("content", content);
+    };
+
+    // Description
+    upsertMeta("name", "description", seo ? seo.description : null);
+
+    // Canonical
+    let link = document.querySelector(
+      'link[rel="canonical"]',
+    ) as HTMLLinkElement | null;
+
+    if (!canonical) {
+      link?.parentNode?.removeChild(link);
+    } else {
+      if (!link) {
+        link = document.createElement("link");
+        link.setAttribute("rel", "canonical");
+        document.head.appendChild(link);
+      }
+
+      link.setAttribute("href", canonical);
+    }
+
+    const hasSocial = Boolean(canonical && seo?.withSocial);
+
+    if (hasSocial && seo && canonical) {
+      upsertMeta("property", "og:type", "website");
+      upsertMeta("property", "og:title", seo.title);
+      upsertMeta("property", "og:description", seo.description);
+      upsertMeta("property", "og:url", canonical);
+
+      upsertMeta("name", "twitter:card", "summary_large_image");
+      upsertMeta("name", "twitter:title", seo.title);
+      upsertMeta("name", "twitter:description", seo.description);
+    } else {
+      upsertMeta("property", "og:type", null);
+      upsertMeta("property", "og:title", null);
+      upsertMeta("property", "og:description", null);
+      upsertMeta("property", "og:url", null);
+
+      upsertMeta("name", "twitter:card", null);
+      upsertMeta("name", "twitter:title", null);
+      upsertMeta("name", "twitter:description", null);
+    }
+
+    const upsertJsonLdScript = (id: string, data: unknown | null) => {
+      const existing = document.getElementById(id);
+
+      if (!data) {
+        existing?.parentNode?.removeChild(existing);
+        return;
+      }
+
+      const json = JSON.stringify(data);
+
+      if (existing && existing.tagName.toLowerCase() === "script") {
+        existing.textContent = json;
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.id = id;
+      script.textContent = json;
+      document.head.appendChild(script);
+    };
+
+    upsertJsonLdScript("seo-website-schema", websiteSchema);
+    upsertJsonLdScript("seo-organization-schema", organizationSchema);
+  }, [canonical, organizationSchema, pathname, seo, websiteSchema]);
+
+  return null;
 }
