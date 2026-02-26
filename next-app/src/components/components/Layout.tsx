@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import PrivacyBadge from "./PrivacyBadge";
 import Footer from "./Footer";
 import type { ModelStatus } from "@/types";
@@ -28,10 +28,16 @@ export default function Layout({ children, modelStatus, inferenceDevice }: Layou
       <header className="sticky top-0 z-50 border-b border-border bg-surface-0/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/" className="font-display text-xl text-text-primary tracking-tight hover:text-accent transition-colors">
+            <Link
+              href="/"
+              className="font-display text-xl text-text-primary tracking-tight hover:text-accent transition-colors"
+            >
               Doc Analyzer
             </Link>
-            <Link to="/" className="text-sm text-text-muted hover:text-text-secondary transition-colors">
+            <Link
+              href="/"
+              className="text-sm text-text-muted hover:text-text-secondary transition-colors"
+            >
               Home
             </Link>
             <div className="hidden sm:block h-4 w-px bg-border" />
