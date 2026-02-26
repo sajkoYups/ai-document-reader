@@ -29,6 +29,7 @@ import { CHAT_TOP_K, EXTRACT_TOP_K } from "@/lib/retrieval";
 import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import { TASK_LABELS } from "@/lib/prompts";
 import Layout from "./components/Layout";
+import PrivacyBadge from "./components/PrivacyBadge";
 import TextArea from "./components/TextArea";
 import FileUpload from "./components/FileUpload";
 import TaskSelector from "./components/TaskSelector";
@@ -394,7 +395,44 @@ export default function App() {
   }
 
   return (
-    <Layout modelStatus={ai.modelStatus} inferenceDevice={ai.inferenceDevice}>
+    <Layout
+      modelStatus={ai.modelStatus}
+      inferenceDevice={ai.inferenceDevice}
+      headerRight={
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <ModeToggle compact />
+          <div className="flex items-center gap-2">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors"
+                >
+                  Sign in
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+                >
+                  Sign up
+                </button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: { avatarBox: "w-7 h-7" },
+                }}
+              />
+            </SignedIn>
+          </div>
+          <PrivacyBadge />
+        </div>
+      }
+    >
       <ToastContainer />
 
       {(ai.modelStatus === "downloading" || ai.modelStatus === "loading") && (
@@ -481,48 +519,11 @@ export default function App() {
             </div>
           )}
 
-          <div className="space-y-3">
-            <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
-              Processing Mode
-            </label>
-            <ModeToggle />
-            {ai.processingMode === "api" && (
-              <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-surface-2 border border-border">
-                <SignedOut>
-                  <span className="text-sm text-text-secondary">
-                    Sign in to use Deep Analysis
-                  </span>
-                  <SignInButton mode="modal">
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-surface-0 border border-border text-text-primary hover:bg-surface-3 transition-colors"
-                    >
-                      Sign in
-                    </button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
-                    >
-                      Sign up
-                    </button>
-                  </SignUpButton>
-                </SignedOut>
-                <SignedIn>
-                  <UserButton
-                    afterSignOutUrl="/"
-                    appearance={{
-                      elements: {
-                        avatarBox: "w-8 h-8",
-                      },
-                    }}
-                  />
-                  <span className="text-xs text-text-muted">Signed in</span>
-                </SignedIn>
-              </div>
-            )}
-          </div>
+          {ai.processingMode === "api" && !isSignedIn && (
+            <p className="text-xs text-text-muted">
+              Sign in (top right) to use Deep Analysis.
+            </p>
+          )}
 
           <div className="space-y-3">
             <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
@@ -667,6 +668,42 @@ export default function App() {
           <DebugPanel debugInfo={debugInfo} />
         </div>
       </div>
+
+      {ai.processingMode === "api" && !isSignedIn && (
+        <div
+          role="alert"
+          className="fixed bottom-4 left-4 z-40 max-w-sm animate-fade-in
+            rounded-lg border border-accent-border bg-accent-dim/95 backdrop-blur-sm
+            px-4 py-3 shadow-lg"
+          aria-live="polite"
+        >
+          <p className="text-sm font-medium text-text-primary mb-1">
+            Sign in to use Deep Analysis
+          </p>
+          <p className="text-xs text-text-secondary leading-relaxed mb-3">
+            Deep Analysis runs your document through a stronger, server-side model.
+            Sign in or create an account in the top-right corner to enable it.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-primary hover:bg-surface-3 transition-colors"
+              >
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+              >
+                Sign up
+              </button>
+            </SignUpButton>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

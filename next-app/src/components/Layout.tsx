@@ -8,6 +8,8 @@ interface LayoutProps {
   children: ReactNode;
   modelStatus: ModelStatus;
   inferenceDevice?: "webgpu" | "wasm" | null;
+  /** Optional slot for header right (e.g. mode toggle + auth + privacy badge) */
+  headerRight?: ReactNode;
 }
 
 const statusLabel: Record<ModelStatus, { text: string; color: string }> = {
@@ -18,7 +20,12 @@ const statusLabel: Record<ModelStatus, { text: string; color: string }> = {
   error: { text: "Model error", color: "bg-danger" },
 };
 
-export default function Layout({ children, modelStatus, inferenceDevice }: LayoutProps) {
+export default function Layout({
+  children,
+  modelStatus,
+  inferenceDevice,
+  headerRight,
+}: LayoutProps) {
   const status = statusLabel[modelStatus];
   const deviceLabel = inferenceDevice === "webgpu" ? "GPU" : inferenceDevice === "wasm" ? "CPU" : null;
 
@@ -52,7 +59,7 @@ export default function Layout({ children, modelStatus, inferenceDevice }: Layou
             </div>
           </div>
 
-          <PrivacyBadge />
+          {headerRight ?? <PrivacyBadge />}
         </div>
       </header>
 
