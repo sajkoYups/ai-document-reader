@@ -1,6 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useAuth,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
 import type { TaskType } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
@@ -33,6 +41,7 @@ import ToastContainer, { showToast } from "./components/Toast";
 import DebugPanel, { type RagDebugInfo } from "./components/DebugPanel";
 
 export default function App() {
+  const { isSignedIn } = useAuth();
   const doc = useDocumentStore();
   const ai = useAiStore();
   const chat = useChatStore();
@@ -129,9 +138,14 @@ export default function App() {
   const MAX_DIRECT_CHARS = 10000;
 
   const isModelReady = ai.processingMode === "api" || ai.modelStatus === "ready";
+  const canUseDeepAnalysis = ai.processingMode !== "api" || isSignedIn === true;
 
   const handleRun = useCallback(async () => {
     if (!hasDocument || !isModelReady || task.isProcessing) return;
+    if (ai.processingMode === "api" && !isSignedIn) {
+      showToast("Sign in to use Deep Analysis", "error");
+      return;
+    }
 
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
@@ -220,9 +234,13 @@ export default function App() {
       });
       task.run(selectedTask, doc.rawText);
     }
-  }, [hasDocument, isModelReady, task, selectedTask, doc.rawText, doc.sections, embedding]);
+  }, [hasDocument, isModelReady, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
 
   const handleChatSend = async (message: string) => {
+    if (ai.processingMode === "api" && !isSignedIn) {
+      showToast("Sign in to use Deep Analysis", "error");
+      return;
+    }
     chat.addUserMessage(message);
     chat.startAssistantMessage();
 
@@ -468,6 +486,42 @@ export default function App() {
               Processing Mode
             </label>
             <ModeToggle />
+            {ai.processingMode === "api" && (
+              <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-surface-2 border border-border">
+                <SignedOut>
+                  <span className="text-sm text-text-secondary">
+                    Sign in to use Deep Analysis
+                  </span>
+                  <SignInButton mode="modal">
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-surface-0 border border-border text-text-primary hover:bg-surface-3 transition-colors"
+                    >
+                      Sign in
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+                    >
+                      Sign up
+                    </button>
+                  </SignUpButton>
+                </SignedOut>
+                <SignedIn>
+                  <UserButton
+                    afterSignOutUrl="/"
+                    appearance={{
+                      elements: {
+                        avatarBox: "w-8 h-8",
+                      },
+                    }}
+                  />
+                  <span className="text-xs text-text-muted">Signed in</span>
+                </SignedIn>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -514,7 +568,9 @@ export default function App() {
                       variant="primary"
                       size="lg"
                       onClick={handleRun}
-                      disabled={!hasDocument || !isModelReady}
+                      disabled={
+                        !hasDocument || !isModelReady || !canUseDeepAnalysis
+                      }
                       className="flex-1"
                     >
                       {!isModelReady
@@ -522,14 +578,16 @@ export default function App() {
                         : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
                     </Button>
                     {task.output && (
-                      <Button
-                        variant="secondary"
-                        size="lg"
-                        onClick={handleRun}
-                        disabled={!hasDocument || !isModelReady}
-                      >
-                        Regenerate
-                      </Button>
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      onClick={handleRun}
+                      disabled={
+                        !hasDocument || !isModelReady || !canUseDeepAnalysis
+                      }
+                    >
+                      Regenerate
+                    </Button>
                     )}
                   </>
                 )}
@@ -593,7 +651,9 @@ export default function App() {
               isGenerating={chat.isGenerating}
               onSend={handleChatSend}
               onClear={() => chat.clear()}
-              disabled={!hasDocument || !isModelReady}
+              disabled={
+                !hasDocument || !isModelReady || !canUseDeepAnalysis
+              }
             />
           ) : (
             <OutputPanel
