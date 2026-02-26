@@ -63,8 +63,8 @@ export default function Layout({
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-6 py-6 flex-1">
+      {/* Main content - flex + min-h-0 so content can shrink and footer stays below */}
+      <main className="max-w-7xl mx-auto px-6 py-6 flex-1 flex flex-col min-h-0">
         {children}
       </main>
       <Footer />

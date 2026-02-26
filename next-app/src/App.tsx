@@ -461,9 +461,9 @@ export default function App() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left panel: Input */}
-        <div className="space-y-5 animate-fade-in">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+        {/* Left panel: Input - min-h-0 so grid can shrink; overflow-auto so long content scrolls */}
+        <div className="space-y-5 animate-fade-in min-h-0 overflow-y-auto">
           <div className="space-y-1">
             <h2 className="font-display text-2xl text-text-primary tracking-tight">
               Your Document
@@ -626,9 +626,9 @@ export default function App() {
           )}
         </div>
 
-        {/* Right panel: Output or Chat */}
+        {/* Right panel: Output or Chat - flex column so chat stays above footer */}
         <div
-          className="animate-fade-in min-h-[400px] lg:min-h-0 space-y-3"
+          className="animate-fade-in min-h-[400px] lg:min-h-0 flex flex-col space-y-3"
           style={{ animationDelay: "0.1s" }}
         >
           {selectedTask === "summarize" && (
@@ -647,15 +647,17 @@ export default function App() {
             </p>
           )}
           {isChat ? (
-            <ChatPanel
-              messages={chat.messages}
-              isGenerating={chat.isGenerating}
-              onSend={handleChatSend}
-              onClear={() => chat.clear()}
-              disabled={
-                !hasDocument || !isModelReady || !canUseDeepAnalysis
-              }
-            />
+            <div className="flex-1 min-h-0 flex flex-col">
+              <ChatPanel
+                messages={chat.messages}
+                isGenerating={chat.isGenerating}
+                onSend={handleChatSend}
+                onClear={() => chat.clear()}
+                disabled={
+                  !hasDocument || !isModelReady || !canUseDeepAnalysis
+                }
+              />
+            </div>
           ) : (
             <OutputPanel
               content={task.output}
