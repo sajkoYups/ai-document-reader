@@ -8,6 +8,8 @@ interface ChatPanelProps {
   onSend: (message: string) => void;
   onClear: () => void;
   disabled?: boolean;
+  /** Shown near the input when disabled (e.g. "wait for document to finish preparing") */
+  disabledReason?: string;
 }
 
 export default function ChatPanel({
@@ -16,6 +18,7 @@ export default function ChatPanel({
   onSend,
   onClear,
   disabled = false,
+  disabledReason,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -112,6 +115,11 @@ export default function ChatPanel({
 
       {/* Input */}
       <div className="p-3 border-t border-border-subtle">
+        {disabled && disabledReason && (
+          <p className="mb-2 text-xs text-text-muted" role="status">
+            {disabledReason}
+          </p>
+        )}
         <div className="flex gap-2">
           <input
             type="text"
@@ -127,7 +135,9 @@ export default function ChatPanel({
             }}
             placeholder={
               disabled
-                ? "Load a document first..."
+                ? disabledReason
+                  ? "Wait for document to finish preparing..."
+                  : "Load a document first..."
                 : "Ask about your document..."
             }
             disabled={disabled || isGenerating}

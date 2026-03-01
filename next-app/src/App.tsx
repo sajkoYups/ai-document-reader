@@ -162,9 +162,20 @@ export default function App() {
 
   const isModelReady = ai.processingMode === "api" || ai.modelStatus === "ready";
   const canUseDeepAnalysis = ai.processingMode !== "api" || isSignedIn === true;
+  const isIndexing =
+    hasDocument &&
+    doc.rawText.length > MAX_DIRECT_CHARS &&
+    (embedding.status === "loading-model" || embedding.status === "indexing");
 
   const handleRun = useCallback(async () => {
     if (!hasDocument || !isModelReady || task.isProcessing) return;
+    if (isIndexing) {
+      showToast(
+        "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes.",
+        "info",
+      );
+      return;
+    }
     if (ai.processingMode === "api" && !isSignedIn) {
       showToast("Sign in to use Deep Analysis", "error");
       return;
@@ -257,9 +268,16 @@ export default function App() {
       });
       task.run(selectedTask, doc.rawText);
     }
-  }, [hasDocument, isModelReady, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
+  }, [hasDocument, isModelReady, isIndexing, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
 
   const handleChatSend = async (message: string) => {
+    if (isIndexing) {
+      showToast(
+        "Please wait — your document is still being prepared. You can ask questions when the progress bar above finishes.",
+        "info",
+      );
+      return;
+    }
     if (ai.processingMode === "api" && !isSignedIn) {
       showToast("Sign in to use Deep Analysis", "error");
       return;
@@ -472,7 +490,7 @@ export default function App() {
       <ToastContainer />
 
       {(ai.modelStatus === "downloading" || ai.modelStatus === "loading") && (
-        <div className="mb-6 animate-fade-in">
+        <div className="mb-6 animate-fade-in shrink-0">
           <ProgressBar
             progress={ai.downloadProgress}
             label={
@@ -485,27 +503,30 @@ export default function App() {
       )}
 
       {(embedding.status === "loading-model" || embedding.status === "indexing") && (
-        <div className="mb-6 animate-fade-in">
+        <div className="mb-6 animate-fade-in shrink-0">
           <ProgressBar
             progress={embedding.status === "indexing" ? 90 : embedding.downloadProgress}
             label={
               embedding.status === "indexing"
-                ? "Indexing document for search..."
+                ? "Preparing document — run analysis when ready"
                 : "Building search model..."
             }
           />
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
-        {/* Left panel: Input - min-h-0 so grid can shrink; overflow-auto so long content scrolls */}
-        <div className="space-y-5 animate-fade-in min-h-0 overflow-y-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Left panel: Input - no column scroll; page scrolls as a whole */}
+        <div className="space-y-5 animate-fade-in">
           <div className="space-y-1">
             <h2 className="font-display text-2xl text-text-primary tracking-tight">
               Your Document
             </h2>
             <p className="text-sm text-text-muted">
               Paste text or add a file to get started.
+            </p>
+            <p className="text-xs text-text-muted leading-relaxed">
+              1. Add your document (paste or upload). 2. Wait for it to be prepared (progress bar above, if it appears). 3. Choose a task and click Run.
             </p>
           </div>
 
@@ -606,13 +627,23 @@ export default function App() {
                       size="lg"
                       onClick={handleRun}
                       disabled={
-                        !hasDocument || !isModelReady || !canUseDeepAnalysis
+                        !hasDocument ||
+                        !isModelReady ||
+                        !canUseDeepAnalysis ||
+                        isIndexing
                       }
                       className="flex-1"
+                      title={
+                        isIndexing
+                          ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
+                          : undefined
+                      }
                     >
                       {!isModelReady
                         ? "Model loading..."
-                        : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
+                        : isIndexing
+                          ? "Preparing document…"
+                          : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
                     </Button>
                     {task.output && (
                     <Button
@@ -620,7 +651,10 @@ export default function App() {
                       size="lg"
                       onClick={handleRun}
                       disabled={
-                        !hasDocument || !isModelReady || !canUseDeepAnalysis
+                        !hasDocument ||
+                        !isModelReady ||
+                        !canUseDeepAnalysis ||
+                        isIndexing
                       }
                     >
                       Regenerate
@@ -662,9 +696,9 @@ export default function App() {
           )}
         </div>
 
-        {/* Right panel: Output or Chat - flex column so chat stays above footer */}
+        {/* Right panel: Output or Chat - grows with content; page scrolls as a whole */}
         <div
-          className="animate-fade-in min-h-[400px] lg:min-h-0 flex flex-col space-y-3"
+          className="animate-fade-in min-h-[400px] lg:min-h-0 min-w-0 flex flex-col space-y-3"
           style={{ animationDelay: "0.1s" }}
         >
           {selectedTask === "summarize" && (
@@ -683,14 +717,22 @@ export default function App() {
             </p>
           )}
           {isChat ? (
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex flex-col">
               <ChatPanel
                 messages={chat.messages}
                 isGenerating={chat.isGenerating}
                 onSend={handleChatSend}
                 onClear={() => chat.clear()}
                 disabled={
-                  !hasDocument || !isModelReady || !canUseDeepAnalysis
+                  !hasDocument ||
+                  !isModelReady ||
+                  !canUseDeepAnalysis ||
+                  isIndexing
+                }
+                disabledReason={
+                  isIndexing
+                    ? "You can ask questions once the document has finished preparing (see progress bar above)."
+                    : undefined
                 }
               />
             </div>

@@ -30,10 +30,10 @@ export default function Layout({
   const deviceLabel = inferenceDevice === "webgpu" ? "GPU" : inferenceDevice === "wasm" ? "CPU" : null;
 
   return (
-    <div className="min-h-screen bg-surface-0 grain flex flex-col">
+    <div className="min-h-screen bg-surface-0 grain flex flex-col overflow-x-hidden overflow-y-auto">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-surface-0/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+      <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-surface-0/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 min-h-14 py-3 flex items-center justify-between flex-wrap gap-y-2">
           <div className="flex items-center gap-4">
             <Link
               href="/"
@@ -63,8 +63,8 @@ export default function Layout({
         </div>
       </header>
 
-      {/* Main content - flex + min-h-0 so content can shrink and footer stays below */}
-      <main className="max-w-7xl mx-auto px-6 py-6 flex-1 flex flex-col min-h-0">
+      {/* Main content - grows with content; page scrolls as a whole */}
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 flex-1 flex flex-col min-h-min">
         {children}
       </main>
       <Footer />
