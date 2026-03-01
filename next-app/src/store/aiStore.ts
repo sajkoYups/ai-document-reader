@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ModelStatus } from "@/types";
+import type { ModelStatus, OutputLanguage } from "@/types";
 import {
   DEFAULT_MODEL,
   type ModelConfig,
@@ -11,6 +11,7 @@ export type ProcessingMode = "local" | "api";
 interface AiStore {
   processingMode: ProcessingMode;
   apiAvailable: boolean | null;
+  outputLanguage: OutputLanguage;
   modelStatus: ModelStatus;
   downloadProgress: number;
   currentFile: string | null;
@@ -21,6 +22,7 @@ interface AiStore {
 
   setProcessingMode: (mode: ProcessingMode) => void;
   setApiAvailable: (available: boolean) => void;
+  setOutputLanguage: (lang: OutputLanguage) => void;
   initWorker: () => void;
   loadModel: () => void;
   initAndLoad: () => void;
@@ -38,6 +40,7 @@ interface AiStore {
 export const useAiStore = create<AiStore>((set, get) => ({
   processingMode: "local",
   apiAvailable: null,
+  outputLanguage: "en",
   modelStatus: "idle",
   downloadProgress: 0,
   currentFile: null,
@@ -48,6 +51,7 @@ export const useAiStore = create<AiStore>((set, get) => ({
 
   setProcessingMode: (mode) => set({ processingMode: mode }),
   setApiAvailable: (available) => set({ apiAvailable: available }),
+  setOutputLanguage: (lang) => set({ outputLanguage: lang }),
 
   initWorker: () => {
     if (get().worker) return;
@@ -133,7 +137,13 @@ export const useAiStore = create<AiStore>((set, get) => ({
     };
 
     worker.addEventListener("message", handler);
-    worker.postMessage({ type: "run-task", taskType, text, conversationHistory });
+    worker.postMessage({
+      type: "run-task",
+      taskType,
+      text,
+      conversationHistory,
+      outputLanguage: get().outputLanguage,
+    });
   },
 
   cancelTask: () => {

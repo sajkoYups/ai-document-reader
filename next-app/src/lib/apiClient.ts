@@ -5,7 +5,7 @@ import {
   isSessionActive,
   destroyE2ESession,
 } from "./e2eEncryption";
-import type { TaskType } from "@/types";
+import type { OutputLanguage, TaskType } from "@/types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
@@ -72,11 +72,16 @@ async function processSSEStream(
 export async function analyzeViaApi(
   taskType: TaskType,
   documentText: string,
+  outputLanguage: OutputLanguage,
   onToken: (token: string) => void,
 ): Promise<string> {
   await ensureSession();
 
-  const encrypted = await encryptPayload({ taskType, documentText });
+  const encrypted = await encryptPayload({
+    taskType,
+    documentText,
+    outputLanguage: outputLanguage ?? "en",
+  });
 
   const response = await fetch(`${API_BASE_URL}/api/analyze`, {
     method: "POST",
@@ -96,6 +101,7 @@ export async function chatViaApi(
   documentText: string,
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
+  outputLanguage: OutputLanguage,
   onToken: (token: string) => void,
 ): Promise<string> {
   await ensureSession();
@@ -104,6 +110,7 @@ export async function chatViaApi(
     documentText,
     message,
     conversationHistory,
+    outputLanguage: outputLanguage ?? "en",
   });
 
   const response = await fetch(`${API_BASE_URL}/api/chat`, {

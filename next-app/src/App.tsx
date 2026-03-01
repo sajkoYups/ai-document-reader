@@ -9,7 +9,7 @@ import {
   SignedOut,
   UserButton,
 } from "@clerk/nextjs";
-import type { TaskType } from "@/types";
+import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage, type TaskType } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
 import { useChatStore } from "@/store/chatStore";
@@ -291,6 +291,7 @@ export default function App() {
         doc.rawText,
         message,
         history,
+        ai.outputLanguage,
         (token) => chat.appendToLastAssistant(token),
       )
         .then((result) => {
@@ -422,6 +423,19 @@ export default function App() {
       inferenceDevice={ai.inferenceDevice}
       headerRight={
         <div className="flex flex-wrap items-center justify-end gap-3">
+          <select
+            value={ai.outputLanguage}
+            onChange={(e) => ai.setOutputLanguage(e.target.value as OutputLanguage)}
+            aria-label="Output language"
+            title="Analysis output language"
+            className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors cursor-pointer"
+          >
+            {(Object.entries(OUTPUT_LANGUAGE_LABELS) as [OutputLanguage, string][]).map(([code, label]) => (
+              <option key={code} value={code}>
+                {label}
+              </option>
+            ))}
+          </select>
           <ModeToggle compact />
           <div className="flex items-center gap-2">
             <SignedOut>

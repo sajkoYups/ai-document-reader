@@ -1,5 +1,14 @@
 export type TaskType = "summarize" | "explain" | "extract" | "draft" | "chat";
 
+export type OutputLanguage = "en" | "de" | "fr" | "cs";
+
+export const OUTPUT_LANGUAGE_LABELS: Record<OutputLanguage, string> = {
+  en: "English",
+  de: "German",
+  fr: "French",
+  cs: "Czech",
+};
+
 export type ModelStatus =
   | "idle"
   | "downloading"
