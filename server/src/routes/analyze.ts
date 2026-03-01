@@ -25,7 +25,7 @@ analyzeRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { taskType, documentText } = parsed.data;
+  const { taskType, documentText, outputLanguage } = parsed.data;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -33,7 +33,13 @@ analyzeRouter.post("/", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
 
   try {
-    for await (const token of streamInference(taskType, documentText)) {
+    for await (const token of streamInference(
+      taskType,
+      documentText,
+      undefined,
+      undefined,
+      outputLanguage,
+    )) {
       const encrypted = encrypt(session.aesKey, token);
       res.write(`data: ${JSON.stringify(encrypted)}\n\n`);
     }

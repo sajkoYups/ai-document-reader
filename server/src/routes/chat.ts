@@ -25,7 +25,7 @@ chatRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { documentText, message, conversationHistory } = parsed.data;
+  const { documentText, message, conversationHistory, outputLanguage } = parsed.data;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -38,6 +38,7 @@ chatRouter.post("/", async (req, res) => {
       documentText,
       message,
       conversationHistory,
+      outputLanguage,
     )) {
       const encrypted = encrypt(session.aesKey, token);
       res.write(`data: ${JSON.stringify(encrypted)}\n\n`);

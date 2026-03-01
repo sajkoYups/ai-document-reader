@@ -11,9 +11,12 @@ const sessionInitSchema = z.object({
   }),
 });
 
+const outputLanguageEnum = z.enum(["en", "de", "fr", "cs"]);
+
 const analyzeRequestSchema = z.object({
   taskType: z.enum(taskTypes),
   documentText: z.string().min(1).max(5_000_000),
+  outputLanguage: outputLanguageEnum.optional().default("en"),
 });
 
 const chatRequestSchema = z.object({
@@ -25,6 +28,7 @@ const chatRequestSchema = z.object({
       content: z.string(),
     }),
   ).max(50).default([]),
+  outputLanguage: outputLanguageEnum.optional().default("en"),
 });
 
 type ValidationResult<T> =
