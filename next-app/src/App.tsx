@@ -52,6 +52,7 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<TaskType>("summarize");
   const [debugInfo, setDebugInfo] = useState<RagDebugInfo | null>(null);
   const lastIndexedText = useRef<string>("");
+  const modeInitializedRef = useRef(false);
 
   const compat = useMemo(() => checkBrowserCompatibility(), []);
 
@@ -72,6 +73,27 @@ export default function App() {
   useEffect(() => {
     checkApiHealth().then((ok) => ai.setApiAvailable(ok));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (modeInitializedRef.current) return;
+    if (typeof isSignedIn !== "boolean") return;
+
+    if (!isSignedIn) {
+      modeInitializedRef.current = true;
+      return;
+    }
+
+    if (ai.apiAvailable === false) {
+      modeInitializedRef.current = true;
+      return;
+    }
+
+    if (ai.processingMode === "local") {
+      ai.setProcessingMode("api");
+    }
+
+    modeInitializedRef.current = true;
+  }, [ai, isSignedIn]);
 
   useEffect(() => {
     const isSecure =
