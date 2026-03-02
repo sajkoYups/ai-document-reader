@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+     "build": "rm -rf .next && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postbuild": "echo '--- BUILD DIAGNOSTICS ---' && du -sh .next || true && echo 'Files in .next:' && (find .next -type f | wc -l) || true && echo 'Largest items in .next:' && (du -sh .next/* 2>/dev/null | sort -h | tail -n 20) || true"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.38.3",
