@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import type { TaskType } from "@/types";
+import {
+  useAuth,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
+import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage, type TaskType } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
 import { useChatStore } from "@/store/chatStore";
@@ -21,6 +29,7 @@ import { CHAT_TOP_K, EXTRACT_TOP_K } from "@/lib/retrieval";
 import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import { TASK_LABELS } from "@/lib/prompts";
 import Layout from "./components/Layout";
+import PrivacyBadge from "./components/PrivacyBadge";
 import TextArea from "./components/TextArea";
 import FileUpload from "./components/FileUpload";
 import TaskSelector from "./components/TaskSelector";
@@ -33,6 +42,7 @@ import ToastContainer, { showToast } from "./components/Toast";
 import DebugPanel, { type RagDebugInfo } from "./components/DebugPanel";
 
 export default function App() {
+  const { isSignedIn } = useAuth();
   const doc = useDocumentStore();
   const ai = useAiStore();
   const chat = useChatStore();
@@ -42,6 +52,7 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<TaskType>("summarize");
   const [debugInfo, setDebugInfo] = useState<RagDebugInfo | null>(null);
   const lastIndexedText = useRef<string>("");
+  const modeInitializedRef = useRef(false);
 
   const compat = useMemo(() => checkBrowserCompatibility(), []);
 
@@ -62,6 +73,27 @@ export default function App() {
   useEffect(() => {
     checkApiHealth().then((ok) => ai.setApiAvailable(ok));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (modeInitializedRef.current) return;
+    if (typeof isSignedIn !== "boolean") return;
+
+    if (!isSignedIn) {
+      modeInitializedRef.current = true;
+      return;
+    }
+
+    if (ai.apiAvailable === false) {
+      modeInitializedRef.current = true;
+      return;
+    }
+
+    if (ai.processingMode === "local") {
+      ai.setProcessingMode("api");
+    }
+
+    modeInitializedRef.current = true;
+  }, [ai, isSignedIn]);
 
   useEffect(() => {
     const isSecure =
@@ -129,9 +161,25 @@ export default function App() {
   const MAX_DIRECT_CHARS = 10000;
 
   const isModelReady = ai.processingMode === "api" || ai.modelStatus === "ready";
+  const canUseDeepAnalysis = ai.processingMode !== "api" || isSignedIn === true;
+  const isIndexing =
+    hasDocument &&
+    doc.rawText.length > MAX_DIRECT_CHARS &&
+    (embedding.status === "loading-model" || embedding.status === "indexing");
 
   const handleRun = useCallback(async () => {
     if (!hasDocument || !isModelReady || task.isProcessing) return;
+    if (isIndexing) {
+      showToast(
+        "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes.",
+        "info",
+      );
+      return;
+    }
+    if (ai.processingMode === "api" && !isSignedIn) {
+      showToast("Sign in to use Deep Analysis", "error");
+      return;
+    }
 
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
@@ -220,9 +268,20 @@ export default function App() {
       });
       task.run(selectedTask, doc.rawText);
     }
-  }, [hasDocument, isModelReady, task, selectedTask, doc.rawText, doc.sections, embedding]);
+  }, [hasDocument, isModelReady, isIndexing, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
 
   const handleChatSend = async (message: string) => {
+    if (isIndexing) {
+      showToast(
+        "Please wait — your document is still being prepared. You can ask questions when the progress bar above finishes.",
+        "info",
+      );
+      return;
+    }
+    if (ai.processingMode === "api" && !isSignedIn) {
+      showToast("Sign in to use Deep Analysis", "error");
+      return;
+    }
     chat.addUserMessage(message);
     chat.startAssistantMessage();
 
@@ -250,6 +309,7 @@ export default function App() {
         doc.rawText,
         message,
         history,
+        ai.outputLanguage,
         (token) => chat.appendToLastAssistant(token),
       )
         .then((result) => {
@@ -376,11 +436,61 @@ export default function App() {
   }
 
   return (
-    <Layout modelStatus={ai.modelStatus} inferenceDevice={ai.inferenceDevice}>
+    <Layout
+      modelStatus={ai.modelStatus}
+      inferenceDevice={ai.inferenceDevice}
+      headerRight={
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <select
+            value={ai.outputLanguage}
+            onChange={(e) => ai.setOutputLanguage(e.target.value as OutputLanguage)}
+            aria-label="Output language"
+            title="Analysis output language"
+            className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors cursor-pointer"
+          >
+            {(Object.entries(OUTPUT_LANGUAGE_LABELS) as [OutputLanguage, string][]).map(([code, label]) => (
+              <option key={code} value={code}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <ModeToggle compact />
+          <div className="flex items-center gap-2">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors"
+                >
+                  Sign in
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+                >
+                  Sign up
+                </button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: { avatarBox: "w-7 h-7" },
+                }}
+              />
+            </SignedIn>
+          </div>
+          <PrivacyBadge />
+        </div>
+      }
+    >
       <ToastContainer />
 
       {(ai.modelStatus === "downloading" || ai.modelStatus === "loading") && (
-        <div className="mb-6 animate-fade-in">
+        <div className="mb-6 animate-fade-in shrink-0">
           <ProgressBar
             progress={ai.downloadProgress}
             label={
@@ -393,20 +503,20 @@ export default function App() {
       )}
 
       {(embedding.status === "loading-model" || embedding.status === "indexing") && (
-        <div className="mb-6 animate-fade-in">
+        <div className="mb-6 animate-fade-in shrink-0">
           <ProgressBar
             progress={embedding.status === "indexing" ? 90 : embedding.downloadProgress}
             label={
               embedding.status === "indexing"
-                ? "Indexing document for search..."
+                ? "Preparing document — run analysis when ready"
                 : "Building search model..."
             }
           />
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left panel: Input */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Left panel: Input - no column scroll; page scrolls as a whole */}
         <div className="space-y-5 animate-fade-in">
           <div className="space-y-1">
             <h2 className="font-display text-2xl text-text-primary tracking-tight">
@@ -414,6 +524,9 @@ export default function App() {
             </h2>
             <p className="text-sm text-text-muted">
               Paste text or add a file to get started.
+            </p>
+            <p className="text-xs text-text-muted leading-relaxed">
+              1. Add your document (paste or upload). 2. Wait for it to be prepared (progress bar above, if it appears). 3. Choose a task and click Run.
             </p>
           </div>
 
@@ -463,12 +576,11 @@ export default function App() {
             </div>
           )}
 
-          <div className="space-y-3">
-            <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
-              Processing Mode
-            </label>
-            <ModeToggle />
-          </div>
+          {ai.processingMode === "api" && !isSignedIn && (
+            <p className="text-xs text-text-muted">
+              Sign in (top right) to use Deep Analysis.
+            </p>
+          )}
 
           <div className="space-y-3">
             <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
@@ -514,22 +626,39 @@ export default function App() {
                       variant="primary"
                       size="lg"
                       onClick={handleRun}
-                      disabled={!hasDocument || !isModelReady}
+                      disabled={
+                        !hasDocument ||
+                        !isModelReady ||
+                        !canUseDeepAnalysis ||
+                        isIndexing
+                      }
                       className="flex-1"
+                      title={
+                        isIndexing
+                          ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
+                          : undefined
+                      }
                     >
                       {!isModelReady
                         ? "Model loading..."
-                        : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
+                        : isIndexing
+                          ? "Preparing document…"
+                          : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
                     </Button>
                     {task.output && (
-                      <Button
-                        variant="secondary"
-                        size="lg"
-                        onClick={handleRun}
-                        disabled={!hasDocument || !isModelReady}
-                      >
-                        Regenerate
-                      </Button>
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      onClick={handleRun}
+                      disabled={
+                        !hasDocument ||
+                        !isModelReady ||
+                        !canUseDeepAnalysis ||
+                        isIndexing
+                      }
+                    >
+                      Regenerate
+                    </Button>
                     )}
                   </>
                 )}
@@ -567,9 +696,9 @@ export default function App() {
           )}
         </div>
 
-        {/* Right panel: Output or Chat */}
+        {/* Right panel: Output or Chat - grows with content; page scrolls as a whole */}
         <div
-          className="animate-fade-in min-h-[400px] lg:min-h-0 space-y-3"
+          className="animate-fade-in min-h-[400px] lg:min-h-0 min-w-0 flex flex-col space-y-3"
           style={{ animationDelay: "0.1s" }}
         >
           {selectedTask === "summarize" && (
@@ -588,13 +717,25 @@ export default function App() {
             </p>
           )}
           {isChat ? (
-            <ChatPanel
-              messages={chat.messages}
-              isGenerating={chat.isGenerating}
-              onSend={handleChatSend}
-              onClear={() => chat.clear()}
-              disabled={!hasDocument || !isModelReady}
-            />
+            <div className="flex flex-col">
+              <ChatPanel
+                messages={chat.messages}
+                isGenerating={chat.isGenerating}
+                onSend={handleChatSend}
+                onClear={() => chat.clear()}
+                disabled={
+                  !hasDocument ||
+                  !isModelReady ||
+                  !canUseDeepAnalysis ||
+                  isIndexing
+                }
+                disabledReason={
+                  isIndexing
+                    ? "You can ask questions once the document has finished preparing (see progress bar above)."
+                    : undefined
+                }
+              />
+            </div>
           ) : (
             <OutputPanel
               content={task.output}
@@ -607,6 +748,42 @@ export default function App() {
           <DebugPanel debugInfo={debugInfo} />
         </div>
       </div>
+
+      {ai.processingMode === "api" && !isSignedIn && (
+        <div
+          role="alert"
+          className="fixed bottom-4 left-4 z-40 max-w-sm animate-fade-in
+            rounded-lg border border-accent-border bg-accent-dim/95 backdrop-blur-sm
+            px-4 py-3 shadow-lg"
+          aria-live="polite"
+        >
+          <p className="text-sm font-medium text-text-primary mb-1">
+            Sign in to use Deep Analysis
+          </p>
+          <p className="text-xs text-text-secondary leading-relaxed mb-3">
+            Deep Analysis runs your document through a stronger, server-side model.
+            Sign in or create an account in the top-right corner to enable it.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-primary hover:bg-surface-3 transition-colors"
+              >
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+              >
+                Sign up
+              </button>
+            </SignUpButton>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

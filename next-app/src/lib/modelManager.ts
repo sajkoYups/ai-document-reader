@@ -1,3 +1,5 @@
+import type { OutputLanguage } from "@/types";
+
 export interface ModelConfig {
   modelId: string;
   displayName: string;
@@ -20,7 +22,13 @@ export const EMBEDDING_MODEL: ModelConfig = {
 
 export type WorkerMessageToWorker =
   | { type: "load-model"; config: ModelConfig }
-  | { type: "run-task"; taskType: string; text: string; conversationHistory?: Array<{ role: string; content: string }> }
+  | {
+      type: "run-task";
+      taskType: string;
+      text: string;
+      conversationHistory?: Array<{ role: string; content: string }>;
+      outputLanguage?: OutputLanguage;
+    }
   | { type: "cancel-task" };
 
 export type WorkerMessageFromWorker =

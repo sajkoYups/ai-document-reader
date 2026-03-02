@@ -19,6 +19,7 @@ export function useAiTask(): UseAiTaskReturn {
   const runTask = useAiStore((s) => s.runTask);
   const cancelTask = useAiStore((s) => s.cancelTask);
   const processingMode = useAiStore((s) => s.processingMode);
+  const outputLanguage = useAiStore((s) => s.outputLanguage);
 
   const run = useCallback(
     (taskType: string, text: string) => {
@@ -30,6 +31,7 @@ export function useAiTask(): UseAiTaskReturn {
         analyzeViaApi(
           taskType as TaskType,
           text,
+          outputLanguage,
           (token) => setOutput((prev) => prev + token),
         )
           .then(() => setIsProcessing(false))
@@ -55,7 +57,7 @@ export function useAiTask(): UseAiTaskReturn {
         },
       );
     },
-    [runTask, processingMode],
+    [runTask, processingMode, outputLanguage],
   );
 
   const stop = useCallback(() => {

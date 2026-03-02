@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ClerkWrapper from "@/components/ClerkWrapper";
 import "./globals.css";
 
 const siteUrl =
@@ -56,13 +57,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased bg-surface-0 text-text-primary">
-        <script
-          type="application/ld+json"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-          suppressHydrationWarning
-        />
-        {children}
+        <ClerkWrapper>
+          <script
+            type="application/ld+json"
+            // eslint-disable-next-line react/no-danger
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            suppressHydrationWarning
+          />
+          {children}
+        </ClerkWrapper>
       </body>
     </html>
   );

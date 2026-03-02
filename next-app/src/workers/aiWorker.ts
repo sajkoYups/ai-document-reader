@@ -4,7 +4,8 @@ import type {
   WorkerMessageFromWorker,
   ModelConfig,
 } from "@/lib/modelManager";
-import { SYSTEM_PROMPTS } from "@/lib/prompts";
+import { getSystemPrompt, getLanguageUserCue } from "@/lib/prompts";
+import type { OutputLanguage } from "@/types";
 
 // Single pipeline instance reused for all runs. @huggingface/transformers does not
 // expose a generation-state reset between calls; reusing the same instance for
@@ -119,20 +120,15 @@ function prepareText(text: string): string {
  */
 function getInferenceParams(taskType: string) {
   if (taskType === "chat") {
-    console.log("chat");
     return { max_new_tokens: 650, temperature: 0.0, top_p: 1.0, do_sample: false, repetition_penalty: 1.08 }
   }
   if (taskType === "summarize") {
-    console.log("summarize");
     return { max_new_tokens: 1650, temperature: 0.0, top_p: 0.9, do_sample: false, repetition_penalty: 1.12 }
   }
-  if ( taskType === "explain") {
-    console.log("explain");
+  if (taskType === "explain") {
     return { max_new_tokens: 2048, temperature: 0.1, top_p: 0.9, do_sample: true, repetition_penalty: 1.12 }
-  }else{
-    console.log("default");
-    return { max_new_tokens: 2048, temperature: 0.1, top_p: 0.9, do_sample: true, repetition_penalty: 1.1 };
   }
+  return { max_new_tokens: 2048, temperature: 0.1, top_p: 0.9, do_sample: true, repetition_penalty: 1.1 };
 }
 
 function runInference(
@@ -195,6 +191,7 @@ async function runTask(
   taskType: string,
   text: string,
   conversationHistory?: Array<{ role: string; content: string }>,
+  outputLanguage: OutputLanguage = "en",
 ) {
   if (!generator) {
     post({ type: "task-error", error: "Model not loaded" });
@@ -202,7 +199,7 @@ async function runTask(
   }
 
   const safeText = prepareText(text);
-  const messages = buildMessages(taskType, safeText, conversationHistory);
+  const messages = buildMessages(taskType, safeText, conversationHistory, outputLanguage);
   pendingGpuError = false;
 
   try {
@@ -247,32 +244,38 @@ function buildMessages(
   taskType: string,
   text: string,
   conversationHistory?: Array<{ role: string; content: string }>,
+  outputLanguage: OutputLanguage = "en",
 ): Array<{ role: string; content: string }> {
-  const system = SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS["summarize"]!;
-
-  if (
-    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV &&
-    (taskType === "summarize" || taskType === "explain")
-  ) {
-    console.log("[aiWorker] buildMessages", {
-      taskType,
-      systemPromptPreview: system
-    });
-  }
+  const system = getSystemPrompt(taskType, outputLanguage);
+  const userCue = getLanguageUserCue(outputLanguage);
+  const userContent = userCue ? `${userCue}\n\n${text}` : text;
 
   if (taskType === "chat" && conversationHistory) {
+    const historyWithCue =
+      userCue && conversationHistory.length > 0
+        ? (() => {
+            const last = conversationHistory[conversationHistory.length - 1];
+            if (last.role === "user") {
+              return [
+                ...conversationHistory.slice(0, -1),
+                { ...last, content: `${userCue}\n\n${last.content}` },
+              ];
+            }
+            return conversationHistory;
+          })()
+        : conversationHistory;
     return [
       {
         role: "system",
         content: `${system}\n\n--- DOCUMENT ---\n${text}\n--- END DOCUMENT ---`,
       },
-      ...conversationHistory,
+      ...historyWithCue,
     ];
   }
 
   return [
     { role: "system", content: system },
-    { role: "user", content: text },
+    { role: "user", content: userContent },
   ];
 }
 
@@ -283,7 +286,7 @@ self.addEventListener("message", (e: MessageEvent<WorkerMessageToWorker>) => {
       loadModel(msg.config);
       break;
     case "run-task":
-      runTask(msg.taskType, msg.text, msg.conversationHistory);
+      runTask(msg.taskType, msg.text, msg.conversationHistory, msg.outputLanguage ?? "en");
       break;
     case "cancel-task":
       cancelRequested = true;
