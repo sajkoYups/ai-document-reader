@@ -45,6 +45,7 @@ export default function App() {
   const { isSignedIn } = useAuth();
   const doc = useDocumentStore();
   const ai = useAiStore();
+  const setApiAvailable = useAiStore((s) => s.setApiAvailable);
   const chat = useChatStore();
   const embedding = useEmbeddingStore();
   const task = useAiTask();
@@ -71,8 +72,14 @@ export default function App() {
   }, [compat.allPassed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    checkApiHealth().then((ok) => ai.setApiAvailable(ok));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let isActive = true;
+    checkApiHealth().then((ok) => {
+      if (isActive) setApiAvailable(ok);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [isSignedIn, setApiAvailable]);
 
   useEffect(() => {
     if (modeInitializedRef.current) return;
