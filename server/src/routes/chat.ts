@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { decryptRequest } from "../middleware/encryption.js";
 import { validateChatRequest } from "../middleware/validation.js";
-import { streamInference } from "../services/ollamaService.js";
+import {
+  streamDeepInference,
+  toClientSafeInferenceError,
+} from "../services/llmService.js";
 import { encrypt, getSession } from "../services/cryptoService.js";
 
 export const chatRouter = Router();
@@ -33,7 +36,7 @@ chatRouter.post("/", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
 
   try {
-    for await (const token of streamInference(
+    for await (const token of streamDeepInference(
       "chat",
       documentText,
       message,
@@ -46,8 +49,7 @@ chatRouter.post("/", async (req, res) => {
     res.write("data: [DONE]\n\n");
     res.end();
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Chat inference failed";
+    const message = toClientSafeInferenceError(err);
     const encrypted = encrypt(session.aesKey, `__ERROR__:${message}`);
     res.write(`data: ${JSON.stringify(encrypted)}\n\n`);
     res.write("data: [DONE]\n\n");

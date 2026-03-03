@@ -541,7 +541,7 @@ function getSystemPrompt(taskType: TaskType, outputLanguage: OutputLanguage): st
   return langLine + SYSTEM_PROMPTS[taskType];
 }
 
-interface OllamaMessage {
+export interface InferenceMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
@@ -551,18 +551,18 @@ interface OllamaChatChunk {
   done: boolean;
 }
 
-function buildMessages(
+export function buildInferenceMessages(
   taskType: TaskType,
   documentText: string,
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
-): OllamaMessage[] {
+): InferenceMessage[] {
   const systemPrompt = getSystemPrompt(taskType, outputLanguage);
   const userCue = getLanguageUserCue(outputLanguage);
 
   if (taskType === "chat") {
-    const messages: OllamaMessage[] = [
+    const messages: InferenceMessage[] = [
       {
         role: "system",
         content: `${systemPrompt}\n\n--- DOCUMENT ---\n${documentText}\n--- END DOCUMENT ---`,
@@ -597,7 +597,7 @@ export async function* streamInference(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
 ): AsyncGenerator<string> {
-  const messages = buildMessages(
+  const messages = buildInferenceMessages(
     taskType,
     documentText,
     userMessage,

@@ -1,15 +1,17 @@
 import { Router } from "express";
-import { checkOllamaHealth } from "../services/ollamaService.js";
+import { config } from "../config.js";
+import { checkDeepProviderHealth } from "../services/llmService.js";
 import { getActiveSessionCount } from "../services/cryptoService.js";
 
 export const healthRouter = Router();
 
 healthRouter.get("/", async (_req, res) => {
-  const ollamaOk = await checkOllamaHealth();
+  const providerOk = await checkDeepProviderHealth();
 
   res.json({
-    status: ollamaOk ? "healthy" : "degraded",
-    ollama: ollamaOk ? "connected" : "unavailable",
+    status: providerOk ? "healthy" : "degraded",
+    provider: config.deepAnalysis.provider,
+    deepAnalysis: providerOk ? "connected" : "unavailable",
     activeSessions: getActiveSessionCount(),
     timestamp: Date.now(),
   });

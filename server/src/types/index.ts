@@ -2,6 +2,8 @@ export type TaskType = "summarize" | "explain" | "extract" | "draft" | "chat";
 
 export type OutputLanguage = "en" | "de" | "fr" | "cs";
 
+export type LlmProvider = "ollama" | "runpod";
+
 export interface AnalyzeRequest {
   taskType: TaskType;
   documentText: string;
