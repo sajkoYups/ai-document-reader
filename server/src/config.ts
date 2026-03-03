@@ -8,6 +8,13 @@ function parseProvider(value: string | undefined): LlmProvider {
 export const config = {
   port: parseInt(process.env.PORT ?? "3001", 10),
 
+  trustedProxy: {
+    headerName: (
+      process.env.TRUSTED_PROXY_HEADER_NAME ?? "x-internal-proxy-secret"
+    ).toLowerCase(),
+    secret: process.env.TRUSTED_PROXY_SECRET ?? "",
+  },
+
   deepAnalysis: {
     provider: parseProvider(process.env.DEEP_ANALYSIS_LLM_PROVIDER),
   },
