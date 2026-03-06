@@ -791,6 +791,7 @@ function AppHeaderRight() {
         type="button"
         onClick={startTour}
         className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-full bg-surface-2 border border-border text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors"
+        data-tour-id="header-tour-button"
       >
         <span className="inline-block w-3 h-3 rounded-full bg-accent/80" />
         Product tour
@@ -801,6 +802,7 @@ function AppHeaderRight() {
         aria-label="Output language"
         title="Analysis output language"
         className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors cursor-pointer"
+        data-tour-id="header-language"
       >
         {(Object.entries(OUTPUT_LANGUAGE_LABELS) as [OutputLanguage, string][]).map(
           ([code, label]) => (
@@ -810,8 +812,10 @@ function AppHeaderRight() {
           ),
         )}
       </select>
-      <ModeToggle compact />
-      <div className="flex items-center gap-2">
+      <div data-tour-id="header-mode-toggle">
+        <ModeToggle compact />
+      </div>
+      <div className="flex items-center gap-2" data-tour-id="header-account">
         <SignedOut>
           <SignInButton mode="modal">
             <button
@@ -839,7 +843,9 @@ function AppHeaderRight() {
           />
         </SignedIn>
       </div>
-      <PrivacyBadge />
+      <div data-tour-id="header-privacy">
+        <PrivacyBadge />
+      </div>
     </div>
   );
 }

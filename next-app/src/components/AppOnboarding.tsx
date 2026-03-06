@@ -44,15 +44,71 @@ const STEPS: Step[] = [
     ),
   },
   {
-    target: '[data-tour-id="header-actions"]',
+    target: '[data-tour-id="header-privacy"]',
     placement: "bottom",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-sm text-text-primary">
-          App settings & account
+          Privacy & where your data lives
         </h3>
         <p className="text-xs text-text-secondary">
-          Use these controls to choose the output language, switch themes, and manage your account. You can also re-open this tour from here later.
+          This indicator shows whether your document is kept on-device (Standard) or sent as encrypted data for Deep Analysis. Click it any time to see a detailed explanation of how we handle your privacy.
+        </p>
+      </div>
+    ),
+  },
+  {
+    target: '[data-tour-id="header-mode-toggle"]',
+    placement: "bottom",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-display text-sm text-text-primary">
+          Standard vs Deep Analysis
+        </h3>
+        <p className="text-xs text-text-secondary">
+          Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). We&apos;ll disable options automatically if they aren&apos;t available on your device.
+        </p>
+      </div>
+    ),
+  },
+  {
+    target: '[data-tour-id="header-language"]',
+    placement: "bottom",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-display text-sm text-text-primary">
+          Output language
+        </h3>
+        <p className="text-xs text-text-secondary">
+          Choose the language you want the AI to answer in. This affects summaries, explanations, and Deep Analysis responses, not your original document.
+        </p>
+      </div>
+    ),
+  },
+  {
+    target: '[data-tour-id="header-account"]',
+    placement: "bottom",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-display text-sm text-text-primary">
+          Account & sign-in
+        </h3>
+        <p className="text-xs text-text-secondary">
+          Sign in or create an account here to unlock Deep Analysis and manage your access. When you&apos;re signed in, your profile menu appears in this spot.
+        </p>
+      </div>
+    ),
+  },
+  {
+    target: '[data-tour-id="header-tour-button"]',
+    placement: "bottom",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-display text-sm text-text-primary">
+          Replay this tour
+        </h3>
+        <p className="text-xs text-text-secondary">
+          Use this button any time to re-open the product tour and quickly remind yourself how the app is structured.
         </p>
       </div>
     ),
