@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   useAuth,
   SignInButton,
@@ -41,6 +41,8 @@ import Button from "./components/Button";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer, { showToast } from "./components/Toast";
 import DebugPanel, { type RagDebugInfo } from "./components/DebugPanel";
+import { TourProvider } from "@reactour/tour";
+import { ONBOARDING_STEPS } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
 
 function AppContent() {
@@ -852,8 +854,38 @@ function AppHeaderRight() {
 
 export default function App() {
   return (
-    <AppOnboardingProvider>
-      <AppContent />
-    </AppOnboardingProvider>
+    <TourProvider
+      steps={ONBOARDING_STEPS}
+      padding={8}
+      scrollSmooth
+      showBadge
+      showCloseButton
+      showNavigation
+      styles={{
+        // Keep default opacity animation; just use a lighter overlay color via fill.
+        maskWrapper: (base: Record<string, unknown>) => ({ ...base }),
+        maskArea: (base: Record<string, unknown>) => ({
+          ...base,
+          rx: 16,
+          fill: "rgba(10,10,11,0.35)",
+        }),
+        popover: (base: Record<string, unknown>) => ({
+          ...base,
+          backgroundColor: "var(--color-surface-1)",
+          color: "var(--color-text-primary)",
+          borderRadius: 12,
+          padding: "16px 18px",
+          boxShadow: "0 18px 45px rgba(0,0,0,0.75), 0 0 0 1px var(--color-border)",
+          textAlign: "left",
+        }),
+        badge: (base: Record<string, unknown>) => ({ ...base, background: "var(--color-accent)" }),
+        close: (base: Record<string, unknown>) => ({ ...base, display: "block" }),
+        dot: (base: Record<string, unknown>) => ({ ...base, background: "var(--color-accent)" }),
+      } as React.ComponentProps<typeof TourProvider>["styles"]}
+    >
+      <AppOnboardingProvider>
+        <AppContent />
+      </AppOnboardingProvider>
+    </TourProvider>
   );
 }
