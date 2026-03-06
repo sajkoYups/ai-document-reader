@@ -8,6 +8,7 @@ const footerLinks = [
   { href: "/what-else-do-we-do", label: "What else do we do" },
   { href: "/mission", label: "Mission" },
   { href: "/vision", label: "Vision" },
+  { href: "/trust-center", label: "Trust Center" },
 ] as const;
 
 export default function Footer() {

@@ -5,12 +5,14 @@ import {
   type ModelConfig,
   type WorkerMessageFromWorker,
 } from "@/lib/modelManager";
+import { isLikelyMobileDevice } from "@/lib/deviceUtils";
 
 export type ProcessingMode = "local" | "api";
 
 interface AiStore {
   processingMode: ProcessingMode;
   apiAvailable: boolean | null;
+  isMobileDevice: boolean;
   outputLanguage: OutputLanguage;
   modelStatus: ModelStatus;
   downloadProgress: number;
@@ -22,6 +24,7 @@ interface AiStore {
 
   setProcessingMode: (mode: ProcessingMode) => void;
   setApiAvailable: (available: boolean) => void;
+  setIsMobileDevice: (isMobile: boolean) => void;
   setOutputLanguage: (lang: OutputLanguage) => void;
   initWorker: () => void;
   loadModel: () => void;
@@ -40,6 +43,7 @@ interface AiStore {
 export const useAiStore = create<AiStore>((set, get) => ({
   processingMode: "local",
   apiAvailable: null,
+  isMobileDevice: false,
   outputLanguage: "en",
   modelStatus: "idle",
   downloadProgress: 0,
@@ -49,8 +53,13 @@ export const useAiStore = create<AiStore>((set, get) => ({
   modelConfig: DEFAULT_MODEL,
   worker: null,
 
-  setProcessingMode: (mode) => set({ processingMode: mode }),
+  setProcessingMode: (mode) =>
+    set((state) => {
+      if (mode === "local" && state.isMobileDevice) return state;
+      return { processingMode: mode };
+    }),
   setApiAvailable: (available) => set({ apiAvailable: available }),
+  setIsMobileDevice: (isMobile) => set({ isMobileDevice: isMobile }),
   setOutputLanguage: (lang) => set({ outputLanguage: lang }),
 
   initWorker: () => {
@@ -95,7 +104,8 @@ export const useAiStore = create<AiStore>((set, get) => ({
   },
 
   loadModel: () => {
-    const { worker, modelConfig, modelStatus } = get();
+    const { worker, modelConfig, modelStatus, processingMode, isMobileDevice } = get();
+    if (processingMode === "api" || isMobileDevice) return;
     if (modelStatus === "downloading" || modelStatus === "loading") return;
     if (!worker) {
       get().initWorker();
