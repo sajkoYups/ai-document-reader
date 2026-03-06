@@ -862,8 +862,13 @@ export default function App() {
       showCloseButton
       showNavigation
       styles={{
-        maskWrapper: (base: Record<string, unknown>) => ({ ...base, opacity: 1 }),
-        maskArea: (base: Record<string, unknown>) => ({ ...base, rx: 16 }),
+        // Keep default opacity animation; just use a lighter overlay color via fill.
+        maskWrapper: (base: Record<string, unknown>) => ({ ...base }),
+        maskArea: (base: Record<string, unknown>) => ({
+          ...base,
+          rx: 16,
+          fill: "rgba(10,10,11,0.35)",
+        }),
         popover: (base: Record<string, unknown>) => ({
           ...base,
           backgroundColor: "var(--color-surface-1)",

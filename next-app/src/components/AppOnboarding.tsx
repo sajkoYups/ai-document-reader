@@ -48,16 +48,13 @@ export function AppOnboardingProvider({ children }: AppOnboardingProviderProps) 
     if (!completed) {
       setIsOpen(true);
     }
-  }, [setIsOpen]); // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount to auto-open
+  }, [setIsOpen]);
 
   useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = isOpen;
-    if (wasOpen && !isOpen) {
-      setHasCompleted(true);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(STORAGE_KEY, "true");
-      }
+    if (wasOpen && !isOpen && typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, "true");
     }
   }, [isOpen]);
 
