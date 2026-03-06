@@ -1,6 +1,6 @@
-import { useState, useRef, type DragEvent, type ChangeEvent } from "react";
+import { useState, useRef, type DragEvent, type ChangeEvent, type HTMLAttributes } from "react";
 
-interface FileUploadProps {
+interface FileUploadProps extends HTMLAttributes<HTMLDivElement> {
   onFile: (file: File) => void;
   accept?: string;
   disabled?: boolean;
@@ -10,6 +10,8 @@ export default function FileUpload({
   onFile,
   accept = ".pdf,.txt,.md",
   disabled = false,
+  className,
+  ...divProps
 }: FileUploadProps) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +49,7 @@ export default function FileUpload({
 
   return (
     <div
+      {...divProps}
       onDragEnter={handleDragIn}
       onDragLeave={handleDragOut}
       onDragOver={handleDrag}
@@ -62,6 +65,7 @@ export default function FileUpload({
             : "border-border hover:border-text-muted hover:bg-surface-2/50"
         }
         ${disabled ? "opacity-40 pointer-events-none" : ""}
+        ${className ?? ""}
       `}
     >
       <input

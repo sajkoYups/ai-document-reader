@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-     "build": "rm -rf .next && next build",
+    "build": "rm -rf .next && next build",
     "start": "next start",
     "lint": "eslint",
     "postbuild": "echo '--- BUILD DIAGNOSTICS ---' && du -sh .next || true && echo 'Files in .next:' && (find .next -type f | wc -l) || true && echo 'Largest items in .next:' && (du -sh .next/* 2>/dev/null | sort -h | tail -n 20) || true"
@@ -16,6 +16,7 @@
     "pdfjs-dist": "^5.4.624",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-joyride": "^2.9.3",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

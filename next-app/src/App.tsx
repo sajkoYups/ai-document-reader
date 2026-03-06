@@ -41,8 +41,9 @@ import Button from "./components/Button";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer, { showToast } from "./components/Toast";
 import DebugPanel, { type RagDebugInfo } from "./components/DebugPanel";
+import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
 
-export default function App() {
+function AppContent() {
   const { isSignedIn } = useAuth();
   const doc = useDocumentStore();
   const ai = useAiStore();
@@ -460,53 +461,7 @@ export default function App() {
     <Layout
       modelStatus={ai.modelStatus}
       inferenceDevice={ai.inferenceDevice}
-      headerRight={
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <select
-            value={ai.outputLanguage}
-            onChange={(e) => ai.setOutputLanguage(e.target.value as OutputLanguage)}
-            aria-label="Output language"
-            title="Analysis output language"
-            className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors cursor-pointer"
-          >
-            {(Object.entries(OUTPUT_LANGUAGE_LABELS) as [OutputLanguage, string][]).map(([code, label]) => (
-              <option key={code} value={code}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <ModeToggle compact />
-          <div className="flex items-center gap-2">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button
-                  type="button"
-                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors"
-                >
-                  Sign in
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button
-                  type="button"
-                  className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
-                >
-                  Sign up
-                </button>
-              </SignUpButton>
-            </SignedOut>
-            <SignedIn>
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: { avatarBox: "w-7 h-7" },
-                }}
-              />
-            </SignedIn>
-          </div>
-          <PrivacyBadge />
-        </div>
-      }
+      headerRight={<AppHeaderRight />}
     >
       <ToastContainer />
 
@@ -561,7 +516,7 @@ export default function App() {
             </p>
           </div>
 
-          <FileUpload onFile={handleFile} />
+          <FileUpload onFile={handleFile} data-tour-id="file-upload" />
 
           {doc.error && (
             <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger animate-fade-in">
@@ -592,6 +547,7 @@ export default function App() {
             onChange={(e) => doc.setText(e.target.value)}
             placeholder="Paste your document content here..."
             rows={10}
+            data-tour-id="text-input"
           />
 
           {hasDocument && (
@@ -613,7 +569,7 @@ export default function App() {
             </p>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-3" data-tour-id="task-selector">
             <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
               Task
             </label>
@@ -669,6 +625,7 @@ export default function App() {
                           ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
                           : undefined
                       }
+                      data-tour-id="run-button"
                     >
                       {!isModelReady
                         ? "Model loading..."
@@ -731,6 +688,7 @@ export default function App() {
         <div
           className="animate-fade-in min-h-[400px] lg:min-h-0 min-w-0 flex flex-col space-y-3"
           style={{ animationDelay: "0.1s" }}
+          data-tour-id="output-section"
         >
           {selectedTask === "summarize" && (
             <p className="text-sm text-text-secondary leading-relaxed">
@@ -816,5 +774,80 @@ export default function App() {
         </div>
       )}
     </Layout>
+  );
+}
+
+function AppHeaderRight() {
+  const ai = useAiStore();
+  const { isSignedIn } = useAuth();
+  const { startTour } = useAppOnboarding();
+
+  return (
+    <div
+      className="flex flex-wrap items-center justify-end gap-3"
+      data-tour-id="header-actions"
+    >
+      <button
+        type="button"
+        onClick={startTour}
+        className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-full bg-surface-2 border border-border text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors"
+      >
+        <span className="inline-block w-3 h-3 rounded-full bg-accent/80" />
+        Product tour
+      </button>
+      <select
+        value={ai.outputLanguage}
+        onChange={(e) => ai.setOutputLanguage(e.target.value as OutputLanguage)}
+        aria-label="Output language"
+        title="Analysis output language"
+        className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors cursor-pointer"
+      >
+        {(Object.entries(OUTPUT_LANGUAGE_LABELS) as [OutputLanguage, string][]).map(
+          ([code, label]) => (
+            <option key={code} value={code}>
+              {label}
+            </option>
+          ),
+        )}
+      </select>
+      <ModeToggle compact />
+      <div className="flex items-center gap-2">
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors"
+            >
+              Sign in
+            </button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <button
+              type="button"
+              className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+            >
+              Sign up
+            </button>
+          </SignUpButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton
+            afterSignOutUrl="/"
+            appearance={{
+              elements: { avatarBox: "w-7 h-7" },
+            }}
+          />
+        </SignedIn>
+      </div>
+      <PrivacyBadge />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AppOnboardingProvider>
+      <AppContent />
+    </AppOnboardingProvider>
   );
 }
