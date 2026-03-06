@@ -18,6 +18,7 @@ import { useAiTask } from "@/hooks/useAiTask";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSessionCleanup } from "@/hooks/useSessionCleanup";
 import { checkBrowserCompatibility } from "@/lib/compatibility";
+import { isLikelyMobileDevice } from "@/lib/deviceUtils";
 import { validateFileSize, getSupportedFileType } from "@/lib/documentParser";
 import { extractTextFromPdf } from "@/lib/pdfExtractor";
 import {
@@ -46,6 +47,9 @@ export default function App() {
   const doc = useDocumentStore();
   const ai = useAiStore();
   const setApiAvailable = useAiStore((s) => s.setApiAvailable);
+  const setIsMobileDevice = useAiStore((s) => s.setIsMobileDevice);
+  const setProcessingMode = useAiStore((s) => s.setProcessingMode);
+  const processingMode = useAiStore((s) => s.processingMode);
   const chat = useChatStore();
   const embedding = useEmbeddingStore();
   const task = useAiTask();
@@ -66,7 +70,17 @@ export default function App() {
   }, [setWarningCallback]);
 
   useEffect(() => {
-    if (compat.allPassed) {
+    const isMobile = isLikelyMobileDevice();
+    if (!isMobile) return;
+
+    setIsMobileDevice(true);
+    if (processingMode !== "api") {
+      setProcessingMode("api");
+    }
+  }, [setIsMobileDevice, setProcessingMode, processingMode]);
+
+  useEffect(() => {
+    if (compat.allPassed && !isLikelyMobileDevice()) {
       ai.initAndLoad();
     }
   }, [compat.allPassed]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -435,7 +449,7 @@ export default function App() {
             ))}
           </div>
           <p className="text-xs text-text-muted">
-            Please use a modern browser like Chrome, Edge, or Firefox.
+            Please use a modern browser like Chrome, Edge, or Firefox over HTTPS so secure Web Crypto–based encryption is available.
           </p>
         </div>
       </div>
@@ -496,7 +510,17 @@ export default function App() {
     >
       <ToastContainer />
 
-      {(ai.modelStatus === "downloading" || ai.modelStatus === "loading") && (
+      {ai.isMobileDevice && (
+        <div
+          role="status"
+          className="mb-4 px-4 py-2.5 rounded-lg bg-surface-2 border border-border text-sm text-text-secondary animate-fade-in"
+          aria-live="polite"
+        >
+          On mobile, use Deep Analysis (API). Standard/local model is desktop-only.
+        </div>
+      )}
+
+      {(ai.modelStatus === "downloading" || ai.modelStatus === "loading") && !ai.isMobileDevice && (
         <div className="mb-6 animate-fade-in shrink-0">
           <ProgressBar
             progress={ai.downloadProgress}

@@ -21,6 +21,7 @@ interface ModeToggleProps {
 export default function ModeToggle({ compact = false }: ModeToggleProps) {
   const processingMode = useAiStore((s) => s.processingMode);
   const apiAvailable = useAiStore((s) => s.apiAvailable);
+  const isMobileDevice = useAiStore((s) => s.isMobileDevice);
   const setMode = useAiStore((s) => s.setProcessingMode);
 
   return (
@@ -31,7 +32,9 @@ export default function ModeToggle({ compact = false }: ModeToggleProps) {
     >
       {modes.map((mode) => {
         const isActive = processingMode === mode.id;
-        const isDisabled = mode.id === "api" && apiAvailable === false;
+        const isLocalDisabledOnMobile = mode.id === "local" && isMobileDevice;
+        const isApiDisabled = mode.id === "api" && apiAvailable === false;
+        const isDisabled = isLocalDisabledOnMobile || isApiDisabled;
 
         return (
           <button
@@ -41,7 +44,13 @@ export default function ModeToggle({ compact = false }: ModeToggleProps) {
             disabled={isDisabled}
             aria-pressed={isActive}
             aria-label={`${mode.label}: ${mode.description}`}
-            title={isDisabled && mode.id === "api" ? "Deep Analysis unavailable (API not connected)" : undefined}
+            title={
+              isLocalDisabledOnMobile
+                ? "Standard mode is desktop-only. Use Deep Analysis on mobile."
+                : isApiDisabled && mode.id === "api"
+                  ? "Deep Analysis unavailable (API not connected)"
+                  : undefined
+            }
             className={`
               relative flex items-center rounded-md
               text-left transition-all duration-150 cursor-pointer
@@ -62,6 +71,13 @@ export default function ModeToggle({ compact = false }: ModeToggleProps) {
             {!compact && (
               <span className="text-[10px] text-text-muted leading-tight">
                 {mode.description}
+              </span>
+            )}
+            {mode.id === "local" && isMobileDevice && (
+              <span
+                className={`text-text-muted ${compact ? "text-[9px] ml-0.5" : "text-[9px] mt-0.5"}`}
+              >
+                Desktop only
               </span>
             )}
             {mode.id === "api" && apiAvailable === false && (
