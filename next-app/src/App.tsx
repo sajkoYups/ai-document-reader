@@ -27,6 +27,7 @@ import {
   extractEvidence,
 } from "@/lib/chatPipeline";
 import { CHAT_TOP_K, EXTRACT_TOP_K } from "@/lib/retrieval";
+import { estimateTokenCount, MAX_ON_DEVICE_TOKENS } from "@/lib/tokenEstimate";
 import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import { TASK_LABELS } from "@/lib/prompts";
 import Layout from "./components/Layout";
@@ -186,6 +187,10 @@ function AppContent() {
 
   const isModelReady = ai.processingMode === "api" || ai.modelStatus === "ready";
   const canUseDeepAnalysis = ai.processingMode !== "api" || isSignedIn === true;
+  const isOnDevice = ai.processingMode !== "api";
+  const estimatedTokens = hasDocument ? estimateTokenCount(doc.rawText) : 0;
+  const isOverOnDeviceLimit =
+    isOnDevice && hasDocument && estimatedTokens > MAX_ON_DEVICE_TOKENS;
   const isIndexing =
     hasDocument &&
     doc.rawText.length > MAX_DIRECT_CHARS &&
@@ -202,6 +207,13 @@ function AppContent() {
     }
     if (ai.processingMode === "api" && !isSignedIn) {
       showToast("Sign in to use Deep Analysis", "error");
+      return;
+    }
+    if (isOverOnDeviceLimit) {
+      showToast(
+        "Document is too long for on-device analysis. Use Deep Analysis or shorten the document.",
+        "error",
+      );
       return;
     }
 
@@ -292,7 +304,7 @@ function AppContent() {
       });
       task.run(selectedTask, doc.rawText);
     }
-  }, [hasDocument, isModelReady, isIndexing, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
+  }, [hasDocument, isModelReady, isIndexing, isOverOnDeviceLimit, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
 
   const handleChatSend = async (message: string) => {
     if (isIndexing) {
@@ -599,6 +611,14 @@ function AppContent() {
                   </Button>
                 </div>
               )}
+              {isOnDevice && hasDocument && (
+                <p className="text-xs text-text-muted text-center">
+                  ~{estimatedTokens.toLocaleString()} tokens
+                  {isOverOnDeviceLimit && (
+                    <> · Too long for on-device · Use Deep Analysis or shorten the document.</>
+                  )}
+                </p>
+              )}
               <div className="flex flex-col sm:flex-row gap-2 w-full">
                 {task.isProcessing ? (
                   <Button
@@ -619,13 +639,16 @@ function AppContent() {
                         !hasDocument ||
                         !isModelReady ||
                         !canUseDeepAnalysis ||
-                        isIndexing
+                        isIndexing ||
+                        isOverOnDeviceLimit
                       }
                       className="flex-1"
                       title={
-                        isIndexing
-                          ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
-                          : undefined
+                        isOverOnDeviceLimit
+                          ? "Document is too long for on-device analysis"
+                          : isIndexing
+                            ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
+                            : undefined
                       }
                       data-tour-id="run-button"
                     >
@@ -644,7 +667,8 @@ function AppContent() {
                         !hasDocument ||
                         !isModelReady ||
                         !canUseDeepAnalysis ||
-                        isIndexing
+                        isIndexing ||
+                        isOverOnDeviceLimit
                       }
                     >
                       Regenerate
