@@ -12,12 +12,15 @@ function makeBackendUrl(path: string): string {
   return `${BACKEND_BASE_URL.replace(/\/$/, "")}${path}`;
 }
 
-function buildProxyHeaders(contentType?: string): Headers {
+function buildProxyHeaders(contentType?: string, userId?: string): Headers {
   const headers = new Headers();
   if (contentType) {
     headers.set("Content-Type", contentType);
   }
   headers.set(TRUSTED_PROXY_HEADER_NAME, TRUSTED_PROXY_SECRET);
+  if (userId) {
+    headers.set("x-clerk-user-id", userId);
+  }
   return headers;
 }
 
@@ -64,12 +67,13 @@ export async function proxySsePost(
   request: NextRequest,
   path: string,
 ): Promise<Response> {
+  const { userId } = await auth();
   const body = await request.text();
   const contentType = request.headers.get("content-type") ?? "application/json";
 
   const upstream = await fetch(makeBackendUrl(path), {
     method: "POST",
-    headers: buildProxyHeaders(contentType),
+    headers: buildProxyHeaders(contentType, userId ?? undefined),
     body,
     cache: "no-store",
   });

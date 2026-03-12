@@ -4,11 +4,12 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import {
   useAuth,
   SignInButton,
-  SignUpButton,
   SignedIn,
   SignedOut,
   UserButton,
 } from "@clerk/nextjs";
+import WaitlistModal from "./components/WaitlistModal";
+import UsagePanel from "./components/UsagePanel";
 import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage, type TaskType } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
@@ -436,6 +437,8 @@ function AppContent() {
     onClear: handleClear,
   });
 
+  const [waitlistBannerOpen, setWaitlistBannerOpen] = useState(false);
+
   if (!compat.allPassed) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center p-8">
@@ -788,14 +791,17 @@ function AppContent() {
                 Sign in
               </button>
             </SignInButton>
-            <SignUpButton mode="modal">
-              <button
-                type="button"
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
-              >
-                Sign up
-              </button>
-            </SignUpButton>
+            <button
+              type="button"
+              onClick={() => setWaitlistBannerOpen(true)}
+              className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+            >
+              Join Waitlist
+            </button>
+            <WaitlistModal
+              open={waitlistBannerOpen}
+              onClose={() => setWaitlistBannerOpen(false)}
+            />
           </div>
         </div>
       )}
@@ -807,6 +813,7 @@ function AppHeaderRight() {
   const ai = useAiStore();
   const { isSignedIn } = useAuth();
   const { startTour } = useAppOnboarding();
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
 
   return (
     <div
@@ -851,14 +858,17 @@ function AppHeaderRight() {
               Sign in
             </button>
           </SignInButton>
-          <SignUpButton mode="modal">
-            <button
-              type="button"
-              className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
-            >
-              Sign up
-            </button>
-          </SignUpButton>
+          <button
+            type="button"
+            onClick={() => setWaitlistOpen(true)}
+            className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+          >
+            Join Waitlist
+          </button>
+          <WaitlistModal
+            open={waitlistOpen}
+            onClose={() => setWaitlistOpen(false)}
+          />
         </SignedOut>
         <SignedIn>
           <UserButton
@@ -866,7 +876,28 @@ function AppHeaderRight() {
             appearance={{
               elements: { avatarBox: "w-7 h-7" },
             }}
-          />
+          >
+            <UserButton.UserProfilePage
+              label="Usage"
+              url="usage"
+              labelIcon={
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  aria-hidden="true"
+                >
+                  <path d="M3 3v18h18" />
+                  <path d="M7 16l4-4 4 4 4-7" />
+                </svg>
+              }
+            >
+              <UsagePanel />
+            </UserButton.UserProfilePage>
+          </UserButton>
         </SignedIn>
       </div>
       <div data-tour-id="header-privacy">
