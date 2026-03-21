@@ -319,18 +319,17 @@ function AppContent() {
       showToast("Sign in to use Deep Analysis", "error");
       return;
     }
-    chat.addUserMessage(message);
-    chat.startAssistantMessage();
 
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
 
     if (ai.processingMode === "api") {
-      const allMessages = [
-        ...chat.messages,
-        { role: "user" as const, content: message },
-      ];
-      const history = buildChatHistory(allMessages);
+      // Prior turns only — server appends `message` again; including the current
+      // question in history would duplicate the last user message for the LLM.
+      const history = buildChatHistory(chat.messages);
+
+      chat.addUserMessage(message);
+      chat.startAssistantMessage();
 
       setDebugInfo({
         method: "direct",
@@ -362,6 +361,9 @@ function AppContent() {
         );
       return;
     }
+
+    chat.addUserMessage(message);
+    chat.startAssistantMessage();
 
     const allMessages = [
       ...chat.messages,

@@ -15,6 +15,14 @@ async function ensureSession(): Promise<void> {
   }
 }
 
+function sseDataPayload(line: string): string | null {
+  const trimmed = line.trimEnd();
+  if (!trimmed.startsWith("data:")) return null;
+  const payload = trimmed.slice("data:".length).trimStart();
+  if (!payload || payload === "[DONE]") return null;
+  return payload;
+}
+
 async function processSSEStream(
   response: Response,
   onToken: (token: string) => void,
@@ -26,6 +34,40 @@ async function processSSEStream(
   let buffer = "";
   let fullResult = "";
 
+  const consumeEncryptedPayload = async (data: string) => {
+    let parsed: { iv: string; ciphertext: string };
+    try {
+      parsed = JSON.parse(data) as { iv: string; ciphertext: string };
+    } catch {
+      return;
+    }
+    if (typeof parsed.iv !== "string" || typeof parsed.ciphertext !== "string") {
+      return;
+    }
+
+    let decrypted: string;
+    try {
+      decrypted = await decryptPayload(parsed.iv, parsed.ciphertext);
+    } catch {
+      return;
+    }
+
+    if (decrypted.startsWith("__ERROR__:")) {
+      throw new Error(decrypted.slice(10));
+    }
+
+    fullResult += decrypted;
+    onToken(decrypted);
+  };
+
+  const processLines = async (lines: string[]) => {
+    for (const line of lines) {
+      const data = sseDataPayload(line);
+      if (data === null) continue;
+      await consumeEncryptedPayload(data);
+    }
+  };
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -36,30 +78,12 @@ async function processSSEStream(
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
 
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const data = line.slice(6).trim();
+      await processLines(lines);
+    }
 
-        if (data === "[DONE]") continue;
-
-        try {
-          const { iv, ciphertext } = JSON.parse(data) as {
-            iv: string;
-            ciphertext: string;
-          };
-          const decrypted = await decryptPayload(iv, ciphertext);
-
-          if (decrypted.startsWith("__ERROR__:")) {
-            throw new Error(decrypted.slice(10));
-          }
-
-          fullResult += decrypted;
-          onToken(decrypted);
-        } catch (e) {
-          if (e instanceof Error && e.message.startsWith("__ERROR__:")) throw e;
-          // skip malformed chunks
-        }
-      }
+    buffer += decoder.decode(new Uint8Array(), { stream: false });
+    if (buffer.trim()) {
+      await processLines(buffer.split("\n"));
     }
   } finally {
     reader.releaseLock();
