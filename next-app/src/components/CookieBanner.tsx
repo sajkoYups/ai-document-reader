@@ -71,7 +71,7 @@ export default function CookieBanner() {
               Cookies & analytics
             </p>
             <p>
-              We use cookies to understand how Private Analyzer is used. You can
+              We use cookies to understand how PIA is used. You can
               accept or reject analytics cookies. The app will still work even
               if you reject.
             </p>

@@ -13,22 +13,22 @@ const fullUrl = `${
 export const metadata: Metadata = {
   title: "Trust Center",
   description:
-    "Learn how Doc Analyzer protects your documents with privacy-first architecture, minimal data retention, and modern security practices.",
+    "Learn how PIA protects your documents with privacy-first architecture, minimal data retention, and modern security practices.",
   alternates: {
     canonical: fullUrl,
   },
   openGraph: {
     url: fullUrl,
-    title: "Trust Center | Doc Analyzer – Security & Privacy Overview",
+    title: "Trust Center | PIA – Security & Privacy Overview",
     description:
-      "Understand Doc Analyzer’s security architecture, privacy principles, data protection measures, and compliance roadmap.",
+      "Understand PIA’s security architecture, privacy principles, data protection measures, and compliance roadmap.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Trust Center | Doc Analyzer – Security & Privacy Overview",
+    title: "Trust Center | PIA – Security & Privacy Overview",
     description:
-      "See how Doc Analyzer applies privacy-first design, encryption, and modern infrastructure security to protect your documents.",
+      "See how PIA applies privacy-first design, encryption, and modern infrastructure security to protect your documents.",
   },
 };
 
@@ -42,7 +42,7 @@ export default function TrustCenterPage() {
             1. Trust Center Overview
           </h2>
           <p>
-            Doc Analyzer is built for organizations that need to apply AI to
+            PIA is built for organizations that need to apply AI to
             sensitive documents while maintaining strict control over
             confidentiality, regulatory obligations, and internal security
             policies.
@@ -167,8 +167,8 @@ export default function TrustCenterPage() {
             3. Data Flow and Document Lifecycle
           </h2>
           <p>
-            This section describes how a typical document flows through Doc
-            Analyzer and clarifies where data is—and is not—stored.
+            This section describes how a typical document flows through PIA
+            and clarifies where data is—and is not—stored.
           </p>
           <h3 className="text-lg font-semibold text-text-primary">
             3.1 High-level lifecycle
@@ -257,7 +257,7 @@ export default function TrustCenterPage() {
             4. Encryption and Data Protection
           </h2>
           <p>
-            Encryption is a core control for Doc Analyzer, particularly because
+            Encryption is a core control for PIA, particularly because
             documents may include confidential and regulated information.
           </p>
           <ul className="list-disc list-inside space-y-2">
@@ -316,7 +316,7 @@ export default function TrustCenterPage() {
           <p>
             The platform is hosted on a modern cloud provider that holds widely
             recognized security certifications such as SOC 2 and ISO 27001.
-            While Doc Analyzer itself has not yet undergone those audits, we
+            While PIA itself has not yet undergone those audits, we
             inherit and build upon the provider&apos;s strong baseline.
           </p>
           <ul className="list-disc list-inside space-y-2">
@@ -424,8 +424,8 @@ export default function TrustCenterPage() {
             7. Privacy Principles
           </h2>
           <p>
-            Privacy is built into the architecture and design decisions of Doc
-            Analyzer, rather than considered only at the policy layer.
+            Privacy is built into the architecture and design decisions of PIA,
+            rather than considered only at the policy layer.
           </p>
           <ul className="list-disc list-inside space-y-2">
             <li>
@@ -531,7 +531,7 @@ export default function TrustCenterPage() {
             9. Compliance Approach
           </h2>
           <p>
-            Although Doc Analyzer is an early-stage platform and has not yet
+            Although PIA is an early-stage platform and has not yet
             completed formal audits such as SOC 2 or ISO 27001, its controls and
             processes are designed to align with recognized security and privacy
             principles.
@@ -552,8 +552,8 @@ export default function TrustCenterPage() {
               control, and infrastructure security measures.
             </li>
             <li>
-              <strong>General data protection best practices.</strong> Doc
-              Analyzer follows data protection best practices, including
+              <strong>General data protection best practices.</strong> PIA
+              follows data protection best practices, including
               documented procedures for access control, incident handling, change
               management, and backup of critical configuration data. Secure
               development practices such as code review and dependency scanning
@@ -670,7 +670,7 @@ export default function TrustCenterPage() {
             12. Security Contact
           </h2>
           <p>
-            Organizations evaluating or using Doc Analyzer can contact our
+            Organizations evaluating or using PIA can contact our
             security and privacy team for due diligence, risk assessments, and
             compliance questions.
           </p>
@@ -704,7 +704,7 @@ export default function TrustCenterPage() {
             We encourage prospective and current customers to engage with us.
             Security and privacy are shared responsibilities, and we aim to
             provide the clarity needed for informed risk decisions and secure
-            adoption of Doc Analyzer.
+            adoption of PIA.
           </p>
         </section>
       </div>

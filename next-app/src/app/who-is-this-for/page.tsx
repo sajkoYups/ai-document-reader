@@ -12,22 +12,22 @@ const fullUrl = `${
 export const metadata: Metadata = {
   title: "Who is this for",
   description:
-    "Doc Analyzer is for anyone who needs to understand documents quickly and privately: contracts, reports, policies, or any text you don’t want in public AI tools.",
+    "PIA is for anyone who needs to understand documents quickly and privately: contracts, reports, policies, or any text you don’t want in public AI tools.",
   alternates: {
     canonical: fullUrl,
   },
   openGraph: {
     url: fullUrl,
-    title: "Who Is Doc Analyzer For? | Private Document AI",
+    title: "Who Is PIA For? | Private Document AI",
     description:
-      "Learn who benefits most from Doc Analyzer’s private AI document analysis.",
+      "Learn who benefits most from PIA’s private AI document analysis.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Who Is Doc Analyzer For? | Private Document AI",
+    title: "Who Is PIA For? | Private Document AI",
     description:
-      "See how Doc Analyzer helps professionals, teams, and privacy-conscious users work with sensitive documents.",
+      "See how PIA helps professionals, teams, and privacy-conscious users work with sensitive documents.",
   },
 };
 
@@ -36,7 +36,7 @@ export default function WhoIsThisForPage() {
     <SimplePageLayout title="Who is this for">
       <div className="text-text-secondary space-y-4">
         <p>
-          Doc Analyzer is for anyone who needs to understand documents quickly
+          PIA is for anyone who needs to understand documents quickly
           and privately: contracts, reports, policies, or any text you don’t
           want to paste into a public AI tool.
         </p>
@@ -44,7 +44,7 @@ export default function WhoIsThisForPage() {
           If you work with sensitive or confidential material — legal drafts,
           internal memos, health or financial info — you need a way to get
           summaries and plain-language explanations without sending that content
-          to third parties. We built Doc Analyzer for you. Your document stays
+          to third parties. We built PIA for you. Your document stays
           on your device or is handled under encryption; we don’t store it.
         </p>
         <p>
@@ -55,7 +55,7 @@ export default function WhoIsThisForPage() {
           another SaaS or agreeing to data mining.
         </p>
         <p>
-          Students and researchers who care about privacy can use Doc Analyzer
+          Students and researchers who care about privacy can use PIA
           to summarize papers, explain dense sections, or extract key points —
           without feeding your reading list into someone else’s training data.
           Same idea for journalists, writers, and anyone who handles unpublished
@@ -63,7 +63,7 @@ export default function WhoIsThisForPage() {
         </p>
         <p>
           If you’re simply tired of pasting confidential stuff into chatbots and
-          wondering where it goes, Doc Analyzer is for you too. We believe
+          wondering where it goes, PIA is for you too. We believe
           everyone who wants to use AI privately should be able to. No sign-up
           required for the free version; when you’re done, refresh and it’s
           gone.

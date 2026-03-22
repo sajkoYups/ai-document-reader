@@ -77,7 +77,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
           </h2>
           <p className="text-sm text-text-secondary">
             We&apos;ll reach out when access opens. Thanks for your interest in
-            Doc Analyzer.
+            PIA.
           </p>
           <button
             type="button"

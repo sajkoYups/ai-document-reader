@@ -12,24 +12,24 @@ const fullUrl = `${
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Doc Analyzer App",
+  title: "App",
   description:
-    "Use Doc Analyzer to privately summarize, explain, extract, and chat with your documents.",
+    "Use PIA to privately summarize, explain, extract, and chat with your documents.",
   alternates: {
     canonical: fullUrl,
   },
   openGraph: {
     url: fullUrl,
-    title: "Doc Analyzer App | Private AI Document Analysis",
+    title: "PIA — Private AI document analysis",
     description:
-      "Open the Doc Analyzer app to use private AI on your documents directly in the browser.",
+      "Open PIA to use private AI on your documents directly in the browser.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Doc Analyzer App | Private AI Document Analysis",
+    title: "PIA — Private AI document analysis",
     description:
-      "Analyze your documents privately with the Doc Analyzer web app.",
+      "Analyze your documents privately with the PIA web app.",
   },
   robots: {
     index: true,

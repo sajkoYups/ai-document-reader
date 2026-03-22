@@ -43,12 +43,12 @@ export default function MissionPage() {
         <p>
           We believe nobody should have to choose between understanding their
           documents and keeping them confidential. So we build tools that do
-          both: Doc Analyzer for individuals and small teams, and private AI
+          both: PIA for individuals and small teams, and private AI
           servers for companies that need to run models on their own
           infrastructure. Same principle everywhere — your data stays yours.
         </p>
         <p>
-          We keep the standard version of Doc Analyzer free and plan to keep it
+          We keep the standard version of PIA free and plan to keep it
           that way. Our goal is for everyone who wants to use AI privately to be
           able to. That means no paywall for the basics: paste a doc, get a
           summary or a plain-language explanation, or chat with it, all in your

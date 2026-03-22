@@ -18,16 +18,16 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: fullUrl,
-    title: "How Doc Analyzer Works | Private AI in Your Browser",
+    title: "How PIA Works | Private AI in Your Browser",
     description:
-      "See how Doc Analyzer processes your documents privately in-browser or via a privacy-conscious API.",
+      "See how PIA processes your documents privately in-browser or via a privacy-conscious API.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "How Doc Analyzer Works | Private AI in Your Browser",
+    title: "How PIA Works | Private AI in Your Browser",
     description:
-      "Understand how Doc Analyzer keeps your documents private while using AI to summarize, explain, and chat.",
+      "Understand how PIA keeps your documents private while using AI to summarize, explain, and chat.",
   },
 };
 

@@ -1,17 +1,13 @@
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import SiteBrand from "@/components/SiteBrand";
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-surface-0 grain flex flex-col">
       <header className="sticky top-0 z-50 border-b border-border bg-surface-0/80 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link
-            href="/"
-            className="font-display text-xl text-text-primary tracking-tight hover:text-accent transition-colors"
-          >
-            Doc Analyzer
-          </Link>
+          <SiteBrand priority />
           <Link
             href="/app"
             className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-accent text-surface-0 hover:opacity-90 transition-opacity"

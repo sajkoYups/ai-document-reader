@@ -9,7 +9,7 @@ export const ONBOARDING_STEPS: StepType[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-lg text-text-primary">
-          Welcome to Doc Analyzer
+          Welcome to PIA
         </h3>
         <p className="text-sm text-text-secondary">
           This short tour will show you how to add a document, pick what you want the AI to do, and read the results.
@@ -110,7 +110,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Or paste text directly
         </h3>
         <p className="text-xs text-text-secondary">
-          You can also paste any text here instead of uploading a file. Doc Analyzer will work from whatever is in this box.
+          You can also paste any text here instead of uploading a file. PIA will work from whatever is in this box.
         </p>
       </div>
     ),
