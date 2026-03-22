@@ -45,11 +45,8 @@ function extractRunpodStreamText(chunk: unknown): string {
   return normalizeOpenAiContent(message?.content);
 }
 
-export function getRunpodTaskMaxTokens(taskType: TaskType): number {
-  const base = Math.max(300, config.runpod.maxTokens);
-  if (taskType === "chat") return base;
-  if (taskType === "explain") return Math.min(base, 700);
-  return Math.min(base, 500);
+export function getRunpodTaskMaxTokens(_taskType: TaskType): number {
+  return Math.max(300, config.runpod.maxTokens);
 }
 
 export async function* streamRunpodInference(
