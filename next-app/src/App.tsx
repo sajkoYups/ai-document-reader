@@ -26,8 +26,16 @@ import {
   buildChatHistory,
   assembleContext,
   extractEvidence,
+  type AssembleContextMeta,
 } from "@/lib/chatPipeline";
+import type { DocumentChunk } from "@/lib/documentChunker";
 import { CHAT_TOP_K, EXTRACT_TOP_K } from "@/lib/retrieval";
+import {
+  apiChatNeedsRetrievedOrTruncatedContext,
+  capChatHistoryForApi,
+  maxAssembledDocumentCharsForApiChat,
+  truncateDocumentForApiChat,
+} from "@/lib/contextBudget";
 import { estimateTokenCount, MAX_ON_DEVICE_TOKENS } from "@/lib/tokenEstimate";
 import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import { TASK_LABELS } from "@/lib/prompts";
@@ -42,7 +50,10 @@ import ChatPanel from "./components/ChatPanel";
 import Button from "./components/Button";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer, { showToast } from "./components/Toast";
-import DebugPanel, { type RagDebugInfo } from "./components/DebugPanel";
+import DebugPanel, {
+  type RagDebugInfo,
+  type RetrievalMethod,
+} from "./components/DebugPanel";
 import { TourProvider } from "@reactour/tour";
 import { ONBOARDING_STEPS } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
@@ -326,23 +337,85 @@ function AppContent() {
     if (ai.processingMode === "api") {
       // Prior turns only — server appends `message` again; including the current
       // question in history would duplicate the last user message for the LLM.
-      const history = buildChatHistory(chat.messages);
+      const history = capChatHistoryForApi(buildChatHistory(chat.messages));
+      const maxAssembled = maxAssembledDocumentCharsForApiChat(history, message);
+
+      let documentForApi: string;
+      let retrievedChunks: DocumentChunk[] = [];
+      let method: RetrievalMethod = "direct";
+      let contextMeta: AssembleContextMeta;
+
+      try {
+        if (
+          apiChatNeedsRetrievedOrTruncatedContext(
+            doc.rawText,
+            history,
+            message,
+          )
+        ) {
+          if (embedding.chunks.length > 0) {
+            retrievedChunks = await embedding.retrieveChunksHybrid(
+              message,
+              CHAT_TOP_K,
+            );
+            const assembled = assembleContext(retrievedChunks, maxAssembled);
+            documentForApi = assembled.text;
+            contextMeta = assembled.meta;
+            method =
+              embedding.status === "ready" ? "hybrid" : "keyword-fallback";
+          } else {
+            documentForApi = truncateDocumentForApiChat(
+              doc.rawText,
+              maxAssembled,
+            );
+            contextMeta = {
+              chunksIncluded: 0,
+              totalChars: documentForApi.length,
+              truncatedChunks: 0,
+              gapMarkers: 0,
+            };
+            method = "truncated";
+          }
+        } else {
+          documentForApi = doc.rawText;
+          contextMeta = {
+            chunksIncluded: 0,
+            totalChars: totalDocChars,
+            truncatedChunks: 0,
+            gapMarkers: 0,
+          };
+          method = "direct";
+        }
+      } catch {
+        documentForApi = truncateDocumentForApiChat(doc.rawText, maxAssembled);
+        contextMeta = {
+          chunksIncluded: 0,
+          totalChars: documentForApi.length,
+          truncatedChunks: 0,
+          gapMarkers: 0,
+        };
+        method = "fallback";
+        showToast(
+          "Could not retrieve matching sections; using a truncated document for this reply.",
+          "info",
+        );
+      }
 
       chat.addUserMessage(message);
       chat.startAssistantMessage();
 
       setDebugInfo({
-        method: "direct",
+        method,
         query: message,
-        retrievedChunks: [],
-        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+        retrievedChunks,
+        contextMeta,
         totalDocChars,
         totalDocChunks,
         timestamp: Date.now(),
       });
 
       chatViaApi(
-        doc.rawText,
+        documentForApi,
         message,
         history,
         ai.outputLanguage,
