@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import Link from "next/link";
 import PrivacyBadge from "./PrivacyBadge";
 import Footer from "./Footer";
+import SiteBrand from "./SiteBrand";
 import type { ModelStatus } from "@/types";
 
 interface LayoutProps {
@@ -35,12 +36,7 @@ export default function Layout({
       <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-surface-0/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 md:px-6 min-h-14 py-3 flex items-center justify-between flex-wrap gap-y-2">
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="font-display text-xl text-text-primary tracking-tight hover:text-accent transition-colors"
-            >
-              Doc Analyzer
-            </Link>
+            <SiteBrand />
             <Link
               href="/"
               className="text-sm text-text-muted hover:text-text-secondary transition-colors"

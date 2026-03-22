@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   if (resend && adminEmail) {
     resend.emails
       .send({
-        from: "Doc Analyzer <onboarding@resend.dev>",
+        from: "PIA <onboarding@resend.dev>",
         to: adminEmail,
         subject: "New waitlist signup",
         text: `New waitlist entry:\n\nName: ${body.firstName.trim()} ${body.lastName.trim()}\nEmail: ${body.email}\n`,

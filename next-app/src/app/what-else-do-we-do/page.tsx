@@ -12,7 +12,7 @@ const fullUrl = `${
 export const metadata: Metadata = {
   title: "What else do we do",
   description:
-    "Beyond Doc Analyzer, we build private AI servers and advise teams on privacy-conscious AI adoption.",
+    "Beyond PIA, we build private AI servers and advise teams on privacy-conscious AI adoption.",
   alternates: {
     canonical: fullUrl,
   },
@@ -36,7 +36,7 @@ export default function WhatElseDoWeDoPage() {
     <SimplePageLayout title="What else do we do">
       <div className="text-text-secondary space-y-4">
         <p>
-          Besides Doc Analyzer, we work on private and useful AI — for
+          Besides PIA, we work on private and useful AI — for
           individuals and for organizations. Our goal is to help people get
           value from AI without giving up control of their data.
         </p>
@@ -50,12 +50,12 @@ export default function WhatElseDoWeDoPage() {
         </p>
         <p>
           We also advise teams on how to adopt AI in a privacy-conscious way:
-          when to use in-browser or on-device tools like Doc Analyzer, when a
+          when to use in-browser or on-device tools like PIA, when a
           private server makes sense, and how to avoid the “paste everything
           into ChatGPT” trap for confidential work.
         </p>
         <p>
-          In everything we do — from Doc Analyzer to private deployments — we
+          In everything we do — from PIA to private deployments — we
           focus on tools that respect users and their data. If you’re interested
           in private AI for your company or want to learn more, we’d be glad to
           hear from you.

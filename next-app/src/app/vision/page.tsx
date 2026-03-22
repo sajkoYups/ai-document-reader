@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Our Vision | Privacy-First AI for Everyone",
     description:
-      "Understand the long-term vision behind Doc Analyzer and privacy-first AI.",
+      "Understand the long-term vision behind PIA and privacy-first AI.",
   },
 };
 
@@ -50,7 +50,7 @@ export default function VisionPage() {
         </p>
         <p>
           We want private AI to be normal — not a premium or a niche. Free,
-          in-browser tools like Doc Analyzer for everyday use; private servers
+          in-browser tools like PIA for everyday use; private servers
           and encrypted pipelines for organizations that need more. The
           technology exists; our job is to make it accessible, understandable,
           and practical so that more people and teams can benefit without
@@ -58,7 +58,7 @@ export default function VisionPage() {
         </p>
         <p>
           We want private AI to be normal — not a premium or a niche. Free,
-          in-browser tools like Doc Analyzer for everyday use; private servers
+          in-browser tools like PIA for everyday use; private servers
           and encrypted pipelines for organizations that need more. The
           technology exists; our job is to make it accessible, understandable,
           and practical so that more people and teams can benefit without

@@ -10,23 +10,32 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   title: {
-    default: "Private AI Document Analysis | Doc Analyzer",
-    template: "%s | Doc Analyzer",
+    default: "Private AI Document Analysis | PIA",
+    template: "%s | PIA",
   },
   description:
     "Analyze documents with AI privately. Summarize, explain, extract key points, or chat with your docs — all in your browser. No account, no data stored.",
   openGraph: {
     type: "website",
     url: siteUrl,
-    title: "Private AI Document Analysis | Doc Analyzer",
+    title: "Private AI Document Analysis | PIA",
     description:
       "Analyze documents with AI privately. Summarize, explain, extract key points, or chat with your docs — all in your browser.",
-    siteName: "Doc Analyzer",
+    siteName: "PIA",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Private AI Document Analysis | Doc Analyzer",
+    title: "Private AI Document Analysis | PIA",
     description:
       "Analyze documents with AI privately. Summarize, explain, extract key points, or chat with your docs — all in your browser.",
   },
@@ -39,7 +48,7 @@ const jsonLd = {
       "@type": "WebSite",
       "@id": `${siteUrl}#website`,
       url: siteUrl,
-      name: "Doc Analyzer",
+      name: "PIA",
       description:
         "Analyze documents with AI privately in your browser or via a privacy-conscious API.",
     },
