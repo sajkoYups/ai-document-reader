@@ -7,16 +7,21 @@
     "build": "rm -rf .next && next build",
     "start": "next start",
     "lint": "eslint",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
     "postbuild": "echo '--- BUILD DIAGNOSTICS ---' && du -sh .next || true && echo 'Files in .next:' && (find .next -type f | wc -l) || true && echo 'Largest items in .next:' && (du -sh .next/* 2>/dev/null | sort -h | tail -n 20) || true"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.38.3",
     "@huggingface/transformers": "^3.8.1",
+    "@neondatabase/serverless": "^1.0.2",
+    "@reactour/tour": "^3.8.0",
+    "drizzle-orm": "^0.45.1",
     "next": "16.1.6",
     "pdfjs-dist": "^5.4.624",
-    "@reactour/tour": "^3.8.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "resend": "^6.9.3",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
@@ -24,6 +29,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
+    "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",

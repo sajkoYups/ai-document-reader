@@ -4,11 +4,12 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import {
   useAuth,
   SignInButton,
-  SignUpButton,
   SignedIn,
   SignedOut,
   UserButton,
 } from "@clerk/nextjs";
+import WaitlistModal from "./components/WaitlistModal";
+import UsagePanel from "./components/UsagePanel";
 import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage, type TaskType } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
@@ -25,8 +26,17 @@ import {
   buildChatHistory,
   assembleContext,
   extractEvidence,
+  type AssembleContextMeta,
 } from "@/lib/chatPipeline";
+import type { DocumentChunk } from "@/lib/documentChunker";
 import { CHAT_TOP_K, EXTRACT_TOP_K } from "@/lib/retrieval";
+import {
+  apiChatNeedsRetrievedOrTruncatedContext,
+  capChatHistoryForApi,
+  maxAssembledDocumentCharsForApiChat,
+  truncateDocumentForApiChat,
+} from "@/lib/contextBudget";
+import { estimateTokenCount, MAX_ON_DEVICE_TOKENS } from "@/lib/tokenEstimate";
 import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import { TASK_LABELS } from "@/lib/prompts";
 import Layout from "./components/Layout";
@@ -40,7 +50,10 @@ import ChatPanel from "./components/ChatPanel";
 import Button from "./components/Button";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer, { showToast } from "./components/Toast";
-import DebugPanel, { type RagDebugInfo } from "./components/DebugPanel";
+import DebugPanel, {
+  type RagDebugInfo,
+  type RetrievalMethod,
+} from "./components/DebugPanel";
 import { TourProvider } from "@reactour/tour";
 import { ONBOARDING_STEPS } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
@@ -186,6 +199,10 @@ function AppContent() {
 
   const isModelReady = ai.processingMode === "api" || ai.modelStatus === "ready";
   const canUseDeepAnalysis = ai.processingMode !== "api" || isSignedIn === true;
+  const isOnDevice = ai.processingMode !== "api";
+  const estimatedTokens = hasDocument ? estimateTokenCount(doc.rawText) : 0;
+  const isOverOnDeviceLimit =
+    isOnDevice && hasDocument && estimatedTokens > MAX_ON_DEVICE_TOKENS;
   const isIndexing =
     hasDocument &&
     doc.rawText.length > MAX_DIRECT_CHARS &&
@@ -202,6 +219,13 @@ function AppContent() {
     }
     if (ai.processingMode === "api" && !isSignedIn) {
       showToast("Sign in to use Deep Analysis", "error");
+      return;
+    }
+    if (isOverOnDeviceLimit) {
+      showToast(
+        "Document is too long for on-device analysis. Use Deep Analysis or shorten the document.",
+        "error",
+      );
       return;
     }
 
@@ -292,7 +316,7 @@ function AppContent() {
       });
       task.run(selectedTask, doc.rawText);
     }
-  }, [hasDocument, isModelReady, isIndexing, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
+  }, [hasDocument, isModelReady, isIndexing, isOverOnDeviceLimit, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
 
   const handleChatSend = async (message: string) => {
     if (isIndexing) {
@@ -306,31 +330,92 @@ function AppContent() {
       showToast("Sign in to use Deep Analysis", "error");
       return;
     }
-    chat.addUserMessage(message);
-    chat.startAssistantMessage();
 
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
 
     if (ai.processingMode === "api") {
-      const allMessages = [
-        ...chat.messages,
-        { role: "user" as const, content: message },
-      ];
-      const history = buildChatHistory(allMessages);
+      // Prior turns only — server appends `message` again; including the current
+      // question in history would duplicate the last user message for the LLM.
+      const history = capChatHistoryForApi(buildChatHistory(chat.messages));
+      const maxAssembled = maxAssembledDocumentCharsForApiChat(history, message);
+
+      let documentForApi: string;
+      let retrievedChunks: DocumentChunk[] = [];
+      let method: RetrievalMethod = "direct";
+      let contextMeta: AssembleContextMeta;
+
+      try {
+        if (
+          apiChatNeedsRetrievedOrTruncatedContext(
+            doc.rawText,
+            history,
+            message,
+          )
+        ) {
+          if (embedding.chunks.length > 0) {
+            retrievedChunks = await embedding.retrieveChunksHybrid(
+              message,
+              CHAT_TOP_K,
+            );
+            const assembled = assembleContext(retrievedChunks, maxAssembled);
+            documentForApi = assembled.text;
+            contextMeta = assembled.meta;
+            method =
+              embedding.status === "ready" ? "hybrid" : "keyword-fallback";
+          } else {
+            documentForApi = truncateDocumentForApiChat(
+              doc.rawText,
+              maxAssembled,
+            );
+            contextMeta = {
+              chunksIncluded: 0,
+              totalChars: documentForApi.length,
+              truncatedChunks: 0,
+              gapMarkers: 0,
+            };
+            method = "truncated";
+          }
+        } else {
+          documentForApi = doc.rawText;
+          contextMeta = {
+            chunksIncluded: 0,
+            totalChars: totalDocChars,
+            truncatedChunks: 0,
+            gapMarkers: 0,
+          };
+          method = "direct";
+        }
+      } catch {
+        documentForApi = truncateDocumentForApiChat(doc.rawText, maxAssembled);
+        contextMeta = {
+          chunksIncluded: 0,
+          totalChars: documentForApi.length,
+          truncatedChunks: 0,
+          gapMarkers: 0,
+        };
+        method = "fallback";
+        showToast(
+          "Could not retrieve matching sections; using a truncated document for this reply.",
+          "info",
+        );
+      }
+
+      chat.addUserMessage(message);
+      chat.startAssistantMessage();
 
       setDebugInfo({
-        method: "direct",
+        method,
         query: message,
-        retrievedChunks: [],
-        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
+        retrievedChunks,
+        contextMeta,
         totalDocChars,
         totalDocChunks,
         timestamp: Date.now(),
       });
 
       chatViaApi(
-        doc.rawText,
+        documentForApi,
         message,
         history,
         ai.outputLanguage,
@@ -349,6 +434,9 @@ function AppContent() {
         );
       return;
     }
+
+    chat.addUserMessage(message);
+    chat.startAssistantMessage();
 
     const allMessages = [
       ...chat.messages,
@@ -423,6 +511,8 @@ function AppContent() {
     onRun: handleRun,
     onClear: handleClear,
   });
+
+  const [waitlistBannerOpen, setWaitlistBannerOpen] = useState(false);
 
   if (!compat.allPassed) {
     return (
@@ -599,6 +689,14 @@ function AppContent() {
                   </Button>
                 </div>
               )}
+              {isOnDevice && hasDocument && (
+                <p className="text-xs text-text-muted text-center">
+                  ~{estimatedTokens.toLocaleString()} tokens
+                  {isOverOnDeviceLimit && (
+                    <> · Too long for on-device · Use Deep Analysis or shorten the document.</>
+                  )}
+                </p>
+              )}
               <div className="flex flex-col sm:flex-row gap-2 w-full">
                 {task.isProcessing ? (
                   <Button
@@ -619,13 +717,16 @@ function AppContent() {
                         !hasDocument ||
                         !isModelReady ||
                         !canUseDeepAnalysis ||
-                        isIndexing
+                        isIndexing ||
+                        isOverOnDeviceLimit
                       }
                       className="flex-1"
                       title={
-                        isIndexing
-                          ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
-                          : undefined
+                        isOverOnDeviceLimit
+                          ? "Document is too long for on-device analysis"
+                          : isIndexing
+                            ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
+                            : undefined
                       }
                       data-tour-id="run-button"
                     >
@@ -644,7 +745,8 @@ function AppContent() {
                         !hasDocument ||
                         !isModelReady ||
                         !canUseDeepAnalysis ||
-                        isIndexing
+                        isIndexing ||
+                        isOverOnDeviceLimit
                       }
                     >
                       Regenerate
@@ -764,14 +866,17 @@ function AppContent() {
                 Sign in
               </button>
             </SignInButton>
-            <SignUpButton mode="modal">
-              <button
-                type="button"
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
-              >
-                Sign up
-              </button>
-            </SignUpButton>
+            <button
+              type="button"
+              onClick={() => setWaitlistBannerOpen(true)}
+              className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+            >
+              Join Waitlist
+            </button>
+            <WaitlistModal
+              open={waitlistBannerOpen}
+              onClose={() => setWaitlistBannerOpen(false)}
+            />
           </div>
         </div>
       )}
@@ -783,6 +888,7 @@ function AppHeaderRight() {
   const ai = useAiStore();
   const { isSignedIn } = useAuth();
   const { startTour } = useAppOnboarding();
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
 
   return (
     <div
@@ -827,14 +933,17 @@ function AppHeaderRight() {
               Sign in
             </button>
           </SignInButton>
-          <SignUpButton mode="modal">
-            <button
-              type="button"
-              className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
-            >
-              Sign up
-            </button>
-          </SignUpButton>
+          <button
+            type="button"
+            onClick={() => setWaitlistOpen(true)}
+            className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+          >
+            Join Waitlist
+          </button>
+          <WaitlistModal
+            open={waitlistOpen}
+            onClose={() => setWaitlistOpen(false)}
+          />
         </SignedOut>
         <SignedIn>
           <UserButton
@@ -842,7 +951,28 @@ function AppHeaderRight() {
             appearance={{
               elements: { avatarBox: "w-7 h-7" },
             }}
-          />
+          >
+            <UserButton.UserProfilePage
+              label="Usage"
+              url="usage"
+              labelIcon={
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  aria-hidden="true"
+                >
+                  <path d="M3 3v18h18" />
+                  <path d="M7 16l4-4 4 4 4-7" />
+                </svg>
+              }
+            >
+              <UsagePanel />
+            </UserButton.UserProfilePage>
+          </UserButton>
         </SignedIn>
       </div>
       <div data-tour-id="header-privacy">

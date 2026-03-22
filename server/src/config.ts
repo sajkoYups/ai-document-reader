@@ -46,6 +46,13 @@ export const config = {
         "800",
       10,
     ),
+    /** vLLM / OpenAI provider context limit (input + max output must fit). */
+    contextWindow: parseInt(
+      process.env.RUNPOD_CONTEXT_WINDOW ??
+        process.env.LLM_CONTEXT_WINDOW ??
+        "8192",
+      10,
+    ),
   },
 
   cors: {

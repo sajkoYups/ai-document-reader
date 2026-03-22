@@ -2,22 +2,51 @@ import { config } from "../config.js";
 import type { OutputLanguage, TaskType } from "../types/index.js";
 import { buildInferenceMessages } from "./ollamaService.js";
 
-interface RunpodDeltaChunk {
-  choices?: Array<{
-    delta?: {
-      content?: string;
-    };
-    message?: {
-      content?: string;
-    };
-  }>;
+function normalizeOpenAiContent(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (part && typeof part === "object" && "text" in part) {
+          const t = (part as { text?: unknown }).text;
+          return typeof t === "string" ? t : "";
+        }
+        return "";
+      })
+      .join("");
+  }
+  return "";
 }
 
-function getTaskMaxTokens(taskType: TaskType): number {
-  const base = Math.max(300, config.runpod.maxTokens);
-  if (taskType === "chat") return base;
-  if (taskType === "explain") return Math.min(base, 700);
-  return Math.min(base, 500);
+function extractRunpodStreamText(chunk: unknown): string {
+  if (chunk === null || typeof chunk !== "object") return "";
+  const obj = chunk as Record<string, unknown>;
+
+  if (obj.error && typeof obj.error === "object") {
+    const msg = (obj.error as { message?: unknown }).message;
+    if (typeof msg === "string" && msg.length > 0) {
+      throw new Error(msg);
+    }
+  }
+
+  const choices = obj.choices;
+  if (!Array.isArray(choices) || choices.length === 0) return "";
+
+  const choice0 = choices[0] as Record<string, unknown>;
+  if (typeof choice0.text === "string" && choice0.text.length > 0) {
+    return choice0.text;
+  }
+
+  const delta = choice0.delta as Record<string, unknown> | undefined;
+  const message = choice0.message as Record<string, unknown> | undefined;
+
+  const fromDelta = normalizeOpenAiContent(delta?.content);
+  if (fromDelta.length > 0) return fromDelta;
+  return normalizeOpenAiContent(message?.content);
+}
+
+export function getRunpodTaskMaxTokens(_taskType: TaskType): number {
+  return Math.max(300, config.runpod.maxTokens);
 }
 
 export async function* streamRunpodInference(
@@ -44,7 +73,7 @@ export async function* streamRunpodInference(
       messages,
       stream: true,
       temperature: 0.2,
-      max_tokens: getTaskMaxTokens(taskType),
+      max_tokens: getRunpodTaskMaxTokens(taskType),
     }),
   });
 
@@ -61,6 +90,27 @@ export async function* streamRunpodInference(
   const decoder = new TextDecoder();
   let buffer = "";
 
+  const yieldTokensFromSseLine = async function* (rawLine: string) {
+    const line = rawLine.trim();
+    if (!line.startsWith("data:")) return;
+
+    const data = line.slice("data:".length).trim();
+    if (!data || data === "[DONE]") return;
+
+    let chunk: unknown;
+    try {
+      chunk = JSON.parse(data);
+    } catch {
+      return;
+    }
+    try {
+      const text = extractRunpodStreamText(chunk);
+      if (text.length > 0) yield text;
+    } catch (e) {
+      if (e instanceof Error) throw e;
+    }
+  };
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -72,22 +122,13 @@ export async function* streamRunpodInference(
       buffer = lines.pop() ?? "";
 
       for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (!line.startsWith("data:")) continue;
-
-        const data = line.slice("data:".length).trim();
-        if (!data || data === "[DONE]") continue;
-
-        try {
-          const chunk = JSON.parse(data) as RunpodDeltaChunk;
-          const text =
-            chunk.choices?.[0]?.delta?.content ??
-            chunk.choices?.[0]?.message?.content;
-          if (text) yield text;
-        } catch {
-          // skip malformed chunks
-        }
+        yield* yieldTokensFromSseLine(rawLine);
       }
+    }
+
+    buffer += decoder.decode(new Uint8Array(), { stream: false });
+    for (const rawLine of buffer.split("\n")) {
+      yield* yieldTokensFromSseLine(rawLine);
     }
   } finally {
     reader.releaseLock();

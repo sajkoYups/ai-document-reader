@@ -2,7 +2,14 @@ import { useState } from "react";
 import type { DocumentChunk } from "@/lib/documentChunker";
 import type { AssembleContextMeta } from "@/lib/chatPipeline";
 
-export type RetrievalMethod = "direct" | "spread" | "semantic" | "hybrid" | "keyword-fallback" | "fallback";
+export type RetrievalMethod =
+  | "direct"
+  | "spread"
+  | "semantic"
+  | "hybrid"
+  | "keyword-fallback"
+  | "fallback"
+  | "truncated";
 
 export interface RagDebugInfo {
   method: RetrievalMethod;
@@ -31,6 +38,7 @@ const METHOD_LABELS: Record<RetrievalMethod, string> = {
   hybrid: "Hybrid (semantic + keyword)",
   "keyword-fallback": "Keyword (embeddings not ready)",
   fallback: "Fallback (full text)",
+  truncated: "Truncated (context limit)",
 };
 
 export default function DebugPanel({ debugInfo }: DebugPanelProps) {
