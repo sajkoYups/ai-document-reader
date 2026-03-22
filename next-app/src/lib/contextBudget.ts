@@ -14,8 +14,16 @@ export const DEEP_ANALYSIS_CONTEXT_WINDOW_TOKENS = (() => {
   return Number.isFinite(n) && n > 0 ? n : 8192;
 })();
 
-/** Reserved for max completion (RunPod chat uses RUNPOD_MAX_TOKENS, typically ~800). */
-const DEEP_ANALYSIS_COMPLETION_RESERVE_TOKENS = 1000;
+/**
+ * Reserved for max completion — align with server RUNPOD_MAX_TOKENS (all deep tasks).
+ * Override with NEXT_PUBLIC_DEEP_ANALYSIS_COMPLETION_RESERVE when tuning.
+ */
+const DEEP_ANALYSIS_COMPLETION_RESERVE_TOKENS = (() => {
+  const raw = process.env.NEXT_PUBLIC_DEEP_ANALYSIS_COMPLETION_RESERVE;
+  if (raw === undefined || raw === "") return 2048;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : 2048;
+})();
 
 /**
  * Conservative reserve for system prompt, document markers, and language cues
