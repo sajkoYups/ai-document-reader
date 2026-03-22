@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { assertDeepInferenceWithinContext } from "../contextBudget.js";
 import type { OutputLanguage, TaskType } from "../types/index.js";
 import {
   checkOllamaHealth,
@@ -16,6 +17,14 @@ export async function* streamDeepInference(
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
 ): AsyncGenerator<string> {
+  assertDeepInferenceWithinContext(
+    taskType,
+    documentText,
+    userMessage,
+    conversationHistory,
+    outputLanguage,
+  );
+
   if (config.deepAnalysis.provider === "runpod") {
     yield* streamRunpodInference(
       taskType,

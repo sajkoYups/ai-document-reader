@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { decryptRequest } from "../middleware/encryption.js";
 import { validateChatRequest } from "../middleware/validation.js";
+import { capConversationHistoryForDeepChat } from "../contextBudget.js";
 import {
   streamDeepInference,
   toClientSafeInferenceError,
@@ -29,7 +30,10 @@ chatRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { documentText, message, conversationHistory, outputLanguage } = parsed.data;
+  const { documentText, message, outputLanguage } = parsed.data;
+  const conversationHistory = capConversationHistoryForDeepChat(
+    parsed.data.conversationHistory,
+  );
   const userId = (req.headers["x-clerk-user-id"] as string | undefined) ?? "";
 
   res.setHeader("Content-Type", "text/event-stream");

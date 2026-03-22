@@ -27,7 +27,9 @@ const chatRequestSchema = z.object({
       role: z.enum(["user", "assistant"]),
       content: z.string(),
     }),
-  ).max(50).default([]),
+  )
+    .max(24)
+    .default([]),
   outputLanguage: outputLanguageEnum.optional().default("en"),
 });
 
