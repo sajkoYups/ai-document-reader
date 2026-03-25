@@ -35,7 +35,7 @@ export default function Modal({ open, onClose, children }: ModalProps) {
     <dialog
       ref={dialogRef}
       className="bg-transparent backdrop:bg-black/60 backdrop:backdrop-blur-sm
-        max-w-lg w-full p-0 rounded-xl animate-fade-in-scale"
+        max-w-lg w-full p-0 rounded-xl animate-fade-in-scale m-auto"
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
       }}

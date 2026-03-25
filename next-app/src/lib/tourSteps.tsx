@@ -157,4 +157,18 @@ export const ONBOARDING_STEPS: StepType[] = [
       </div>
     ),
   },
+  {
+    selector: '[data-tour-id="header-feedback"]',
+    position: "bottom",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-display text-sm text-text-primary">
+          Leave us feedback
+        </h3>
+        <p className="text-xs text-text-secondary">
+          Found something you&apos;d like us to improve or replace? Click here to send us a quick note — every message goes straight to the team and helps shape what we build next.
+        </p>
+      </div>
+    ),
+  },
 ];

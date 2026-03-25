@@ -9,6 +9,7 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import WaitlistModal from "./components/WaitlistModal";
+import FeedbackModal from "./components/FeedbackModal";
 import UsagePanel from "./components/UsagePanel";
 import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage, type TaskType } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
@@ -889,12 +890,33 @@ function AppHeaderRight() {
   const { isSignedIn } = useAuth();
   const { startTour } = useAppOnboarding();
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
     <div
       className="flex flex-wrap items-center justify-end gap-3"
       data-tour-id="header-actions"
     >
+      <button
+        type="button"
+        onClick={() => setFeedbackOpen(true)}
+        data-tour-id="header-feedback"
+        className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-full bg-surface-2 border border-border text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors"
+      >
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        Feedback
+      </button>
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <button
         type="button"
         onClick={startTour}
