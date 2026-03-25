@@ -8,10 +8,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "center",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-lg text-text-primary">
+        <h3 className="font-display text-xl text-text-primary">
           Welcome to PIA
         </h3>
-        <p className="text-sm text-text-secondary">
+        <p className="text-base text-text-secondary leading-relaxed">
           This short tour will show you how to add a document, pick what you want the AI to do, and read the results.
         </p>
       </div>
@@ -22,10 +22,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "bottom",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Privacy & where your data lives
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           This indicator shows whether your document is kept on-device (Standard) or sent as encrypted data for Deep Analysis. Click it any time to see a detailed explanation of how we handle your privacy.
         </p>
       </div>
@@ -36,10 +36,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "bottom",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Standard vs Deep Analysis
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). We&apos;ll disable options automatically if they aren&apos;t available on your device.
         </p>
       </div>
@@ -50,10 +50,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "bottom",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Output language
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           Choose the language you want the AI to answer in. This affects summaries, explanations, and Deep Analysis responses, not your original document.
         </p>
       </div>
@@ -64,10 +64,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "bottom",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Account & sign-in
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           Sign in or create an account here to unlock Deep Analysis and manage your access. When you&apos;re signed in, your profile menu appears in this spot.
         </p>
       </div>
@@ -78,10 +78,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "bottom",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Replay this tour
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           Use this button any time to re-open the product tour and quickly remind yourself how the app is structured.
         </p>
       </div>
@@ -92,10 +92,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "bottom",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Add your document
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           Start by uploading a PDF, TXT, or Markdown file, or drag and drop it here. We only use it in your current session.
         </p>
       </div>
@@ -106,10 +106,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "top",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Or paste text directly
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           You can also paste any text here instead of uploading a file. PIA will work from whatever is in this box.
         </p>
       </div>
@@ -120,10 +120,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "top",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Choose what you want the AI to do
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           Pick a task such as Summarize, Explain, or Chat. You can change this at any time without reloading your document.
         </p>
       </div>
@@ -134,10 +134,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "top",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Run the analysis
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           When you&apos;re ready, click Run. For longer documents you may see a quick preparation step before results appear.
         </p>
       </div>
@@ -148,11 +148,25 @@ export const ONBOARDING_STEPS: StepType[] = [
     position: "top",
     content: (
       <div className="space-y-2">
-        <h3 className="font-display text-sm text-text-primary">
+        <h3 className="font-display text-base text-text-primary">
           Read results and chat
         </h3>
-        <p className="text-xs text-text-secondary">
+        <p className="text-sm text-text-secondary leading-relaxed">
           Your summaries, explanations, or chat answers appear here. Switch to Chat to ask follow-up questions grounded in your document.
+        </p>
+      </div>
+    ),
+  },
+  {
+    selector: '[data-tour-id="header-feedback"]',
+    position: "bottom",
+    content: (
+      <div className="space-y-2">
+        <h3 className="font-display text-base text-text-primary">
+          Leave us feedback
+        </h3>
+        <p className="text-sm text-text-secondary leading-relaxed">
+          Found something you&apos;d like us to improve or replace? Click here to send us a quick note — every message goes straight to the team and helps shape what we build next.
         </p>
       </div>
     ),
