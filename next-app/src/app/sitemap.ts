@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const routes = [
     "/",
+    "/pricing",
     "/about",
     "/who-is-this-for",
     "/how-does-it-work",
@@ -23,7 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${base}${path === "/" ? "" : path}`,
     lastModified: now,
     changeFrequency: "monthly",
-    priority: path === "/" ? 1 : path === "/app" ? 0.6 : 0.8,
+    priority: path === "/" ? 1 : path === "/app" ? 0.6 : path === "/pricing" ? 0.9 : 0.8,
   }));
 }
 

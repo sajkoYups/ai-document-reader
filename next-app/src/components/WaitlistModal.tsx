@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import Modal from "./Modal";
 
 interface WaitlistModalProps {
@@ -97,6 +98,17 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
               Deep Analysis gives you access to a stronger, server-side AI model
               for document analysis. Leave your details and we&apos;ll invite
               you when a spot opens.
+            </p>
+            <p className="text-xs text-text-muted">
+              Deep Analysis is a paid feature — plans start at{" "}
+              <strong className="text-text-secondary">€9/month</strong>.{" "}
+              <Link
+                href="/pricing"
+                target="_blank"
+                className="underline hover:text-text-primary transition-colors"
+              >
+                See all plans →
+              </Link>
             </p>
           </div>
 

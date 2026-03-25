@@ -2,6 +2,7 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import SiteBrand from "@/components/SiteBrand";
 
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-surface-0 grain flex flex-col">
@@ -106,17 +107,41 @@ export default function HomePage() {
         </section>
 
         <section
-          className="animate-fade-in mb-16 md:mb-24 rounded-xl bg-surface-0"
+          className="animate-fade-in mb-16 md:mb-24"
           style={{ animationDelay: "0.2s" }}
         >
-          <h2 className="font-display text-xl text-text-primary tracking-tight mb-2">
-            Deep analysis — coming soon
-          </h2>
-          <p className="text-text-secondary text-sm">
-            Deep analysis will be a{" "}
-            <strong className="text-text-primary">paid feature</strong>. Stay
-            tuned for more capable document analysis and insights.
-          </p>
+          <div className="flex items-start gap-4">
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-display text-2xl text-text-primary tracking-tight">
+                  Deep Analysis — coming soon
+                </h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-3 text-text-secondary border border-border">
+                  Paid feature
+                </span>
+              </div>
+              <p className="text-text-secondary text-sm">
+                A stronger, server-side AI model for more capable document
+                analysis. We encrypt your document for processing and never
+                store it. Plans start at{" "}
+                <strong className="text-text-primary">€9/month</strong>.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <Link
+              href="/pricing"
+              className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-surface-3 text-text-primary hover:bg-surface-2 border border-border transition-colors"
+            >
+              See pricing →
+            </Link>
+            <Link
+              href="/app"
+              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+            >
+              Join the waitlist
+            </Link>
+          </div>
         </section>
 
         <section
