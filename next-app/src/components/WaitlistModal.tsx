@@ -4,6 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import Modal from "./Modal";
 
+declare global {
+  interface Window {
+    grecaptcha: {
+      enterprise: {
+        ready: (cb: () => void) => void;
+        execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      };
+    };
+  }
+}
+
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
+
 interface WaitlistModalProps {
   open: boolean;
   onClose: () => void;
@@ -34,11 +47,25 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
     setStatus("submitting");
     setErrorMsg("");
 
+    let recaptchaToken = "";
+    if (RECAPTCHA_SITE_KEY && typeof window !== "undefined" && window.grecaptcha?.enterprise) {
+      try {
+        await new Promise<void>((resolve) => window.grecaptcha.enterprise.ready(resolve));
+        recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
+          action: "WAITLIST",
+        });
+      } catch {
+        setErrorMsg("Bot check failed. Please refresh the page and try again.");
+        setStatus("error");
+        return;
+      }
+    }
+
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstName, lastName }),
+        body: JSON.stringify({ email, firstName, lastName, recaptchaToken }),
       });
 
       const data = await res.json();
@@ -198,7 +225,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
           </button>
 
           <p className="text-xs text-text-muted text-center">
-            We only store your name and email to manage waitlist access. No
+            We only store your name and email to manage waitlist access and will contact you when a spot opens. No
             spam, ever.
           </p>
         </form>
