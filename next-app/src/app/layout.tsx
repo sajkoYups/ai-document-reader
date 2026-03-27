@@ -99,6 +99,12 @@ export default function RootLayout({
             </Script>
           </>
         ) : null}
+        {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? (
+          <Script
+            src={`https://www.google.com/recaptcha/enterprise.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
+            strategy="afterInteractive"
+          />
+        ) : null}
         <ClerkWrapper>
           <script
             type="application/ld+json"
