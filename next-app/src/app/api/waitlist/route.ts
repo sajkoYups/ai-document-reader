@@ -123,20 +123,54 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Fire-and-forget admin email notification
+  // Await admin email notification so serverless runtime doesn't drop it.
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
-  if (resend && adminEmail) {
-    resend.emails
-      .send({
-        from: "PIA <onboarding@resend.dev>",
-        to: adminEmail,
-        subject: "New waitlist signup",
-        text: `New waitlist entry:\n\nName: ${body.firstName.trim()} ${body.lastName.trim()}\nEmail: ${body.email}\n`,
-      })
-      .catch((err) => console.error("[waitlist] Email notification failed:", err));
+  if (!resend) {
+    console.error("[waitlist] Email skipped: RESEND_API_KEY is not configured");
+    return NextResponse.json(
+      {
+        success: true,
+        emailSent: false,
+        emailError: "resend_not_configured",
+      },
+      { status: 201 },
+    );
   }
 
-  return NextResponse.json({ success: true }, { status: 201 });
+  if (!adminEmail || adminEmail.trim().length === 0) {
+    console.error(
+      "[waitlist] Email skipped: ADMIN_NOTIFICATION_EMAIL is not configured",
+    );
+    return NextResponse.json(
+      {
+        success: true,
+        emailSent: false,
+        emailError: "admin_notification_email_not_configured",
+      },
+      { status: 201 },
+    );
+  }
+
+  try {
+    await resend.emails.send({
+      from: "PIA <onboarding@resend.dev>",
+      to: adminEmail.trim(),
+      subject: "New waitlist signup",
+      text: `New waitlist entry:\n\nName: ${body.firstName.trim()} ${body.lastName.trim()}\nEmail: ${body.email}\n`,
+    });
+  } catch (err) {
+    console.error("[waitlist] Email notification failed:", err);
+    return NextResponse.json(
+      {
+        success: true,
+        emailSent: false,
+        emailError: "email_send_failed",
+      },
+      { status: 201 },
+    );
+  }
+
+  return NextResponse.json({ success: true, emailSent: true }, { status: 201 });
 }
 
 export async function GET() {
