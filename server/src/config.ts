@@ -2,7 +2,22 @@ import type { LlmProvider } from "./types/index.js";
 
 function parseProvider(value: string | undefined): LlmProvider {
   if (value === "runpod") return "runpod";
+  if (value === "openrouter") return "openrouter";
   return "ollama";
+}
+
+function parseProviderOnly(value: string | undefined): string[] {
+  const raw = value ?? "azure,novita,deepinfra";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+function parseDataCollection(
+  value: string | undefined,
+): "allow" | "deny" {
+  return value === "allow" ? "allow" : "deny";
 }
 
 export const config = {
@@ -55,6 +70,26 @@ export const config = {
     ),
   },
 
+  openrouter: {
+    apiKey: process.env.OPENROUTER_API_KEY ?? "",
+    baseUrl:
+      process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
+    model: process.env.OPENROUTER_MODEL ?? "qwen/qwen2.5-7b-instruct",
+    timeoutMs: parseInt(process.env.OPENROUTER_TIMEOUT_MS ?? "60000", 10),
+    maxTokens: parseInt(process.env.OPENROUTER_MAX_TOKENS ?? "2048", 10),
+    contextWindow: parseInt(
+      process.env.OPENROUTER_CONTEXT_WINDOW ?? "8192",
+      10,
+    ),
+    providerOnly: parseProviderOnly(process.env.OPENROUTER_PROVIDER_ONLY),
+    zdr: process.env.OPENROUTER_ZDR !== "false",
+    dataCollection: parseDataCollection(
+      process.env.OPENROUTER_DATA_COLLECTION,
+    ),
+    siteUrl: process.env.OPENROUTER_SITE_URL ?? "https://doc-analyzer.example.com",
+    appName: process.env.OPENROUTER_APP_NAME ?? "PIA",
+  },
+
   cors: {
     origins: (
       process.env.CORS_ORIGINS ??
@@ -73,3 +108,8 @@ export const config = {
     ttlMs: parseInt(process.env.SESSION_TTL_MS ?? "1800000", 10),
   },
 } as const;
+
+/** True when OpenRouter can be used as primary or RunPod fallback. */
+export function isOpenRouterConfigured(): boolean {
+  return config.openrouter.apiKey.length > 0;
+}

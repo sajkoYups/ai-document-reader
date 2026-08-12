@@ -82,9 +82,9 @@ export default function HomePage() {
               Today, the AI runs{" "}
               <strong className="text-text-primary">in your browser</strong> —
               your document never leaves your device. With{" "}
-              <strong className="text-text-primary">Deep analysis</strong>{" "}
-              (coming soon), we will encrypt your document and analyze it on our
-              side; we do not store it or save it.
+              <strong className="text-text-primary">Deep Analysis</strong>, we
+              encrypt your request and analyze it via privacy-constrained
+              providers; we do not store documents or prompts on PIA systems.
             </p>
             <p>
               When you refresh the browser, everything is cleared. Your
@@ -123,7 +123,12 @@ export default function HomePage() {
               <p className="text-text-secondary text-sm">
                 A stronger, server-side AI model for more capable document
                 analysis. We encrypt your document for processing and never
-                store it. Plans start at{" "}
+                store it on PIA systems; inference uses privacy-constrained
+                providers listed in our{" "}
+                <Link href="/trust-center#ai-subprocessors" className="text-accent underline">
+                  Trust Center
+                </Link>
+                . Plans start at{" "}
                 <strong className="text-text-primary">€9/month</strong>.
               </p>
             </div>

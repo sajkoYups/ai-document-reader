@@ -170,7 +170,11 @@ server/
       session.ts          — POST /api/session/init (ECDH key exchange)
       health.ts           — GET /api/health
     services/
+      llmService.ts       — Deep Analysis facade (ollama | runpod | openrouter + RunPod→OpenRouter fallback)
       ollamaService.ts    — Ollama HTTP client with streaming
+      runpodService.ts    — RunPod OpenAI-compatible vLLM streaming
+      openrouterService.ts — OpenRouter gateway with privacy provider routing
+      openaiCompatibleStream.ts — Shared SSE helpers
       cryptoService.ts    — Server‑side ECDH + AES‑256‑GCM
     middleware/
       encryption.ts       — Decrypt request / encrypt response
@@ -180,11 +184,18 @@ server/
       index.ts
 ```
 
+Deep Analysis provider (`DEEP_ANALYSIS_LLM_PROVIDER`):
+
+* `openrouter` — OpenRouter API (recommended default; allowlist `azure,novita,deepinfra`, `data_collection=deny`, ZDR when available)
+* `runpod` — Self-hosted vLLM; falls back to OpenRouter if pods are down and `OPENROUTER_API_KEY` is set
+* `ollama` — Local/dev
+
 Zero‑persistence guarantees:
-* No database, no file writes, no Redis
+* No document/prompt database writes (usage metering is aggregate counts only)
 * Request bodies never logged
 * Session keys held in memory with TTL (default 30 min)
 * Expired keys overwritten with zeros before deletion
+* AI provider keys server-side only (never `NEXT_PUBLIC_*`)
 
 ---
 
@@ -196,7 +207,7 @@ Zero‑persistence guarantees:
 4. Both derive the same shared secret via ECDH
 5. Shared secret → HKDF (SHA‑256) → AES‑256‑GCM key
 6. All request payloads encrypted with AES‑256‑GCM + random IV per message
-7. Server decrypts, processes via Ollama, encrypts response tokens
+7. Server decrypts, processes via the configured Deep Analysis provider (Ollama / RunPod / OpenRouter), encrypts response tokens
 8. Response streamed back as encrypted SSE events
 9. Client decrypts each chunk and renders tokens
 

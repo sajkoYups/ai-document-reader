@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config, isOpenRouterConfigured } from "../config.js";
 import { assertDeepInferenceWithinContext } from "../contextBudget.js";
 import type { OutputLanguage, TaskType } from "../types/index.js";
 import {
@@ -6,9 +6,71 @@ import {
   streamInference as streamOllamaInference,
 } from "./ollamaService.js";
 import {
+  checkOpenrouterHealth,
+  openOpenrouterChatCompletion,
+  streamOpenrouterFromResponse,
+  streamOpenrouterInference,
+} from "./openrouterService.js";
+import {
   checkRunpodHealth,
-  streamRunpodInference,
+  openRunpodChatCompletion,
+  streamRunpodFromResponse,
 } from "./runpodService.js";
+
+async function* streamRunpodWithOpenRouterFallback(
+  taskType: TaskType,
+  documentText: string,
+  userMessage: string | undefined,
+  conversationHistory:
+    | Array<{ role: "user" | "assistant"; content: string }>
+    | undefined,
+  outputLanguage: OutputLanguage,
+): AsyncGenerator<string> {
+  const canFallback = isOpenRouterConfigured();
+
+  // Prefer a quick health check; if RunPod is down, skip straight to OpenRouter.
+  if (canFallback) {
+    const runpodOk = await checkRunpodHealth();
+    if (!runpodOk) {
+      console.warn(
+        "Deep Analysis: RunPod unavailable, using OpenRouter fallback",
+      );
+      yield* streamOpenrouterInference(
+        taskType,
+        documentText,
+        userMessage,
+        conversationHistory,
+        outputLanguage,
+      );
+      return;
+    }
+  }
+
+  try {
+    const response = await openRunpodChatCompletion(
+      taskType,
+      documentText,
+      userMessage,
+      conversationHistory,
+      outputLanguage,
+    );
+    yield* streamRunpodFromResponse(response);
+  } catch (error) {
+    if (!canFallback) throw error;
+    console.warn(
+      "Deep Analysis: RunPod request failed before stream, using OpenRouter fallback",
+    );
+    // Open a fresh OpenRouter request (do not reuse any partial RunPod body).
+    const response = await openOpenrouterChatCompletion(
+      taskType,
+      documentText,
+      userMessage,
+      conversationHistory,
+      outputLanguage,
+    );
+    yield* streamOpenrouterFromResponse(response);
+  }
+}
 
 export async function* streamDeepInference(
   taskType: TaskType,
@@ -25,8 +87,19 @@ export async function* streamDeepInference(
     outputLanguage,
   );
 
+  if (config.deepAnalysis.provider === "openrouter") {
+    yield* streamOpenrouterInference(
+      taskType,
+      documentText,
+      userMessage,
+      conversationHistory,
+      outputLanguage,
+    );
+    return;
+  }
+
   if (config.deepAnalysis.provider === "runpod") {
-    yield* streamRunpodInference(
+    yield* streamRunpodWithOpenRouterFallback(
       taskType,
       documentText,
       userMessage,
@@ -46,8 +119,16 @@ export async function* streamDeepInference(
 }
 
 export async function checkDeepProviderHealth(): Promise<boolean> {
+  if (config.deepAnalysis.provider === "openrouter") {
+    return checkOpenrouterHealth();
+  }
   if (config.deepAnalysis.provider === "runpod") {
-    return checkRunpodHealth();
+    const runpodOk = await checkRunpodHealth();
+    if (runpodOk) return true;
+    if (isOpenRouterConfigured()) {
+      return checkOpenrouterHealth();
+    }
+    return false;
   }
   return checkOllamaHealth();
 }

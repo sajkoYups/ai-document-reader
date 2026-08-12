@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAiStore } from "@/store/aiStore";
 import Modal from "./Modal";
 
@@ -37,28 +38,42 @@ export default function PrivacyBadge() {
               <p>
                 In Deep Analysis mode your document is{" "}
                 <strong className="text-text-primary">encrypted</strong> before
-                it leaves your device. The server processes it in memory only and{" "}
-                <strong className="text-text-primary">does not save</strong> your
-                document or any results.
+                it leaves your device. Our API decrypts it in memory only to run
+                inference via privacy-constrained AI providers. We{" "}
+                <strong className="text-text-primary">do not save</strong> your
+                document, prompts, or results in our database.
               </p>
               <ul className="space-y-2 pl-4">
                 <li className="flex items-start gap-2">
                   <span className="text-accent mt-0.5">&#10003;</span>
-                  End-to-end encryption: only your browser can decrypt the data
+                  Encrypted in transit to PIA; session keys stay in your browser
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-accent mt-0.5">&#10003;</span>
-                  Server processes in memory only — no database, no file storage
+                  PIA processes in memory only — no document or prompt storage
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-accent mt-0.5">&#10003;</span>
-                  Nothing is written to disk or persisted after the request
+                  Inference providers see plaintext only for the request, under
+                  their published policies
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-accent mt-0.5">&#10003;</span>
                   Session keys expire and are overwritten after a short time
                 </li>
               </ul>
+              <p>
+                Details on OpenRouter, Azure, Novita AI, DeepInfra, and optional
+                RunPod are in our{" "}
+                <Link
+                  href="/trust-center#ai-subprocessors"
+                  className="text-accent underline"
+                  onClick={() => setShowModal(false)}
+                >
+                  Trust Center
+                </Link>
+                .
+              </p>
             </div>
           ) : (
             <div className="space-y-3 text-text-secondary text-sm leading-relaxed">

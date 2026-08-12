@@ -39,8 +39,9 @@ export default function HowDoesItWorkPage() {
           You add your document by pasting text or uploading a file. We support
           PDF, plain text, and Markdown. Once the document is in the app, it is
           processed locally in your browser so we can find the right parts to
-          send to the AI — or, with Deep analysis (coming soon), we encrypt it
-          and run the analysis on our side. Either way, you stay in control.
+          send to the AI — or, with Deep Analysis, we encrypt the request and run
+          a stronger model via privacy-constrained providers. Either way, you
+          stay in control.
         </p>
         <p>
           You then choose what you want:{" "}
@@ -61,12 +62,16 @@ export default function HowDoesItWorkPage() {
           or training on it.
         </p>
         <p>
-          If you use an API or the future Deep analysis feature, we send your
-          document (or an encrypted form of it) to a server to get a faster or
-          more capable response. In those cases we still do not store or retain
-          your document. We process it and return the answer; we don’t keep
-          copies or use it for training. When you’re done, refreshing the page
-          clears everything from the app.
+          If you use Deep Analysis, we encrypt your request to our API, process
+          it in memory, and send only what is needed to privacy-constrained AI
+          providers listed in our{" "}
+          <a href="/trust-center#ai-subprocessors" className="text-accent underline">
+            Trust Center
+          </a>
+          . We do not store your document or prompts. Providers process content
+          for the request under their published policies; we do not use it for
+          training. When you’re done, refreshing the page clears everything from
+          the app.
         </p>
         <p>
           The app also builds a lightweight search index over your document so
