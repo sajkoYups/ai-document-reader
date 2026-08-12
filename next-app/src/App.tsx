@@ -134,6 +134,12 @@ function AppContent() {
   }, [ai, isSignedIn]);
 
   useEffect(() => {
+    if (isSignedIn) return;
+    if (ai.outputLanguage !== "mk") return;
+    ai.setOutputLanguage("en");
+  }, [isSignedIn, ai]);
+
+  useEffect(() => {
     const isSecure =
       location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
     if (!isSecure) {
@@ -891,6 +897,7 @@ function AppHeaderRight() {
   const { startTour } = useAppOnboarding();
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const canUseMacedonian = isSignedIn === true;
 
   return (
     <div
@@ -928,7 +935,11 @@ function AppHeaderRight() {
       </button>
       <select
         value={ai.outputLanguage}
-        onChange={(e) => ai.setOutputLanguage(e.target.value as OutputLanguage)}
+        onChange={(e) => {
+          const nextLanguage = e.target.value as OutputLanguage;
+          if (nextLanguage === "mk" && !canUseMacedonian) return;
+          ai.setOutputLanguage(nextLanguage);
+        }}
         aria-label="Output language"
         title="Analysis output language"
         className="px-2.5 py-1 text-xs font-medium rounded-md bg-surface-2 border border-border text-text-secondary hover:bg-surface-3 hover:text-text-primary transition-colors cursor-pointer"
@@ -936,12 +947,15 @@ function AppHeaderRight() {
       >
         {(Object.entries(OUTPUT_LANGUAGE_LABELS) as [OutputLanguage, string][]).map(
           ([code, label]) => (
-            <option key={code} value={code}>
+            <option key={code} value={code} disabled={code === "mk" && !canUseMacedonian}>
               {label}
             </option>
           ),
         )}
       </select>
+      {!canUseMacedonian && (
+        <p className="text-[11px] text-text-muted">Sign in to enable Macedonian.</p>
+      )}
       <div data-tour-id="header-mode-toggle">
         <ModeToggle compact />
       </div>

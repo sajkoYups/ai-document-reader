@@ -11,7 +11,7 @@ const sessionInitSchema = z.object({
   }),
 });
 
-const outputLanguageEnum = z.enum(["en", "de", "fr", "cs"]);
+const outputLanguageEnum = z.enum(["en", "de", "fr", "cs", "mk"]);
 
 const analyzeRequestSchema = z.object({
   taskType: z.enum(taskTypes),

@@ -551,6 +551,7 @@ const OUTPUT_LANGUAGE_NAMES: Record<OutputLanguage, string> = {
   de: "German",
   fr: "French",
   cs: "Czech",
+  mk: "Macedonian",
 };
 
 /** Short cue in the target language to prepend to the user message when using English prompt (de/fr/cs use full translated prompt so no cue needed for system, but we can keep for user message). */
@@ -559,6 +560,7 @@ const LANGUAGE_USER_CUE: Record<OutputLanguage, string> = {
   de: "Antworte ausschließlich auf Deutsch. Schreibe die gesamte Antwort auf Deutsch.",
   fr: "Répondez uniquement en français. Écrivez toute la réponse en français.",
   cs: "Odpovídejte pouze česky. Pište celou odpověď česky.",
+  mk: "Одговори исклучиво на македонски. Напиши го целиот одговор на македонски.",
 };
 
 /** Returns the full system prompt for the given task and output language. For de/fr/cs the entire prompt is in that language; for en uses English prompt with a language line. */
@@ -566,6 +568,10 @@ export function getSystemPrompt(taskType: string, outputLanguage: OutputLanguage
   if (outputLanguage === "de") return SYSTEM_PROMPTS_DE[taskType] ?? SYSTEM_PROMPTS_DE.summarize!;
   if (outputLanguage === "fr") return SYSTEM_PROMPTS_FR[taskType] ?? SYSTEM_PROMPTS_FR.summarize!;
   if (outputLanguage === "cs") return SYSTEM_PROMPTS_CS[taskType] ?? SYSTEM_PROMPTS_CS.summarize!;
+  if (outputLanguage === "mk") {
+    const langLine = `CRITICAL: Write your entire response in Macedonian only. Every heading, sentence, bullet, and number must be in Macedonian. Do not use any other language.\n\n`;
+    return langLine + (SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS.summarize!);
+  }
   const langLine = `CRITICAL: Write your entire response in English only. Every heading, sentence, bullet, and number must be in English. Do not use any other language.\n\n`;
   return langLine + (SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS.summarize!);
 }

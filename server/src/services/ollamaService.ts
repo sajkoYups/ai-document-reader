@@ -7,6 +7,7 @@ const LANGUAGE_USER_CUE: Record<OutputLanguage, string> = {
   de: "Antworte ausschließlich auf Deutsch. Schreibe die gesamte Antwort auf Deutsch.",
   fr: "Répondez uniquement en français. Écrivez toute la réponse en français.",
   cs: "Odpovídejte pouze česky. Pište celou odpověď česky.",
+  mk: "Одговори исклучиво на македонски. Напиши го целиот одговор на македонски.",
 };
 
 function getLanguageUserCue(code: OutputLanguage): string {
@@ -537,6 +538,10 @@ function getSystemPrompt(taskType: TaskType, outputLanguage: OutputLanguage): st
   if (outputLanguage === "de") return SYSTEM_PROMPTS_DE[taskType];
   if (outputLanguage === "fr") return SYSTEM_PROMPTS_FR[taskType];
   if (outputLanguage === "cs") return SYSTEM_PROMPTS_CS[taskType];
+  if (outputLanguage === "mk") {
+    const langLine = `CRITICAL: Write your entire response in Macedonian only. Every heading, sentence, bullet, and number must be in Macedonian. Do not use any other language.\n\n`;
+    return langLine + SYSTEM_PROMPTS[taskType];
+  }
   const langLine = `CRITICAL: Write your entire response in English only. Every heading, sentence, bullet, and number must be in English. Do not use any other language.\n\n`;
   return langLine + SYSTEM_PROMPTS[taskType];
 }
