@@ -1,4 +1,17 @@
-export type TaskType = "summarize" | "explain" | "extract" | "draft" | "chat" | "review";
+export type TaskType =
+  | "summarize"
+  | "explain"
+  | "extract"
+  | "draft"
+  | "chat"
+  | "review"
+  | "compare"
+  | "timeline"
+  | "contradictions"
+  | "missing-information"
+  | "evidence-finder"
+  | "action-items"
+  | "document-map";
 
 export type OutputLanguage = "en" | "de" | "fr" | "cs" | "mk";
 
@@ -60,14 +73,40 @@ export function resolveTaskType(
   workflowId: string | undefined,
   taskType: TaskType,
 ): TaskType {
+  if (!workflowId) return taskType;
   if (workflowId === "ask") return "chat";
-  if (workflowId === "review") return "review";
-  if (workflowId === "extract") return "extract";
-  if (workflowId === "summarize") return "summarize";
+  const known: TaskType[] = [
+    "summarize",
+    "review",
+    "extract",
+    "compare",
+    "timeline",
+    "contradictions",
+    "missing-information",
+    "evidence-finder",
+    "action-items",
+    "document-map",
+    "chat",
+    "explain",
+    "draft",
+  ];
+  if (known.includes(workflowId as TaskType)) return workflowId as TaskType;
   return taskType;
 }
 
 export function taskUsesJsonMode(taskType: TaskType, jsonMode?: boolean): boolean {
   if (jsonMode === false) return false;
-  return taskType === "summarize" || taskType === "review" || taskType === "extract";
+  if (jsonMode === true) return true;
+  return (
+    taskType === "summarize" ||
+    taskType === "review" ||
+    taskType === "extract" ||
+    taskType === "compare" ||
+    taskType === "timeline" ||
+    taskType === "contradictions" ||
+    taskType === "missing-information" ||
+    taskType === "evidence-finder" ||
+    taskType === "action-items" ||
+    taskType === "document-map"
+  );
 }

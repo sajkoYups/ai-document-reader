@@ -1,4 +1,17 @@
-export type TaskType = "summarize" | "explain" | "extract" | "draft" | "chat" | "review";
+export type TaskType =
+  | "summarize"
+  | "explain"
+  | "extract"
+  | "draft"
+  | "chat"
+  | "review"
+  | "compare"
+  | "timeline"
+  | "contradictions"
+  | "missing-information"
+  | "evidence-finder"
+  | "action-items"
+  | "document-map";
 
 export type OutputLanguage = "en" | "de" | "fr" | "cs" | "mk";
 

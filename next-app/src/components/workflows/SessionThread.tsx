@@ -25,6 +25,7 @@ interface SessionThreadProps {
   liveValidated: unknown | null;
   liveEvidenceById: Record<string, EvidenceReference>;
   extraQuestions?: string[];
+  documentNames?: Record<string, string>;
   showAskComposer: boolean;
   composerDisabled?: boolean;
   composerDisabledReason?: string;
@@ -49,6 +50,7 @@ export default function SessionThread({
   liveValidated,
   liveEvidenceById,
   extraQuestions,
+  documentNames,
   showAskComposer,
   composerDisabled = false,
   composerDisabledReason,
@@ -137,6 +139,7 @@ export default function SessionThread({
               evidenceById={entry.evidenceById}
               followUpKeys={def?.suggestedFollowUpKeys ?? []}
               extraQuestions={extraQuestions}
+              documentNames={documentNames}
               includeFollowUps={i === lastWorkflowIndex && i === entries.length - 1}
               onRerun={() => onRerun(entry.workflowId, entry.extractType)}
               onAsk={onAsk}
@@ -158,6 +161,7 @@ export default function SessionThread({
             evidenceById={liveEvidenceById}
             followUpKeys={[]}
             includeFollowUps={false}
+            documentNames={documentNames}
             onRerun={() => onRerun(liveWorkflowId, liveExtractType)}
             onStop={onStop}
             onAsk={onAsk}

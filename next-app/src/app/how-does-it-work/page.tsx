@@ -52,7 +52,9 @@ export default function HowDoesItWorkPage() {
           <strong className="text-text-primary">Extract</strong> pulls dates,
           amounts, obligations, and more into tables;{" "}
           <strong className="text-text-primary">Ask</strong> lets you question
-          the document with grounded answers. Results appear next to your doc.
+          the document with grounded answers. You can also
+          <strong className="text-text-primary">Compare</strong> two documents or build a
+          <strong className="text-text-primary">Timeline</strong> across up to three files in a session. Results appear next to your doc.
           No account is required for the standard, in-browser version.
         </p>
         <p>

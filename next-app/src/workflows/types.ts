@@ -157,10 +157,25 @@ export const PRIMARY_WORKFLOW_IDS: WorkflowId[] = [
 ];
 
 export function isJsonWorkflow(id: WorkflowId): boolean {
-  return id === "summarize" || id === "review" || id === "extract";
+  return (
+    id === "summarize" ||
+    id === "review" ||
+    id === "extract" ||
+    id === "compare" ||
+    id === "timeline" ||
+    id === "contradictions" ||
+    id === "missing-information" ||
+    id === "evidence-finder" ||
+    id === "action-items" ||
+    id === "document-map"
+  );
 }
 
 export function workflowToTaskType(id: WorkflowId): string {
   if (id === "ask") return "chat";
   return id;
+}
+
+export function usesMultiPassDeep(id: WorkflowId): boolean {
+  return id === "compare" || id === "review" || id === "contradictions";
 }

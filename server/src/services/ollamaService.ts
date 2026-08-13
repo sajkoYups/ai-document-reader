@@ -3,9 +3,16 @@ import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.
 import { taskUsesJsonMode } from "../types/index.js";
 import {
   ASK_PROMPT_ADDENDUM,
+  ACTION_ITEMS_JSON_PROMPT,
+  COMPARE_JSON_PROMPT,
+  CONTRADICTIONS_JSON_PROMPT,
+  DOCUMENT_MAP_JSON_PROMPT,
+  getEvidenceFinderPrompt,
   getExtractPrompt,
+  MISSING_INFORMATION_JSON_PROMPT,
   REVIEW_JSON_PROMPT,
   SUMMARIZE_JSON_PROMPT,
+  TIMELINE_JSON_PROMPT,
 } from "../workflows/prompts.js";
 
 /** User-message language cue (target language). Empty for English. */
@@ -575,6 +582,15 @@ function getSystemPrompt(
   if (taskType === "extract") {
     return prefix + getExtractPrompt(options?.extractType, options?.customQuery);
   }
+  if (taskType === "compare") return prefix + COMPARE_JSON_PROMPT;
+  if (taskType === "timeline") return prefix + TIMELINE_JSON_PROMPT;
+  if (taskType === "contradictions") return prefix + CONTRADICTIONS_JSON_PROMPT;
+  if (taskType === "missing-information") return prefix + MISSING_INFORMATION_JSON_PROMPT;
+  if (taskType === "evidence-finder") {
+    return prefix + getEvidenceFinderPrompt(options?.customQuery);
+  }
+  if (taskType === "action-items") return prefix + ACTION_ITEMS_JSON_PROMPT;
+  if (taskType === "document-map") return prefix + DOCUMENT_MAP_JSON_PROMPT;
   if (taskType === "chat") {
     return prefix + legacyPrompt("chat", outputLanguage) + "\n\n" + ASK_PROMPT_ADDENDUM;
   }

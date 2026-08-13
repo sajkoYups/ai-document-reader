@@ -57,5 +57,37 @@ export function hasMeaningfulResult(
     );
   }
 
+  if (workflowId === "compare") {
+    return (
+      nonEmptyString(obj.overview) ||
+      nonEmptyArray(obj.similarities) ||
+      nonEmptyArray(obj.differences)
+    );
+  }
+
+  if (workflowId === "timeline") {
+    return nonEmptyString(obj.overview) || nonEmptyArray(obj.events);
+  }
+
+  if (workflowId === "contradictions") {
+    return nonEmptyString(obj.overview) || nonEmptyArray(obj.contradictions);
+  }
+
+  if (workflowId === "missing-information") {
+    return nonEmptyString(obj.overview) || nonEmptyArray(obj.missing);
+  }
+
+  if (workflowId === "evidence-finder") {
+    return nonEmptyString(obj.overview) || nonEmptyArray(obj.passages);
+  }
+
+  if (workflowId === "action-items") {
+    return nonEmptyString(obj.overview) || nonEmptyArray(obj.items);
+  }
+
+  if (workflowId === "document-map") {
+    return nonEmptyString(obj.overview) || nonEmptyArray(obj.sections);
+  }
+
   return true;
 }

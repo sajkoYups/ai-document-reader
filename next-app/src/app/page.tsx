@@ -53,7 +53,7 @@ export default function HomePage() {
               </span>
               <div>
                 <strong className="text-text-primary">Choose a workflow</strong> —
-                Summarize, Review, Extract key information, or Ask questions
+                Summarize, Review, Extract, Compare, Timeline, or Ask — including multi-document sessions
                 about the document. Structured results stream in as they are ready.
               </div>
             </li>

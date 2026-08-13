@@ -3,7 +3,7 @@ import { z } from "zod";
 import { useAiStore } from "@/store/aiStore";
 import { analyzeViaApi } from "@/lib/apiClient";
 import { parsePartialJson, stripFences } from "@/workflows/parsePartial";
-import { getRepairPrompt, getSchemaHint } from "@/workflows/prompts";
+import { getRepairPrompt, getRefinePrompt, getSchemaHint } from "@/workflows/prompts";
 import { hasMeaningfulResult, isDegenerateRawCompletion } from "@/workflows/resultQuality";
 import { workflowToTaskType, type ExtractType, type WorkflowId } from "@/workflows/types";
 import { SummaryResultSchema } from "@/workflows/schemas/summarize";
@@ -107,6 +107,7 @@ export function useWorkflowRun() {
   const [isRepairing, setIsRepairing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastArgs = useRef<RunArgs | null>(null);
+  const lastDataRef = useRef<unknown | null>(null);
   const cancelled = useRef(false);
   const rawRef = useRef("");
 
@@ -188,6 +189,7 @@ export function useWorkflowRun() {
         }
         setValidated(result.data);
         setPartial(result.data);
+        lastDataRef.current = result.data;
         setIsProcessing(false);
         setIsRepairing(false);
         return { ok: true as const, data: result.data };
@@ -218,6 +220,7 @@ export function useWorkflowRun() {
         }
         setValidated(fallback);
         setPartial(fallback);
+        lastDataRef.current = fallback;
         setIsProcessing(false);
         setIsRepairing(false);
         return { ok: true as const, data: fallback };
@@ -367,6 +370,40 @@ export function useWorkflowRun() {
     [streamOnce, processingMode],
   );
 
+  const refine = useCallback(
+    async (extraContext: string) => {
+      const args = lastArgs.current;
+      const draft = lastDataRef.current;
+      if (!args || !draft || cancelled.current) return;
+      if (processingMode !== "api") return { ok: true as const, data: draft };
+
+      setIsRepairing(true);
+      setIsProcessing(true);
+      rawRef.current = "";
+      setRaw("");
+      try {
+        const prompt = getRefinePrompt(JSON.stringify(draft), extraContext);
+        const full = await streamOnce(args, prompt);
+        if (cancelled.current) return;
+        const finished = finishWith(full, args.schema, args.workflowId, "repair");
+        if (finished.ok) return { ok: true as const, data: finished.data };
+        // Keep the first-pass draft if refine fails.
+        setValidated(draft);
+        setPartial(draft);
+        setIsProcessing(false);
+        setIsRepairing(false);
+        return { ok: true as const, data: draft };
+      } catch {
+        setValidated(draft);
+        setPartial(draft);
+        setIsProcessing(false);
+        setIsRepairing(false);
+        return { ok: true as const, data: draft };
+      }
+    },
+    [streamOnce, processingMode],
+  );
+
   const stop = useCallback(() => {
     cancelled.current = true;
     cancelTask();
@@ -380,6 +417,7 @@ export function useWorkflowRun() {
   const reset = useCallback(() => {
     cancelled.current = true;
     rawRef.current = "";
+    lastDataRef.current = null;
     setRaw("");
     setPartial(null);
     setValidated(null);
@@ -400,6 +438,7 @@ export function useWorkflowRun() {
     isRepairing,
     error,
     run,
+    refine,
     stop,
     reset,
     rerun,

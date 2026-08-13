@@ -386,20 +386,21 @@ Documents, workflow outputs, and chat are never persisted — refresh / idle tim
 Document → Action (workflow) → Structured Result → Follow-up (Ask)
 ```
 
-### Phase 1 — Workflow System (current)
+### Phase 1 — Workflow System (shipped)
 
 * Core workflows: **Summarize**, **Review**, **Extract**, **Ask**
-* Compare and Timeline visible but coming soon / disabled
 * Evidence-backed structured streaming (partial JSON → UI; never show broken JSON)
 * Review & Extract require Deep Analysis; Summarize & Ask work in Standard/local
 * Heuristic document classification + recommended workflows (no extra LLM call)
 * Capability gate with explicit “Continue privately” (no silent mode switch)
 
-### Phase 2 — Multi-document & deeper analysis
+### Phase 2 — Multi-document & deeper analysis (current)
 
-* Compare and Timeline (multi-document session)
-* Evidence Finder, contradictions, missing information, action items, document map
-* Stronger multi-pass Deep Analysis retrieval
+* Session of up to **3 documents** (still no persistence)
+* **Compare** (Doc A/B) and **Timeline** (1–3 docs)
+* Advanced: Evidence Finder, contradictions, missing information, action items, document map
+* Multi-pass Deep Analysis retrieval for Compare, Review, and contradictions
+* Legal packs remain coming soon (Phase 3)
 
 ### Phase 3 — Packs, library, builder
 

@@ -6,17 +6,45 @@ import type { ExtractType, EvidenceReference as EvidenceRef, WorkflowId } from "
 import type { SummaryResult } from "@/workflows/schemas/summarize";
 import type { ReviewResult } from "@/workflows/schemas/review";
 import type { ExtractResult } from "@/workflows/schemas/extract";
+import type { ComparisonResult } from "@/workflows/schemas/compare";
+import type { TimelineResult } from "@/workflows/schemas/timeline";
+import type {
+  ActionItemsResult,
+  ContradictionsResult,
+  DocumentMapResult,
+  EvidenceFinderResult,
+  MissingInformationResult,
+} from "@/workflows/schemas/advanced";
 import { SummaryResultSchema } from "@/workflows/schemas/summarize";
 import { ReviewResultSchema } from "@/workflows/schemas/review";
 import { ExtractResultSchema } from "@/workflows/schemas/extract";
+import { ComparisonResultSchema } from "@/workflows/schemas/compare";
+import { TimelineResultSchema } from "@/workflows/schemas/timeline";
+import {
+  ActionItemsResultSchema,
+  ContradictionsResultSchema,
+  DocumentMapResultSchema,
+  EvidenceFinderResultSchema,
+  MissingInformationResultSchema,
+} from "@/workflows/schemas/advanced";
 import { resolveEvidenceIds } from "@/workflows/evidence";
 import { hasMeaningfulResult } from "@/workflows/resultQuality";
+import { getWorkflow } from "@/workflows/registry";
 import { t } from "@/workflows/copy";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import SummaryResultView from "./SummaryResult";
 import ReviewResultView from "./ReviewResult";
 import ExtractionTable from "./ExtractionTable";
+import ComparisonResultView from "./ComparisonResult";
+import TimelineResultView from "./TimelineResult";
+import {
+  ActionItemsResultView,
+  ContradictionsResultView,
+  DocumentMapResultView,
+  EvidenceFinderResultView,
+  MissingInformationResultView,
+} from "./AdvancedResults";
 import { EmptyResult, WorkflowError } from "./EmptyResult";
 import SourceViewer from "./SourceViewer";
 import SuggestedFollowUps from "./SuggestedFollowUps";
@@ -35,10 +63,31 @@ interface WorkflowResultRouterProps {
   followUpKeys: string[];
   extraQuestions?: string[];
   includeFollowUps?: boolean;
+  documentNames?: Record<string, string>;
   onRerun: () => void;
   onStop?: () => void;
   onAsk: (message: string) => void;
   onFollowUp: (text: string) => void;
+}
+
+function parseForWorkflow(workflowId: WorkflowId, incoming: unknown): unknown | null {
+  if (!incoming) return null;
+  const schemas: Partial<Record<WorkflowId, { safeParse: (v: unknown) => { success: boolean; data?: unknown } }>> = {
+    summarize: SummaryResultSchema,
+    review: ReviewResultSchema,
+    extract: ExtractResultSchema,
+    compare: ComparisonResultSchema,
+    timeline: TimelineResultSchema,
+    contradictions: ContradictionsResultSchema,
+    "missing-information": MissingInformationResultSchema,
+    "evidence-finder": EvidenceFinderResultSchema,
+    "action-items": ActionItemsResultSchema,
+    "document-map": DocumentMapResultSchema,
+  };
+  const schema = schemas[workflowId];
+  if (!schema) return null;
+  const parsed = schema.safeParse(incoming);
+  return parsed.success ? parsed.data : null;
 }
 
 export default function WorkflowResultRouter({
@@ -54,6 +103,7 @@ export default function WorkflowResultRouter({
   followUpKeys,
   extraQuestions,
   includeFollowUps = true,
+  documentNames,
   onRerun,
   onStop,
   onAsk,
@@ -63,18 +113,7 @@ export default function WorkflowResultRouter({
   const lastGoodRef = useRef<{ workflowId: WorkflowId; data: unknown } | null>(null);
   const incoming = validated ?? partial;
 
-  let parsedData: unknown | null = null;
-  if (workflowId === "summarize" && incoming) {
-    const parsed = SummaryResultSchema.safeParse(incoming);
-    if (parsed.success) parsedData = parsed.data;
-  } else if (workflowId === "review" && incoming) {
-    const parsed = ReviewResultSchema.safeParse(incoming);
-    if (parsed.success) parsedData = parsed.data;
-  } else if (workflowId === "extract" && incoming) {
-    const parsed = ExtractResultSchema.safeParse(incoming);
-    if (parsed.success) parsedData = parsed.data;
-  }
-
+  const parsedData = parseForWorkflow(workflowId, incoming);
   if (parsedData) {
     lastGoodRef.current = { workflowId, data: parsedData };
   }
@@ -86,8 +125,9 @@ export default function WorkflowResultRouter({
   const data = parsedData ?? sticky;
   const meaningful = data !== null && hasMeaningfulResult(workflowId, data);
   const resolve = (ids: string[]) => resolveEvidenceIds(ids, evidenceById);
+  const def = getWorkflow(workflowId);
+  const title = def ? t(language, def.nameKey) : workflowId;
 
-  // Terminal errors beat hollow shells left by mid-stream aborts.
   if (error && !isProcessing) {
     return <WorkflowError language={language} message={error} onRerun={onRerun} />;
   }
@@ -98,45 +138,108 @@ export default function WorkflowResultRouter({
 
   let body: ReactNode = null;
 
-  if (workflowId === "summarize" && data) {
-    const parsed = SummaryResultSchema.safeParse(data);
-    if (parsed.success && (isProcessing || hasMeaningfulResult("summarize", parsed.data))) {
-      body = (
-        <SummaryResultView
-          language={language}
-          result={parsed.data as SummaryResult}
-          resolveEvidence={resolve}
-          streaming={isProcessing}
-          onOpenEvidence={setSource}
-        />
-      );
-    }
-  } else if (workflowId === "review" && data) {
-    const parsed = ReviewResultSchema.safeParse(data);
-    if (parsed.success && (isProcessing || hasMeaningfulResult("review", parsed.data))) {
-      body = (
-        <ReviewResultView
-          language={language}
-          result={parsed.data as ReviewResult}
-          resolveEvidence={resolve}
-          streaming={isProcessing}
-          onOpenEvidence={setSource}
-        />
-      );
-    }
-  } else if (workflowId === "extract" && data) {
-    const parsed = ExtractResultSchema.safeParse(data);
-    if (parsed.success && (isProcessing || hasMeaningfulResult("extract", parsed.data))) {
-      body = (
-        <ExtractionTable
-          language={language}
-          extractType={extractType}
-          result={parsed.data as ExtractResult}
-          resolveEvidence={resolve}
-          onOpenEvidence={setSource}
-        />
-      );
-    }
+  if (workflowId === "summarize" && data && (isProcessing || hasMeaningfulResult("summarize", data))) {
+    body = (
+      <SummaryResultView
+        language={language}
+        result={data as SummaryResult}
+        resolveEvidence={resolve}
+        streaming={isProcessing}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (workflowId === "review" && data && (isProcessing || hasMeaningfulResult("review", data))) {
+    body = (
+      <ReviewResultView
+        language={language}
+        result={data as ReviewResult}
+        resolveEvidence={resolve}
+        streaming={isProcessing}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (workflowId === "extract" && data && (isProcessing || hasMeaningfulResult("extract", data))) {
+    body = (
+      <ExtractionTable
+        language={language}
+        extractType={extractType}
+        result={data as ExtractResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (workflowId === "compare" && data && (isProcessing || hasMeaningfulResult("compare", data))) {
+    body = (
+      <ComparisonResultView
+        language={language}
+        result={data as ComparisonResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (workflowId === "timeline" && data && (isProcessing || hasMeaningfulResult("timeline", data))) {
+    body = (
+      <TimelineResultView
+        language={language}
+        result={data as TimelineResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+        documentNames={documentNames}
+      />
+    );
+  } else if (workflowId === "contradictions" && data && (isProcessing || hasMeaningfulResult("contradictions", data))) {
+    body = (
+      <ContradictionsResultView
+        language={language}
+        result={data as ContradictionsResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (
+    workflowId === "missing-information" &&
+    data &&
+    (isProcessing || hasMeaningfulResult("missing-information", data))
+  ) {
+    body = (
+      <MissingInformationResultView
+        language={language}
+        result={data as MissingInformationResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (
+    workflowId === "evidence-finder" &&
+    data &&
+    (isProcessing || hasMeaningfulResult("evidence-finder", data))
+  ) {
+    body = (
+      <EvidenceFinderResultView
+        language={language}
+        result={data as EvidenceFinderResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (workflowId === "action-items" && data && (isProcessing || hasMeaningfulResult("action-items", data))) {
+    body = (
+      <ActionItemsResultView
+        language={language}
+        result={data as ActionItemsResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+      />
+    );
+  } else if (workflowId === "document-map" && data && (isProcessing || hasMeaningfulResult("document-map", data))) {
+    body = (
+      <DocumentMapResultView
+        language={language}
+        result={data as DocumentMapResult}
+        resolveEvidence={resolve}
+        onOpenEvidence={setSource}
+      />
+    );
   }
 
   if (!body && isProcessing) {
@@ -163,9 +266,7 @@ export default function WorkflowResultRouter({
     <Card className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-text-muted font-medium tracking-wide uppercase">
-          {isRepairing
-            ? t(language, "run.preparing")
-            : t(language, `workflow.${workflowId}.name`)}
+          {isRepairing ? t(language, "run.preparing") : title}
         </span>
         {isProcessing && onStop ? (
           <Button variant="ghost" size="sm" onClick={onStop}>

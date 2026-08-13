@@ -1,6 +1,20 @@
 import { z } from "zod";
 
-const taskTypes = ["summarize", "explain", "extract", "draft", "chat", "review"] as const;
+const taskTypes = [
+  "summarize",
+  "explain",
+  "extract",
+  "draft",
+  "chat",
+  "review",
+  "compare",
+  "timeline",
+  "contradictions",
+  "missing-information",
+  "evidence-finder",
+  "action-items",
+  "document-map",
+] as const;
 
 const sessionInitSchema = z.object({
   clientPublicKey: z.object({

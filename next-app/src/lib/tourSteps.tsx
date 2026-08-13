@@ -40,7 +40,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Standard vs Deep Analysis
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). Review and Extract require Deep Analysis; Summarize and Ask work in both.
+          Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). Review, Extract, Compare, and most advanced workflows need Deep Analysis; Summarize, Ask, and Document map work on-device.
         </p>
       </div>
     ),
@@ -124,7 +124,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Choose a workflow
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Pick Summarize, Review, Extract, or Ask. Compare and Timeline are coming soon. You can change this any time without reloading your document.
+          Pick Summarize, Review, Extract, Compare, Timeline, or Ask. You can add up to three documents in a session. Change workflows any time without reloading.
         </p>
       </div>
     ),

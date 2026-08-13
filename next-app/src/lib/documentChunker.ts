@@ -8,6 +8,8 @@ export interface DocumentChunk {
   index: number;
   startChar: number;
   endChar: number;
+  documentId?: string;
+  documentName?: string;
 }
 
 /**
@@ -15,9 +17,16 @@ export interface DocumentChunk {
  * paragraph boundaries. Each chunk is roughly CHUNK_TARGET_CHARS long
  * with CHUNK_OVERLAP_CHARS of overlap for continuity.
  */
-export function chunkDocument(text: string): DocumentChunk[] {
+export function chunkDocument(
+  text: string,
+  meta?: { documentId?: string; documentName?: string },
+): DocumentChunk[] {
+  const tag = {
+    documentId: meta?.documentId,
+    documentName: meta?.documentName,
+  };
   if (text.length <= CHUNK_TARGET_CHARS) {
-    return [{ text, index: 0, startChar: 0, endChar: text.length }];
+    return [{ text, index: 0, startChar: 0, endChar: text.length, ...tag }];
   }
 
   const chunks: DocumentChunk[] = [];
@@ -45,6 +54,7 @@ export function chunkDocument(text: string): DocumentChunk[] {
       index,
       startChar: cursor,
       endChar: end,
+      ...tag,
     });
 
     index++;
@@ -57,6 +67,7 @@ export function chunkDocument(text: string): DocumentChunk[] {
           index,
           startChar: cursor,
           endChar: text.length,
+          ...tag,
         });
       }
       break;

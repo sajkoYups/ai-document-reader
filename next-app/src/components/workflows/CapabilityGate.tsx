@@ -1,17 +1,29 @@
 "use client";
 
 import type { OutputLanguage } from "@/types";
+import type { WorkflowId } from "@/workflows/types";
 import { t } from "@/workflows/copy";
 import Button from "@/components/Button";
 import Modal from "@/components/Modal";
 
 interface CapabilityGateProps {
   open: boolean;
-  workflowId: "review" | "extract";
+  workflowId: WorkflowId;
   language: OutputLanguage;
   onContinue: () => void;
   onCancel: () => void;
 }
+
+const TITLE_KEYS: Partial<Record<WorkflowId, string>> = {
+  review: "gate.review.title",
+  extract: "gate.extract.title",
+  compare: "gate.compare.title",
+  timeline: "gate.timeline.title",
+  contradictions: "gate.contradictions.title",
+  "missing-information": "gate.missingInformation.title",
+  "evidence-finder": "gate.evidenceFinder.title",
+  "action-items": "gate.actionItems.title",
+};
 
 export default function CapabilityGate({
   open,
@@ -20,7 +32,7 @@ export default function CapabilityGate({
   onContinue,
   onCancel,
 }: CapabilityGateProps) {
-  const titleKey = workflowId === "extract" ? "gate.extract.title" : "gate.review.title";
+  const titleKey = TITLE_KEYS[workflowId] ?? "gate.generic.title";
 
   return (
     <Modal open={open} onClose={onCancel}>

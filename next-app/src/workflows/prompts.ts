@@ -108,6 +108,102 @@ export const ASK_PROMPT_ADDENDUM = `When the document supports your answer, pref
 If you can point to a passage, mention it in plain language (page or section if shown in the document markers).
 Do not invent citations.`;
 
+export const COMPARE_JSON_PROMPT = `You are a careful document comparison assistant. Compare Document A and Document B using only the provided text.
+Markers may look like A-E1 or B-E2. Put those markers in evidenceIds. Prefer wording like "items requiring attention" — do not claim legal or financial risk.
+
+${JSON_RULES}
+
+JSON shape:
+{
+  "overview": "1-2 sentences on how the documents relate",
+  "similarities": [{ "text": "", "side": "both", "evidenceIds": ["A-E1", "B-E1"] }],
+  "differences": [{ "text": "", "side": "a" | "b" | "both", "evidenceIds": ["A-E1"] }],
+  "attention": [{ "text": "", "side": "a" | "b" | "both", "evidenceIds": ["B-E2"] }]
+}
+
+Include the most important similarities and differences. Use side "a" or "b" when the point mainly belongs to one document.`;
+
+export const TIMELINE_JSON_PROMPT = `You are a document timeline assistant. Extract dated events in chronological order.
+If a date is uncertain, say so (Approximate, Unknown, Before X, After X). Never invent an exact date.
+When multiple documents are present, set documentId to the document id shown in the markers if available.
+
+${JSON_RULES}
+
+JSON shape:
+{
+  "overview": "short description of the timeline",
+  "events": [{ "date": "", "label": "", "description": "", "documentId": "", "evidenceIds": ["E1"] }]
+}`;
+
+export const CONTRADICTIONS_JSON_PROMPT = `You find statements that appear inconsistent within the document. Prefer "appears inconsistent" — do not claim legal conclusions.
+
+${JSON_RULES}
+
+JSON shape:
+{
+  "overview": "",
+  "contradictions": [{
+    "id": "c1",
+    "title": "",
+    "claimA": "",
+    "claimB": "",
+    "explanation": "",
+    "confidence": "low" | "medium" | "high",
+    "evidenceIds": ["E1", "E2"],
+    "suggestedQuestion": ""
+  }]
+}`;
+
+export const MISSING_INFORMATION_JSON_PROMPT = `You identify information that appears absent or incomplete for this kind of document. Do not invent requirements that the document type never needs. Prefer calm wording.
+
+${JSON_RULES}
+
+JSON shape:
+{
+  "overview": "",
+  "missing": [{
+    "id": "m1",
+    "title": "",
+    "explanation": "",
+    "importance": "low" | "medium" | "high",
+    "evidenceIds": ["E1"],
+    "suggestedQuestion": ""
+  }]
+}`;
+
+export function getEvidenceFinderPrompt(customQuery?: string): string {
+  return `You locate every relevant passage for this request: ${customQuery || "find the most important supporting passages"}.
+
+${JSON_RULES}
+
+JSON shape:
+{
+  "overview": "",
+  "query": ${JSON.stringify(customQuery || "")},
+  "passages": [{ "id": "p1", "title": "", "passage": "short quote", "whyRelevant": "", "evidenceIds": ["E1"] }]
+}`;
+}
+
+export const ACTION_ITEMS_JSON_PROMPT = `Turn the document into concrete action items. Never invent an owner or deadline — use "Not specified" when absent.
+
+${JSON_RULES}
+
+JSON shape:
+{
+  "overview": "",
+  "items": [{ "action": "", "owner": "Not specified", "deadline": "Not specified", "evidenceIds": ["E1"] }]
+}`;
+
+export const DOCUMENT_MAP_JSON_PROMPT = `Produce a structured outline of the document. Prefer real section headings from the text.
+
+${JSON_RULES}
+
+JSON shape:
+{
+  "overview": "",
+  "sections": [{ "heading": "", "summary": "1-2 sentences", "evidenceIds": ["E1"] }]
+}`;
+
 /** JSON shape text for repair prompts (not the full system persona). */
 export function getSchemaHint(
   workflowId: WorkflowId,
@@ -118,7 +214,22 @@ export function getSchemaHint(
   if (workflowId === "extract") {
     return getExtractPrompt(extractType ?? "key-information", customQuery);
   }
+  if (workflowId === "compare") return COMPARE_JSON_PROMPT;
+  if (workflowId === "timeline") return TIMELINE_JSON_PROMPT;
+  if (workflowId === "contradictions") return CONTRADICTIONS_JSON_PROMPT;
+  if (workflowId === "missing-information") return MISSING_INFORMATION_JSON_PROMPT;
+  if (workflowId === "evidence-finder") return getEvidenceFinderPrompt(customQuery);
+  if (workflowId === "action-items") return ACTION_ITEMS_JSON_PROMPT;
+  if (workflowId === "document-map") return DOCUMENT_MAP_JSON_PROMPT;
   return SUMMARIZE_JSON_PROMPT;
+}
+
+export function getSystemPromptForWorkflow(
+  workflowId: WorkflowId,
+  extractType?: ExtractType,
+  customQuery?: string,
+): string {
+  return getSchemaHint(workflowId, extractType, customQuery);
 }
 
 export function getRepairPrompt(schemaHint: string, errorMessage: string, previous: string): string {
@@ -134,4 +245,14 @@ ${clipped}
 
 Return ONLY corrected JSON that matches the schema. Keep the same facts. Do not add markdown.
 The JSON must include real content (non-empty overview and/or findings/key points as required).`;
+}
+
+export function getRefinePrompt(draftJson: string, extraContext: string): string {
+  return `You previously produced this draft JSON analysis:
+${draftJson.slice(0, 6000)}
+
+Additional document passages:
+${extraContext.slice(0, 8000)}
+
+Return ONLY improved JSON in the same schema. Keep correct facts, add support from the new passages where relevant, and do not invent content.`;
 }

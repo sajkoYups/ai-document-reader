@@ -54,23 +54,23 @@ import { TourProvider } from "@reactour/tour";
 import { ONBOARDING_STEPS } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
 import AnalyzerEmptyState from "./components/workflows/AnalyzerEmptyState";
-import DocumentReadyBar from "./components/workflows/DocumentReadyBar";
+import DocumentStrip from "./components/workflows/DocumentStrip";
 import WorkflowSelector from "./components/workflows/WorkflowSelector";
 import ExtractSubmenu from "./components/workflows/ExtractSubmenu";
+import EvidenceFinderQuery from "./components/workflows/EvidenceFinderQuery";
 import MoreWorkflowsModal from "./components/workflows/MoreWorkflowsModal";
 import CapabilityGate from "./components/workflows/CapabilityGate";
 import ClassificationBanner from "./components/workflows/ClassificationBanner";
 import SessionThread from "./components/workflows/SessionThread";
 import { t } from "@/workflows/copy";
 import { classifyDocument, suggestedQuestionsForType } from "@/workflows/classify";
-import { buildLabeledContext } from "@/workflows/evidence";
+import { buildLabeledContext, buildMultiDocLabeledContext } from "@/workflows/evidence";
 import { queryForExtract } from "@/workflows/extractQuery";
 import { getWorkflow, listPrimary } from "@/workflows/registry";
-import { SummaryResultSchema } from "@/workflows/schemas/summarize";
-import { ReviewResultSchema } from "@/workflows/schemas/review";
-import { ExtractResultSchema } from "@/workflows/schemas/extract";
-import type { ExtractType, EvidenceReference, WorkflowId } from "@/workflows/types";
+import { refineQueryFromDraft, schemaForWorkflow } from "@/workflows/schemaFor";
+import { usesMultiPassDeep, type ExtractType, type EvidenceReference, type WorkflowId } from "@/workflows/types";
 import type { DocumentClassification } from "@/workflows/schemas/classify";
+import { MAX_SESSION_DOCUMENTS } from "@/store/documentStore";
 
 function AppContent() {
   const { isSignedIn } = useAuth();
@@ -88,9 +88,10 @@ function AppContent() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowId>("summarize");
   const [extractType, setExtractType] = useState<ExtractType>("key-information");
   const [customExtractQuery, setCustomExtractQuery] = useState("");
+  const [evidenceQuery, setEvidenceQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
-  const [gatedWorkflow, setGatedWorkflow] = useState<"review" | "extract">("review");
+  const [gatedWorkflow, setGatedWorkflow] = useState<WorkflowId>("review");
   const [classification, setClassification] = useState<DocumentClassification | null>(null);
   const [evidenceById, setEvidenceById] = useState<Record<string, EvidenceReference>>({});
   const [debugInfo, setDebugInfo] = useState<RagDebugInfo | null>(null);
@@ -100,7 +101,6 @@ function AppContent() {
   } | null>(null);
   const lastIndexedText = useRef<string>("");
   const modeInitializedRef = useRef<boolean>(false);
-  const replaceInputRef = useRef<HTMLInputElement>(null);
   const pendingWorkflowRef = useRef<WorkflowId | null>(null);
   const extractTypeRef = useRef<ExtractType>(extractType);
   extractTypeRef.current = extractType;
@@ -177,17 +177,25 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const text = doc.rawText.trim();
-    if (text.length > 0 && text !== lastIndexedText.current) {
-      lastIndexedText.current = text;
-      embedding.indexDocument(doc.rawText);
-    } else if (text.length === 0 && lastIndexedText.current !== "") {
+    const docs = useDocumentStore.getState().documents;
+    if (docs.length === 0) {
       lastIndexedText.current = "";
       embedding.clear();
+      return;
     }
-  }, [doc.rawText]); // eslint-disable-line react-hooks/exhaustive-deps
+    const signature = docs.map((d) => `${d.id}:${d.rawText.length}`).join("|");
+    if (signature === lastIndexedText.current) return;
+    lastIndexedText.current = signature;
+    for (const d of docs) {
+      embedding.indexDocument(d.rawText, {
+        documentId: d.id,
+        documentName: d.fileName ?? "Document",
+      });
+    }
+    if (doc.documentId) embedding.setActiveDocument(doc.documentId);
+  }, [doc.documents, doc.documentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasDocument = doc.rawText.trim().length > 0;
+  const hasDocument = doc.documents.length > 0;
   const isAsk = selectedWorkflow === "ask";
   const selectedDef = getWorkflow(selectedWorkflow);
 
@@ -237,14 +245,22 @@ function AppContent() {
           return;
         }
 
-        doc.setFromFile(text, file.name, fileType, { pageCount, pages });
-        useSessionStore.getState().clear();
-        useChatStore.getState().clear();
-        workflowRun.reset();
+        if (useDocumentStore.getState().documents.length === 0) {
+          doc.setFromFile(text, file.name, fileType, { pageCount, pages });
+          useSessionStore.getState().clear();
+          useChatStore.getState().clear();
+          workflowRun.reset();
+          setEvidenceById({});
+          setDebugInfo(null);
+          setActiveRun(null);
+        } else {
+          const result = doc.addFromFile(text, file.name, fileType, { pageCount, pages });
+          if (!result.ok) {
+            showToast(result.error, "error");
+            return;
+          }
+        }
         setClassification(null);
-        setEvidenceById({});
-        setDebugInfo(null);
-        setActiveRun(null);
         showToast(`Loaded ${file.name}`, "success");
       } catch {
         doc.setError("Failed to read file. It may be corrupted or encrypted.");
@@ -253,6 +269,77 @@ function AppContent() {
     },
     [doc, workflowRun],
   );
+
+  const loadFileText = async (file: File) => {
+    const sizeError = validateFileSize(file);
+    if (sizeError) {
+      doc.setError(sizeError);
+      showToast(sizeError, "error");
+      return null;
+    }
+    const fileType = getSupportedFileType(file);
+    if (!fileType) {
+      const msg = "Unsupported file type. Please upload a PDF, TXT, or Markdown file.";
+      doc.setError(msg);
+      showToast(msg, "error");
+      return null;
+    }
+    try {
+      let text: string;
+      let pageCount: number | undefined;
+      let pages: { pageNumber: number; startChar: number; endChar: number }[] | undefined;
+      if (fileType === "pdf") {
+        const extracted = await extractTextFromPdf(file);
+        text = extracted.text;
+        pageCount = extracted.pageCount;
+        pages = extracted.pages;
+      } else {
+        text = await file.text();
+      }
+      if (!text.trim()) {
+        doc.setError("Could not extract text from this file.");
+        return null;
+      }
+      return { text, fileType, pageCount, pages };
+    } catch {
+      doc.setError("Failed to read file. It may be corrupted or encrypted.");
+      showToast("Failed to read file", "error");
+      return null;
+    }
+  };
+
+  const handleAddFile = useCallback(async (file: File) => {
+    if (useDocumentStore.getState().documents.length >= MAX_SESSION_DOCUMENTS) {
+      showToast(t(language, "doc.maxReached"), "info");
+      return;
+    }
+    const loaded = await loadFileText(file);
+    if (!loaded) return;
+    const result = doc.addFromFile(loaded.text, file.name, loaded.fileType, {
+      pageCount: loaded.pageCount,
+      pages: loaded.pages,
+    });
+    if (!result.ok) {
+      showToast(result.error, "error");
+      return;
+    }
+    showToast(`Added ${file.name}`, "success");
+  }, [doc, language]);
+
+  const handleReplaceFile = useCallback(async (id: string, file: File) => {
+    const loaded = await loadFileText(file);
+    if (!loaded) return;
+    doc.replaceDocument(id, loaded.text, file.name, loaded.fileType, {
+      pageCount: loaded.pageCount,
+      pages: loaded.pages,
+    });
+    embedding.removeDocument(id);
+    embedding.indexDocument(loaded.text, {
+      documentId: id,
+      documentName: file.name,
+    });
+    showToast(`Replaced with ${file.name}`, "success");
+  }, [doc, embedding]);
 
   const MAX_DIRECT_CHARS = 10000;
 
@@ -267,11 +354,7 @@ function AppContent() {
     doc.rawText.length > MAX_DIRECT_CHARS &&
     (embedding.status === "loading-model" || embedding.status === "indexing");
 
-  const schemaFor = (id: WorkflowId) => {
-    if (id === "review") return ReviewResultSchema;
-    if (id === "extract") return ExtractResultSchema;
-    return SummaryResultSchema;
-  };
+  const schemaFor = schemaForWorkflow;
 
   const handleRun = useCallback(async (overrides?: {
     workflowId?: WorkflowId;
@@ -303,42 +386,130 @@ function AppContent() {
       return;
     }
 
-    const totalDocChars = doc.rawText.length;
-    const totalDocChunks = embedding.chunks.length;
-    const isShortDoc = totalDocChars <= MAX_DIRECT_CHARS;
-    const documentName = doc.fileName ?? "Document";
+    if (def.minDocuments > doc.documents.length) {
+      showToast(t(language, "doc.needTwo"), "info");
+      return;
+    }
+
+    const state = useDocumentStore.getState();
+    const active = state.getActive();
+    if (!active) return;
+
+    if (workflowId === "compare") {
+      state.ensureCompareRoles();
+    }
+    const roles = useDocumentStore.getState().compareRoles;
+
+    let labeledText = "";
+    let evidenceSnapshot: Record<string, EvidenceReference> = {};
     let chunks: DocumentChunk[] = [];
     let method: RagDebugInfo["method"] = "direct";
     let query: string | undefined;
+    let totalDocChars = active.rawText.length;
+    let totalDocChunks = embedding.chunks.length;
 
     try {
-      if (isShortDoc || embedding.chunks.length === 0) {
-        chunks = embedding.chunks.length > 0 ? embedding.chunks : [
-          { text: doc.rawText, index: 0, startChar: 0, endChar: doc.rawText.length },
-        ];
-        method = "direct";
-      } else if (workflowId === "extract") {
-        query = queryForExtract(runExtractType, customExtractQuery);
-        chunks = await embedding.retrieveChunksHybrid(query, EXTRACT_TOP_K, { useMMR: false });
-        method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
-      } else {
-        chunks = embedding.getSpreadChunks(MAX_DIRECT_CHARS, doc.sections);
+      if (workflowId === "compare") {
+        const a = roles.a ? state.getById(roles.a) : null;
+        const b = roles.b ? state.getById(roles.b) : null;
+        if (!a || !b) {
+          showToast(t(language, "doc.needTwo"), "info");
+          return;
+        }
+        totalDocChars = a.rawText.length + b.rawText.length;
+        const spread = embedding.getSpreadChunksForDocs(MAX_DIRECT_CHARS, [
+          { id: a.id, sections: a.sections },
+          { id: b.id, sections: b.sections },
+        ]);
+        chunks = spread;
         method = "spread";
+        const labeled = buildMultiDocLabeledContext(
+          [
+            {
+              documentId: a.id,
+              documentName: a.fileName ?? "Document A",
+              pages: a.pages,
+              sections: a.sections,
+              chunks: spread.filter((c) => c.documentId === a.id),
+              idPrefix: "A",
+            },
+            {
+              documentId: b.id,
+              documentName: b.fileName ?? "Document B",
+              pages: b.pages,
+              sections: b.sections,
+              chunks: spread.filter((c) => c.documentId === b.id),
+              idPrefix: "B",
+            },
+          ],
+          MAX_DIRECT_CHARS,
+        );
+        labeledText = labeled.text;
+        evidenceSnapshot = labeled.evidenceById;
+      } else if (workflowId === "timeline" && state.documents.length > 1) {
+        totalDocChars = state.documents.reduce((s, d) => s + d.rawText.length, 0);
+        const spread = embedding.getSpreadChunksForDocs(
+          MAX_DIRECT_CHARS,
+          state.documents.map((d) => ({ id: d.id, sections: d.sections })),
+        );
+        chunks = spread;
+        method = "spread";
+        const labeled = buildMultiDocLabeledContext(
+          state.documents.map((d) => ({
+            documentId: d.id,
+            documentName: d.fileName ?? "Document",
+            pages: d.pages,
+            sections: d.sections,
+            chunks: spread.filter((c) => c.documentId === d.id),
+          })),
+          MAX_DIRECT_CHARS,
+        );
+        labeledText = labeled.text;
+        evidenceSnapshot = labeled.evidenceById;
+      } else {
+        const isShortDoc = active.rawText.length <= MAX_DIRECT_CHARS;
+        const activeChunks = embedding.indexes[active.id]?.chunks ?? embedding.chunks;
+        totalDocChunks = activeChunks.length;
+        if (isShortDoc || activeChunks.length === 0) {
+          chunks = activeChunks.length > 0
+            ? activeChunks
+            : [{ text: active.rawText, index: 0, startChar: 0, endChar: active.rawText.length, documentId: active.id, documentName: active.fileName ?? "Document" }];
+          method = "direct";
+        } else if (workflowId === "extract") {
+          query = queryForExtract(runExtractType, customExtractQuery);
+          chunks = await embedding.retrieveChunksHybrid(query, EXTRACT_TOP_K, {
+            useMMR: false,
+            documentIds: [active.id],
+          });
+          method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
+        } else if (workflowId === "evidence-finder") {
+          query = evidenceQuery.trim() || "key passages evidence";
+          chunks = await embedding.retrieveChunksHybrid(query, EXTRACT_TOP_K, {
+            useMMR: false,
+            documentIds: [active.id],
+          });
+          method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
+        } else {
+          chunks = embedding.getSpreadChunks(MAX_DIRECT_CHARS, active.sections, active.id);
+          method = "spread";
+        }
+        const labeled = buildLabeledContext(
+          chunks,
+          active.pages,
+          active.sections,
+          active.id,
+          active.fileName ?? "Document",
+          MAX_DIRECT_CHARS,
+        );
+        labeledText = labeled.text;
+        evidenceSnapshot = labeled.evidenceById;
       }
     } catch {
       chunks = embedding.chunks.slice(0, 8);
       method = "fallback";
+      labeledText = active.rawText;
     }
 
-    const labeled = buildLabeledContext(
-      chunks,
-      doc.pages,
-      doc.sections,
-      doc.documentId,
-      documentName,
-      MAX_DIRECT_CHARS,
-    );
-    const evidenceSnapshot = { ...labeled.evidenceById };
     setEvidenceById(evidenceSnapshot);
     setActiveRun({
       workflowId,
@@ -350,7 +521,7 @@ function AppContent() {
       retrievedChunks: chunks,
       contextMeta: {
         chunksIncluded: chunks.length,
-        totalChars: labeled.text.length,
+        totalChars: labeledText.length,
         truncatedChunks: 0,
         gapMarkers: 0,
       },
@@ -359,22 +530,60 @@ function AppContent() {
       timestamp: Date.now(),
     });
 
-    const documentId = doc.documentId;
-    const outcome = await workflowRun.run({
+    const documentId = active.id;
+    const customQuery =
+      workflowId === "extract"
+        ? customExtractQuery
+        : workflowId === "evidence-finder"
+          ? evidenceQuery
+          : undefined;
+    let outcome = await workflowRun.run({
       workflowId,
-      documentText: labeled.text || doc.rawText,
+      documentText: labeledText || active.rawText,
       schema: schemaFor(workflowId),
       extractType: workflowId === "extract" ? runExtractType : undefined,
-      customQuery: workflowId === "extract" ? customExtractQuery : undefined,
+      customQuery,
     });
     if (!outcome) {
       setActiveRun(null);
       return;
     }
-    if (useDocumentStore.getState().documentId !== documentId) {
+    if (useDocumentStore.getState().getActive()?.id !== documentId) {
       setActiveRun(null);
       return;
     }
+
+    if (
+      outcome.ok &&
+      usesMultiPassDeep(workflowId) &&
+      ai.processingMode === "api"
+    ) {
+      try {
+        const refineQ = refineQueryFromDraft(workflowId, outcome.data);
+        const more = await embedding.retrieveChunksHybrid(refineQ, EXTRACT_TOP_K, {
+          useMMR: false,
+          documentIds:
+            workflowId === "compare" && roles.a && roles.b
+              ? [roles.a, roles.b]
+              : [documentId],
+        });
+        const refineLabeled = buildLabeledContext(
+          more,
+          active.pages,
+          active.sections,
+          active.id,
+          active.fileName ?? "Document",
+          Math.floor(MAX_DIRECT_CHARS / 2),
+        );
+        evidenceSnapshot = { ...evidenceSnapshot, ...refineLabeled.evidenceById };
+        setEvidenceById(evidenceSnapshot);
+        const refined = await workflowRun.refine(refineLabeled.text);
+        if (refined?.ok) outcome = refined;
+      } catch {
+        // Keep first-pass outcome.
+      }
+    }
+
     useSessionStore.getState().appendWorkflow({
       workflowId,
       extractType: workflowId === "extract" ? runExtractType : undefined,
@@ -393,6 +602,9 @@ function AppContent() {
     selectedWorkflow,
     extractType,
     customExtractQuery,
+    evidenceQuery,
+    language,
+    doc.documents,
     doc.rawText,
     doc.sections,
     doc.pages,
@@ -421,10 +633,8 @@ function AppContent() {
       // Capability gate: never silent-switch; prompt the user instead.
       autoRunArmedRef.current = false;
       pendingWorkflowRef.current = selectedWorkflow;
-      if (selectedWorkflow === "review" || selectedWorkflow === "extract") {
-        setGatedWorkflow(selectedWorkflow);
-        setGateOpen(true);
-      }
+      setGatedWorkflow(selectedWorkflow);
+      setGateOpen(true);
       return;
     }
     autoRunArmedRef.current = false;
@@ -671,6 +881,9 @@ function AppContent() {
       if (id === "extract") {
         setExtractType("key-information");
       }
+      if (id === "compare") {
+        useDocumentStore.getState().ensureCompareRoles();
+      }
     },
     [language],
   );
@@ -686,7 +899,7 @@ function AppContent() {
       if (!hasDocument && id !== "ask") {
         autoRunArmedRef.current = true;
       }
-      if (!def.localSupported && processingMode === "local" && (id === "review" || id === "extract")) {
+      if (!def.localSupported && processingMode === "local") {
         pendingWorkflowRef.current = id;
         setGatedWorkflow(id);
         setGateOpen(true);
@@ -795,16 +1008,30 @@ function AppContent() {
       <div className="w-full space-y-4">
         {hasDocument ? (
           <>
-            <DocumentReadyBar
+            <DocumentStrip
               language={language}
-              fileName={doc.fileName}
-              pageCount={doc.pageCount}
-              sectionCount={doc.sections.length}
+              documents={doc.documents}
+              activeDocumentId={doc.activeDocumentId}
               isHosted={processingMode === "api"}
-              onReplace={() => replaceInputRef.current?.click()}
-              onRemove={handleClear}
-              replaceInputRef={replaceInputRef}
-              onFile={handleFile}
+              showCompareRoles={selectedWorkflow === "compare"}
+              compareRoles={doc.compareRoles}
+              onSelect={(id) => {
+                doc.setActive(id);
+                embedding.setActiveDocument(id);
+              }}
+              onAdd={(file) => void handleAddFile(file)}
+              onReplace={(id, file) => void handleReplaceFile(id, file)}
+              onRemove={(id) => {
+                embedding.removeDocument(id);
+                doc.removeDocument(id);
+                if (useDocumentStore.getState().documents.length === 0) {
+                  handleClear();
+                }
+              }}
+              onClearAll={handleClear}
+              onCompareRoleChange={(side, id) => {
+                doc.setCompareRoles({ [side]: id });
+              }}
             />
             {classification ? (
               <ClassificationBanner
@@ -841,6 +1068,15 @@ function AppContent() {
                   }}
                   onCustomQueryChange={setCustomExtractQuery}
                   onRunCustom={() => void handleRun()}
+                />
+              ) : null}
+              {selectedWorkflow === "evidence-finder" ? (
+                <EvidenceFinderQuery
+                  language={language}
+                  value={evidenceQuery}
+                  onChange={setEvidenceQuery}
+                  onRun={() => void handleRun()}
+                  disabled={workflowRun.isProcessing || !hasDocument}
                 />
               ) : null}
               <button
@@ -885,7 +1121,9 @@ function AppContent() {
                           isIndexing ||
                           isOverOnDeviceLimit ||
                           selectedDef?.status !== "ready" ||
-                          session.isGenerating
+                          session.isGenerating ||
+                          (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||
+                          (selectedWorkflow === "evidence-finder" && !evidenceQuery.trim())
                         }
                         className="flex-1"
                         data-tour-id="run-button"
@@ -921,6 +1159,9 @@ function AppContent() {
                     livePartial={workflowRun.partial}
                     liveValidated={workflowRun.validated}
                     liveEvidenceById={evidenceById}
+                    documentNames={Object.fromEntries(
+                      doc.documents.map((d) => [d.id, d.fileName ?? "Document"]),
+                    )}
                     extraQuestions={
                       classification
                         ? suggestedQuestionsForType(classification.type)

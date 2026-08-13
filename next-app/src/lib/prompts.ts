@@ -3,9 +3,11 @@ import type { ExtractType } from "@/workflows/types";
 import {
   ASK_PROMPT_ADDENDUM,
   getExtractPrompt,
+  getSchemaHint,
   REVIEW_JSON_PROMPT,
   SUMMARIZE_JSON_PROMPT,
 } from "@/workflows/prompts";
+import type { WorkflowId } from "@/workflows/types";
 
 export const SYSTEM_PROMPTS: Record<string, string> = {
   summarize: `You are a document summarization assistant. Your job is to produce a short, accurate summary that helps the reader grasp the document quickly.
@@ -603,13 +605,22 @@ export function getSystemPrompt(
   customQuery?: string,
 ): string {
   const prefix = languageLine(outputLanguage);
-  if (taskType === "summarize") return prefix + SUMMARIZE_JSON_PROMPT;
-  if (taskType === "review") return prefix + REVIEW_JSON_PROMPT;
-  if (taskType === "extract") {
-    return prefix + getExtractPrompt(extractType ?? "key-information", customQuery);
-  }
   if (taskType === "chat" || taskType === "ask") {
     return prefix + legacyPrompt("chat", outputLanguage) + "\n\n" + ASK_PROMPT_ADDENDUM;
+  }
+  if (
+    taskType === "summarize" ||
+    taskType === "review" ||
+    taskType === "extract" ||
+    taskType === "compare" ||
+    taskType === "timeline" ||
+    taskType === "contradictions" ||
+    taskType === "missing-information" ||
+    taskType === "evidence-finder" ||
+    taskType === "action-items" ||
+    taskType === "document-map"
+  ) {
+    return prefix + getSchemaHint(taskType as WorkflowId, extractType, customQuery);
   }
   return prefix + legacyPrompt(taskType, outputLanguage);
 }
