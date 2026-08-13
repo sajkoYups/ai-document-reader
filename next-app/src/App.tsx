@@ -629,6 +629,9 @@ function AppContent() {
       autoRunArmedRef.current = false;
       return;
     }
+    if (def.minDocuments > doc.documents.length) {
+      return;
+    }
     if (!def.localSupported && processingMode === "local") {
       // Capability gate: never silent-switch; prompt the user instead.
       autoRunArmedRef.current = false;
@@ -647,6 +650,7 @@ function AppContent() {
     processingMode,
     workflowRun.isProcessing,
     handleRun,
+    doc.documents.length,
   ]);
 
   const handleChatSend = async (message: string) => {
@@ -899,7 +903,11 @@ function AppContent() {
       if (!hasDocument && id !== "ask") {
         autoRunArmedRef.current = true;
       }
-      if (!def.localSupported && processingMode === "local") {
+      const needsMoreDocs = def.minDocuments > doc.documents.length;
+      if (needsMoreDocs) {
+        showToast(t(language, "doc.needTwo"), "info");
+      }
+      if (!needsMoreDocs && !def.localSupported && processingMode === "local") {
         pendingWorkflowRef.current = id;
         setGatedWorkflow(id);
         setGateOpen(true);
@@ -908,7 +916,7 @@ function AppContent() {
       applyWorkflow(id);
       setMoreOpen(false);
     },
-    [applyWorkflow, hasDocument, language, processingMode],
+    [applyWorkflow, doc.documents.length, hasDocument, language, processingMode],
   );
 
   const handleGateContinue = useCallback(() => {

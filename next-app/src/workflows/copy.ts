@@ -22,7 +22,7 @@ const EN: CopyDict = {
   "doc.documents": "documents",
   "doc.compareA": "Doc A",
   "doc.compareB": "Doc B",
-  "doc.needTwo": "Add a second document to compare.",
+  "doc.needTwo": "Compare needs two documents. Add another to continue.",
   "doc.maxReached": "You can add up to 3 documents in a session.",
   "compare.similarities": "Similarities",
   "compare.differences": "Differences",
@@ -232,6 +232,7 @@ const DE: CopyDict = {
   "session.thread": "Analyse",
   "classify.recommended": "Empfohlen",
   "comingSoon": "Demnächst",
+  "doc.needTwo": "Vergleichen benötigt zwei Dokumente. Fügen Sie ein weiteres hinzu, um fortzufahren.",
 };
 
 const FR: CopyDict = {
@@ -258,6 +259,7 @@ const FR: CopyDict = {
   "session.thread": "Analyse",
   "classify.recommended": "Recommandé",
   "comingSoon": "Bientôt",
+  "doc.needTwo": "Comparer nécessite deux documents. Ajoutez-en un autre pour continuer.",
 };
 
 const CS: CopyDict = {
@@ -284,6 +286,7 @@ const CS: CopyDict = {
   "session.thread": "Analýza",
   "classify.recommended": "Doporučeno",
   "comingSoon": "Již brzy",
+  "doc.needTwo": "Porovnání potřebuje dva dokumenty. Přidejte další, abyste mohli pokračovat.",
 };
 
 const MK: CopyDict = {
@@ -310,6 +313,7 @@ const MK: CopyDict = {
   "session.thread": "Анализа",
   "classify.recommended": "Препорачано",
   "comingSoon": "Наскоро",
+  "doc.needTwo": "Спореди бара два документа. Додадете уште еден за да продолжите.",
 };
 
 const COPY: Record<OutputLanguage, CopyDict> = {
