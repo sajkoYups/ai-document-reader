@@ -78,6 +78,10 @@ body {
 .grain {
   position: relative;
 }
+.tour-highlight {
+  pointer-events: none;
+}
+
 .grain::before {
   content: "";
   position: absolute;

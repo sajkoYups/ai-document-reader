@@ -95,10 +95,15 @@ export default function SourcesPanel({
                 variant="ghost"
                 size="sm"
                 onClick={() => addInputRef.current?.click()}
+                data-tour-id="file-upload"
               >
                 {t(language, "doc.add")}
               </Button>
-            ) : null}
+            ) : (
+              <span data-tour-id="file-upload" className="sr-only">
+                {t(language, "workspace.sources")}
+              </span>
+            )}
           </div>
         )}
       </div>

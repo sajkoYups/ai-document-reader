@@ -50,8 +50,8 @@ import DebugPanel, {
   type RagDebugInfo,
   type RetrievalMethod,
 } from "./components/DebugPanel";
-import { TourProvider } from "@reactour/tour";
-import { ONBOARDING_STEPS } from "@/lib/tourSteps";
+import { TourProvider, useTour } from "@reactour/tour";
+import { ONBOARDING_STEPS, mobilePaneForTourStep } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
 import WorkflowSelector from "./components/workflows/WorkflowSelector";
 import SourcesPanel from "./components/workflows/SourcesPanel";
@@ -83,6 +83,7 @@ function AppContent() {
   const workflowRun = useWorkflowRun();
   const session = useSessionStore();
   const language = ai.outputLanguage;
+  const { isOpen: tourOpen, currentStep } = useTour();
 
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowId>("summarize");
   const [extractType, setExtractType] = useState<ExtractType>("key-information");
@@ -99,6 +100,8 @@ function AppContent() {
     extractType?: ExtractType;
   } | null>(null);
   const [mobilePane, setMobilePane] = useState<"workflows" | "sources" | null>(null);
+  const tourPane = tourOpen ? mobilePaneForTourStep(currentStep) : null;
+  const openPane = tourOpen ? tourPane : mobilePane;
   const lastIndexedText = useRef<string>("");
   const modeInitializedRef = useRef<boolean>(false);
   const pendingWorkflowRef = useRef<WorkflowId | null>(null);
@@ -123,6 +126,10 @@ function AppContent() {
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, []);
+
+  useEffect(() => {
+    if (!tourOpen) setMobilePane(null);
+  }, [tourOpen]);
 
   useEffect(() => {
     const isMobile = isLikelyMobileDevice();
@@ -988,7 +995,7 @@ function AppContent() {
         <div className="flex lg:hidden items-center gap-1">
           <WorkspacePaneButton
             label={t(language, "workspace.openWorkflows")}
-            pressed={mobilePane === "workflows"}
+            pressed={openPane === "workflows"}
             onClick={() =>
               setMobilePane((pane) => (pane === "workflows" ? null : "workflows"))
             }
@@ -999,7 +1006,7 @@ function AppContent() {
           </WorkspacePaneButton>
           <WorkspacePaneButton
             label={t(language, "workspace.openSources")}
-            pressed={mobilePane === "sources"}
+            pressed={openPane === "sources"}
             onClick={() =>
               setMobilePane((pane) => (pane === "sources" ? null : "sources"))
             }
@@ -1052,7 +1059,7 @@ function AppContent() {
         ) : null}
 
         <div className="relative flex-1 min-h-0 flex">
-          {mobilePane ? (
+          {openPane && !tourOpen ? (
             <button
               type="button"
               className="absolute inset-0 z-20 bg-black/50 lg:hidden"
@@ -1065,7 +1072,7 @@ function AppContent() {
             className={`
               flex flex-col w-60 shrink-0 border-r border-border bg-surface-0
               max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:shadow-2xl
-              ${mobilePane === "workflows" ? "max-lg:flex" : "max-lg:hidden"}
+              ${openPane === "workflows" ? "max-lg:flex" : "max-lg:hidden"}
               lg:flex
             `}
             data-tour-id="task-selector"
@@ -1115,60 +1122,68 @@ function AppContent() {
                 {t(language, "empty.more")} →
               </button>
             </div>
-            {!isAsk ? (
-              <div className="shrink-0 px-3 py-3 border-t border-border-subtle space-y-2">
-                {ai.modelStatus === "error" ? (
-                  <div className="space-y-2">
-                    <div className="px-3 py-2 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
-                      {ai.error ?? "Failed to load model"}
+            <div
+              className="shrink-0 px-3 py-3 border-t border-border-subtle space-y-2"
+              data-tour-id="run-button"
+            >
+              {isAsk ? (
+                <p className="text-xs text-text-muted leading-snug">
+                  {t(language, "workspace.askHint")}
+                </p>
+              ) : (
+                <>
+                  {ai.modelStatus === "error" ? (
+                    <div className="space-y-2">
+                      <div className="px-3 py-2 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
+                        {ai.error ?? "Failed to load model"}
+                      </div>
+                      <Button variant="secondary" size="lg" onClick={() => ai.loadModel()} className="w-full">
+                        Retry
+                      </Button>
                     </div>
-                    <Button variant="secondary" size="lg" onClick={() => ai.loadModel()} className="w-full">
-                      Retry
+                  ) : null}
+                  {isOnDevice && hasDocument ? (
+                    <p className="text-xs text-text-muted">
+                      ~{estimatedTokens.toLocaleString()} tokens
+                      {isOverOnDeviceLimit ? " · Too long for on-device · Use Deep Analysis." : null}
+                    </p>
+                  ) : null}
+                  {workflowRun.isProcessing ? (
+                    <Button variant="secondary" size="lg" onClick={workflowRun.stop} className="w-full">
+                      {t(language, "run.stop")}
                     </Button>
-                  </div>
-                ) : null}
-                {isOnDevice && hasDocument ? (
-                  <p className="text-xs text-text-muted">
-                    ~{estimatedTokens.toLocaleString()} tokens
-                    {isOverOnDeviceLimit ? " · Too long for on-device · Use Deep Analysis." : null}
-                  </p>
-                ) : null}
-                {workflowRun.isProcessing ? (
-                  <Button variant="secondary" size="lg" onClick={workflowRun.stop} className="w-full">
-                    {t(language, "run.stop")}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={() => {
-                      setMobilePane(null);
-                      void handleRun();
-                    }}
-                    disabled={
-                      !hasDocument ||
-                      !isModelReady ||
-                      !canUseDeepAnalysis ||
-                      isIndexing ||
-                      isOverOnDeviceLimit ||
-                      selectedDef?.status !== "ready" ||
-                      session.isGenerating ||
-                      (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||
-                      (selectedWorkflow === "evidence-finder" && !evidenceQuery.trim()) ||
-                      (selectedWorkflow === "extract" && extractType === "custom" && !customExtractQuery.trim())
-                    }
-                    className="w-full"
-                    data-tour-id="run-button"
-                  >
-                    {!isModelReady
-                      ? t(language, "run.modelLoading")
-                      : isIndexing
-                        ? t(language, "run.preparing")
-                        : `${t(language, "run.label")} ${t(language, selectedDef?.nameKey ?? "workflow.summarize.name")}`}
-                  </Button>
-                )}
-              </div>
-            ) : null}
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={() => {
+                        setMobilePane(null);
+                        void handleRun();
+                      }}
+                      disabled={
+                        !hasDocument ||
+                        !isModelReady ||
+                        !canUseDeepAnalysis ||
+                        isIndexing ||
+                        isOverOnDeviceLimit ||
+                        selectedDef?.status !== "ready" ||
+                        session.isGenerating ||
+                        (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||
+                        (selectedWorkflow === "evidence-finder" && !evidenceQuery.trim()) ||
+                        (selectedWorkflow === "extract" && extractType === "custom" && !customExtractQuery.trim())
+                      }
+                      className="w-full"
+                    >
+                      {!isModelReady
+                        ? t(language, "run.modelLoading")
+                        : isIndexing
+                          ? t(language, "run.preparing")
+                          : `${t(language, "run.label")} ${t(language, selectedDef?.nameKey ?? "workflow.summarize.name")}`}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </aside>
 
           <section
@@ -1249,9 +1264,10 @@ function AppContent() {
             className={`
               flex flex-col w-72 shrink-0 border-l border-border bg-surface-0
               max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30 max-lg:w-80 max-lg:shadow-2xl
-              ${mobilePane === "sources" ? "max-lg:flex" : "max-lg:hidden"}
+              ${openPane === "sources" ? "max-lg:flex" : "max-lg:hidden"}
               lg:flex
             `}
+            data-tour-id="sources-panel"
           >
             <SourcesPanel
               language={language}
@@ -1515,32 +1531,57 @@ export default function App() {
   return (
     <TourProvider
       steps={ONBOARDING_STEPS}
-      padding={8}
+      position="center"
+      padding={{ mask: 8, popover: 10 }}
       scrollSmooth
-      showBadge
+      showBadge={false}
       showCloseButton
       showNavigation
+      disableInteraction
+      highlightedMaskClassName="tour-highlight"
       styles={{
-        // Keep default opacity animation; just use a lighter overlay color via fill.
-        maskWrapper: (base: Record<string, unknown>) => ({ ...base }),
+        maskWrapper: (base: Record<string, unknown>) => ({
+          ...base,
+          opacity: 0.8,
+          color: "#000",
+          zIndex: 10000,
+        }),
         maskArea: (base: Record<string, unknown>) => ({
           ...base,
-          rx: 16,
-          fill: "rgba(10,10,11,0.35)",
+          fill: "black",
+          rx: 12,
+        }),
+        highlightedArea: (base: Record<string, unknown>) => ({
+          ...base,
+          display: "block",
+          fill: "rgba(255, 255, 255, 0.06)",
+          stroke: "var(--color-accent)",
+          strokeWidth: 2,
+          rx: 12,
+          filter: "drop-shadow(0 0 12px rgba(45, 212, 191, 0.65))",
         }),
         popover: (base: Record<string, unknown>) => ({
           ...base,
+          zIndex: 10001,
           backgroundColor: "var(--color-surface-1)",
           color: "var(--color-text-primary)",
           borderRadius: 12,
-          width: "min(92vw, 560px)",
-          maxWidth: "560px",
-          padding: "18px 20px",
+          boxSizing: "border-box",
+          width: "min(calc(100vw - 32px), 400px)",
+          maxWidth: "min(calc(100vw - 32px), 400px)",
+          maxHeight: "calc(100dvh - 32px)",
+          overflowX: "hidden",
+          overflowY: "auto",
+          padding: "20px 20px 16px",
           boxShadow: "0 18px 45px rgba(0,0,0,0.75), 0 0 0 1px var(--color-border)",
           textAlign: "left",
         }),
-        badge: (base: Record<string, unknown>) => ({ ...base, background: "var(--color-accent)" }),
-        close: (base: Record<string, unknown>) => ({ ...base, display: "block" }),
+        close: (base: Record<string, unknown>) => ({
+          ...base,
+          display: "block",
+          top: 16,
+          right: 16,
+        }),
         dot: (base: Record<string, unknown>) => ({ ...base, background: "var(--color-accent)" }),
       } as React.ComponentProps<typeof TourProvider>["styles"]}
     >

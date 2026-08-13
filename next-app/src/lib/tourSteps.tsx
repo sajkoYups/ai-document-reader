@@ -4,7 +4,7 @@ import type { StepType } from "@reactour/tour";
 
 export const ONBOARDING_STEPS: StepType[] = [
   {
-    selector: "body",
+    selector: '[data-tour-id="output-section"]',
     position: "center",
     content: (
       <div className="space-y-2">
@@ -12,14 +12,14 @@ export const ONBOARDING_STEPS: StepType[] = [
           Welcome to PIA
         </h3>
         <p className="text-base text-text-secondary leading-relaxed">
-          This short tour shows how to add a private document, pick a workflow, and read structured results with follow-ups.
+          This workspace has three panes: Workflows on the left, analysis in the center, and Sources on the right. This short tour walks through each.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="header-privacy"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
@@ -33,7 +33,7 @@ export const ONBOARDING_STEPS: StepType[] = [
   },
   {
     selector: '[data-tour-id="header-mode-toggle"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
@@ -47,7 +47,7 @@ export const ONBOARDING_STEPS: StepType[] = [
   },
   {
     selector: '[data-tour-id="header-language"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
@@ -61,7 +61,7 @@ export const ONBOARDING_STEPS: StepType[] = [
   },
   {
     selector: '[data-tour-id="header-account"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
@@ -74,92 +74,64 @@ export const ONBOARDING_STEPS: StepType[] = [
     ),
   },
   {
-    selector: '[data-tour-id="header-tour-button"]',
-    position: "bottom",
+    selector: '[data-tour-id="sources-panel"]',
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
-          Replay this tour
+          Sources
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Use this button any time to re-open the product tour and quickly remind yourself how the app is structured.
-        </p>
-      </div>
-    ),
-  },
-  {
-    selector: '[data-tour-id="file-upload"]',
-    position: "bottom",
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-display text-base text-text-primary">
-          Add your document
-        </h3>
-        <p className="text-sm text-text-secondary leading-relaxed">
-          Add a PDF, TXT, or Markdown file in Sources — or drag and drop it there. We only use it in your current session.
-        </p>
-      </div>
-    ),
-  },
-  {
-    selector: '[data-tour-id="text-input"]',
-    position: "top",
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-display text-base text-text-primary">
-          Or paste text directly
-        </h3>
-        <p className="text-sm text-text-secondary leading-relaxed">
-          You can also paste text in Sources instead of uploading a file. PIA will work from whatever is in this box.
+          Add documents here — upload a PDF, TXT, or Markdown file, or paste text. You can keep up to three in a session. Analysis always uses the sources in this pane.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="task-selector"]',
-    position: "top",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
-          Choose a workflow
+          Workflows
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Workflows live in the left sidebar, like folders. Select one, then click Run. Extract types sit under Extract. You can add up to three documents in Sources.
+          Pick an analysis in the left sidebar. Extract types sit under Extract. More workflows opens the full catalog.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="run-button"]',
-    position: "top",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
           Run the analysis
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          When you&apos;re ready, click Run. Structured results appear as they stream in — key points, findings, or table rows — without waiting for a full JSON dump.
+          When a source is ready, click Run here. Structured results stream into the center pane. Ask uses the composer in the center instead of Run.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="output-section"]',
-    position: "top",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
           Read results and follow up
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Structured results stream into this center pane with clickable evidence. Use Ask or the follow-up bar to dig into anything that needs attention.
+          Summaries, findings, and tables appear in this center canvas with clickable evidence. Use Ask or the follow-up bar to dig into anything that needs attention.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="header-feedback"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
@@ -172,3 +144,15 @@ export const ONBOARDING_STEPS: StepType[] = [
     ),
   },
 ];
+
+export function mobilePaneForTourStep(
+  stepIndex: number,
+): "workflows" | "sources" | null {
+  const selector = ONBOARDING_STEPS[stepIndex]?.selector;
+  if (typeof selector !== "string") return null;
+  if (selector.includes("sources-panel")) return "sources";
+  if (selector.includes("task-selector") || selector.includes("run-button")) {
+    return "workflows";
+  }
+  return null;
+}
