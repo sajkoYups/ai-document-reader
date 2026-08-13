@@ -33,6 +33,7 @@ import { getWorkflow } from "@/workflows/registry";
 import { t } from "@/workflows/copy";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
+import PiaThinkingLogo from "@/components/PiaThinkingLogo";
 import SummaryResultView from "./SummaryResult";
 import ReviewResultView from "./ReviewResult";
 import ExtractionTable from "./ExtractionTable";
@@ -244,10 +245,8 @@ export default function WorkflowResultRouter({
 
   if (!body && isProcessing) {
     body = (
-      <div className="space-y-2">
-        <div className="skeleton h-4 w-full" />
-        <div className="skeleton h-4 w-5/6" />
-        <div className="skeleton h-4 w-4/6" />
+      <div className="flex justify-center py-6">
+        <PiaThinkingLogo size={48} />
       </div>
     );
   }

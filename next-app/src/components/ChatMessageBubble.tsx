@@ -1,22 +1,7 @@
 import type { ChatMessage } from "@/types";
 import type { EvidenceReference as EvidenceRef } from "@/workflows/types";
 import EvidenceReference from "@/components/workflows/results/EvidenceReference";
-
-export function TypingDots() {
-  return (
-    <div className="flex items-center gap-1.5" aria-hidden="true">
-      <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse" />
-      <span
-        className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse"
-        style={{ animationDelay: "0.2s" }}
-      />
-      <span
-        className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse"
-        style={{ animationDelay: "0.4s" }}
-      />
-    </div>
-  );
-}
+import PiaThinkingLogo from "@/components/PiaThinkingLogo";
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -36,7 +21,7 @@ export default function ChatMessageBubble({
     return (
       <div className="flex justify-start">
         <div className="bg-surface-2 rounded-xl rounded-bl-sm px-4 py-3">
-          <TypingDots />
+          <PiaThinkingLogo size={28} label="" />
         </div>
       </div>
     );

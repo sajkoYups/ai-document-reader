@@ -7,6 +7,7 @@ import { t } from "@/workflows/copy";
 import { getWorkflow } from "@/workflows/registry";
 import Button from "@/components/Button";
 import ChatMessageBubble from "@/components/ChatMessageBubble";
+import PiaThinkingLogo from "@/components/PiaThinkingLogo";
 import SourceViewer from "@/components/workflows/results/SourceViewer";
 import WorkflowResultRouter from "@/components/workflows/results/WorkflowResultRouter";
 import type { SessionEntry } from "@/store/sessionStore";
@@ -102,6 +103,7 @@ export default function SessionThread({
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 min-h-0">
         {empty ? (
           <div className="flex flex-col items-center justify-center min-h-[min(420px,60vh)] text-center px-6">
+            <PiaThinkingLogo size={88} label="" className="mb-5" />
             <p className="font-display text-2xl text-text-primary tracking-tight">
               {t(language, "workspace.emptyCanvas")}
             </p>
