@@ -134,7 +134,7 @@ export function useWorkflowRun() {
     if (!nextPartial) return;
     const workflowId = lastArgs.current?.workflowId;
     if (workflowId && !hasMeaningfulResult(workflowId, nextPartial)) {
-      setPartial((prev) => prev ?? nextPartial);
+      setPartial((prev: unknown | null) => prev ?? nextPartial);
       return;
     }
     setPartial(nextPartial);
