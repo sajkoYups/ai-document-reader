@@ -11,6 +11,9 @@ interface LayoutProps {
   inferenceDevice?: "webgpu" | "wasm" | null;
   /** Optional slot for header right (e.g. mode toggle + auth + privacy badge) */
   headerRight?: ReactNode;
+  /** Optional controls before the brand (e.g. mobile pane toggles) */
+  headerStart?: ReactNode;
+  variant?: "default" | "workspace";
 }
 
 const statusLabel: Record<ModelStatus, { text: string; color: string }> = {
@@ -26,16 +29,30 @@ export default function Layout({
   modelStatus,
   inferenceDevice,
   headerRight,
+  headerStart,
+  variant = "default",
 }: LayoutProps) {
   const status = statusLabel[modelStatus];
   const deviceLabel = inferenceDevice === "webgpu" ? "GPU" : inferenceDevice === "wasm" ? "CPU" : null;
+  const isWorkspace = variant === "workspace";
 
   return (
-    <div className="min-h-screen bg-surface-0 grain flex flex-col overflow-x-clip">
+    <div
+      className={
+        isWorkspace
+          ? "h-dvh bg-surface-0 grain flex flex-col overflow-hidden"
+          : "min-h-screen bg-surface-0 grain flex flex-col overflow-x-clip"
+      }
+    >
       {/* Header */}
       <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-surface-0/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 min-h-14 py-3 flex items-center justify-between flex-wrap gap-y-2">
+        <div
+          className={`px-4 md:px-6 min-h-14 py-3 flex items-center justify-between flex-wrap gap-y-2 ${
+            isWorkspace ? "w-full" : "max-w-7xl mx-auto"
+          }`}
+        >
           <div className="flex items-center gap-4">
+            {headerStart}
             <SiteBrand />
             <Link
               href="/"
@@ -59,11 +76,16 @@ export default function Layout({
         </div>
       </header>
 
-      {/* Main content - grows with content; page scrolls as a whole */}
-      <main className="w-full max-w-7xl mx-auto px-4 md:px-6 py-6 flex-1 flex flex-col min-h-min">
+      <main
+        className={
+          isWorkspace
+            ? "w-full flex-1 flex flex-col min-h-0 overflow-hidden"
+            : "w-full max-w-7xl mx-auto px-4 md:px-6 py-6 flex-1 flex flex-col min-h-min"
+        }
+      >
         {children}
       </main>
-      <Footer />
+      {isWorkspace ? null : <Footer />}
     </div>
   );
 }

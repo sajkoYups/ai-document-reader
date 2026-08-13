@@ -96,7 +96,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Add your document
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Start by uploading a PDF, TXT, or Markdown file, or drag and drop it here. We only use it in your current session.
+          Add a PDF, TXT, or Markdown file in Sources — or drag and drop it there. We only use it in your current session.
         </p>
       </div>
     ),
@@ -110,7 +110,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Or paste text directly
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          You can also paste any text here instead of uploading a file. PIA will work from whatever is in this box.
+          You can also paste text in Sources instead of uploading a file. PIA will work from whatever is in this box.
         </p>
       </div>
     ),
@@ -124,7 +124,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Choose a workflow
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Select an analysis, then click Run. Extract types sit under Extract — they are options for that workflow, not separate analyses. You can add up to three documents in a session.
+          Workflows live in the left sidebar, like folders. Select one, then click Run. Extract types sit under Extract. You can add up to three documents in Sources.
         </p>
       </div>
     ),
@@ -152,7 +152,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Read results and follow up
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Summaries, review findings, and extraction tables appear here with clickable evidence. Use Ask or the follow-up bar to dig into anything that needs attention.
+          Structured results stream into this center pane with clickable evidence. Use Ask or the follow-up bar to dig into anything that needs attention.
         </p>
       </div>
     ),

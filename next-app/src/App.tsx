@@ -53,9 +53,8 @@ import DebugPanel, {
 import { TourProvider } from "@reactour/tour";
 import { ONBOARDING_STEPS } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
-import AnalyzerEmptyState from "./components/workflows/AnalyzerEmptyState";
-import DocumentStrip from "./components/workflows/DocumentStrip";
 import WorkflowSelector from "./components/workflows/WorkflowSelector";
+import SourcesPanel from "./components/workflows/SourcesPanel";
 import ExtractSubmenu from "./components/workflows/ExtractSubmenu";
 import EvidenceFinderQuery from "./components/workflows/EvidenceFinderQuery";
 import MoreWorkflowsModal from "./components/workflows/MoreWorkflowsModal";
@@ -99,6 +98,7 @@ function AppContent() {
     workflowId: WorkflowId;
     extractType?: ExtractType;
   } | null>(null);
+  const [mobilePane, setMobilePane] = useState<"workflows" | "sources" | null>(null);
   const lastIndexedText = useRef<string>("");
   const modeInitializedRef = useRef<boolean>(false);
   const pendingWorkflowRef = useRef<WorkflowId | null>(null);
@@ -114,6 +114,15 @@ function AppContent() {
       showToast("Session will be cleared in 60 seconds due to inactivity. Move your mouse to stay active.", "info");
     });
   }, [setWarningCallback]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      if (media.matches) setMobilePane(null);
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const isMobile = isLikelyMobileDevice();
@@ -971,95 +980,105 @@ function AppContent() {
 
   return (
     <Layout
+      variant="workspace"
       modelStatus={ai.modelStatus}
       inferenceDevice={ai.inferenceDevice}
       headerRight={<AppHeaderRight />}
+      headerStart={
+        <div className="flex lg:hidden items-center gap-1">
+          <WorkspacePaneButton
+            label={t(language, "workspace.openWorkflows")}
+            pressed={mobilePane === "workflows"}
+            onClick={() =>
+              setMobilePane((pane) => (pane === "workflows" ? null : "workflows"))
+            }
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </WorkspacePaneButton>
+          <WorkspacePaneButton
+            label={t(language, "workspace.openSources")}
+            pressed={mobilePane === "sources"}
+            onClick={() =>
+              setMobilePane((pane) => (pane === "sources" ? null : "sources"))
+            }
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </WorkspacePaneButton>
+        </div>
+      }
     >
-      <ToastContainer />
+      <div className="flex flex-col h-full min-h-0">
+        <ToastContainer />
 
-      {ai.isMobileDevice && (
-        <div
-          role="status"
-          className="mb-4 px-4 py-2.5 rounded-lg bg-surface-2 border border-border text-sm text-text-secondary animate-fade-in"
-          aria-live="polite"
-        >
-          On mobile, use Deep Analysis (API). Standard/local model is desktop-only.
-        </div>
-      )}
-
-      {(ai.modelStatus === "downloading" || ai.modelStatus === "loading") && !ai.isMobileDevice && (
-        <div className="mb-6 animate-fade-in shrink-0">
-          <ProgressBar
-            progress={ai.downloadProgress}
-            label={
-              ai.currentFile
-                ? `Building model: ${ai.currentFile.split("/").pop()}`
-                : "Loading AI model"
-            }
-          />
-        </div>
-      )}
-
-      {(embedding.status === "loading-model" || embedding.status === "indexing") && (
-        <div className="mb-6 animate-fade-in shrink-0">
-          <ProgressBar
-            progress={embedding.status === "indexing" ? 90 : embedding.downloadProgress}
-            label={
-              embedding.status === "indexing"
-                ? "Preparing document — run analysis when ready"
-                : "Building search model..."
-            }
-          />
-        </div>
-      )}
-
-      <div className="w-full space-y-4">
-        {hasDocument ? (
-          <>
-            <DocumentStrip
-              language={language}
-              documents={doc.documents}
-              activeDocumentId={doc.activeDocumentId}
-              isHosted={processingMode === "api"}
-              showCompareRoles={selectedWorkflow === "compare"}
-              compareRoles={doc.compareRoles}
-              onSelect={(id) => {
-                doc.setActive(id);
-                embedding.setActiveDocument(id);
-              }}
-              onAdd={(file) => void handleAddFile(file)}
-              onReplace={(id, file) => void handleReplaceFile(id, file)}
-              onRemove={(id) => {
-                embedding.removeDocument(id);
-                doc.removeDocument(id);
-                if (useDocumentStore.getState().documents.length === 0) {
-                  handleClear();
-                }
-              }}
-              onClearAll={handleClear}
-              onCompareRoleChange={(side, id) => {
-                doc.setCompareRoles({ [side]: id });
-              }}
-            />
-            {classification ? (
-              <ClassificationBanner
-                language={language}
-                label={classification.label}
-                recommendedIds={classification.recommendedWorkflowIds as WorkflowId[]}
-                onSelect={handleWorkflowSelect}
-              />
-            ) : null}
-          </>
+        {ai.isMobileDevice ? (
+          <div
+            role="status"
+            className="shrink-0 mx-4 mt-3 px-4 py-2.5 rounded-lg bg-surface-2 border border-border text-sm text-text-secondary animate-fade-in"
+            aria-live="polite"
+          >
+            On mobile, use Deep Analysis (API). Standard/local model is desktop-only.
+          </div>
         ) : null}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,32%)_minmax(0,1fr)] gap-6 items-start">
-          <div
-            className="space-y-4 animate-fade-in self-start lg:sticky lg:top-20 lg:z-10 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+        {(ai.modelStatus === "downloading" || ai.modelStatus === "loading") && !ai.isMobileDevice ? (
+          <div className="shrink-0 px-4 pt-3 animate-fade-in">
+            <ProgressBar
+              progress={ai.downloadProgress}
+              label={
+                ai.currentFile
+                  ? `Building model: ${ai.currentFile.split("/").pop()}`
+                  : "Loading AI model"
+              }
+            />
+          </div>
+        ) : null}
+
+        {embedding.status === "loading-model" || embedding.status === "indexing" ? (
+          <div className="shrink-0 px-4 pt-3 animate-fade-in">
+            <ProgressBar
+              progress={embedding.status === "indexing" ? 90 : embedding.downloadProgress}
+              label={
+                embedding.status === "indexing"
+                  ? "Preparing document — run analysis when ready"
+                  : "Building search model..."
+              }
+            />
+          </div>
+        ) : null}
+
+        <div className="relative flex-1 min-h-0 flex">
+          {mobilePane ? (
+            <button
+              type="button"
+              className="absolute inset-0 z-20 bg-black/50 lg:hidden"
+              aria-label={t(language, "workspace.closePane")}
+              onClick={() => setMobilePane(null)}
+            />
+          ) : null}
+
+          <aside
+            className={`
+              flex flex-col w-60 shrink-0 border-r border-border bg-surface-0
+              max-lg:absolute max-lg:inset-y-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:shadow-2xl
+              ${mobilePane === "workflows" ? "max-lg:flex" : "max-lg:hidden"}
+              lg:flex
+            `}
             data-tour-id="task-selector"
           >
-              <p className="text-xs text-text-muted">
+            <div className="shrink-0 px-3 py-3 border-b border-border-subtle">
+              <p className="text-xs font-medium text-text-muted tracking-wide uppercase">
+                {t(language, "workspace.workflows")}
+              </p>
+              <p className="text-[11px] text-text-muted mt-0.5">
                 {t(language, "workflow.chooseThenRun")}
               </p>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-2">
               <WorkflowSelector
                 workflows={listPrimary()}
                 selectedId={selectedWorkflow}
@@ -1091,141 +1110,184 @@ function AppContent() {
               <button
                 type="button"
                 onClick={() => setMoreOpen(true)}
-                className="text-sm text-accent hover:underline cursor-pointer"
+                className="w-full text-left px-2.5 py-1.5 text-sm text-accent hover:underline cursor-pointer"
               >
                 {t(language, "empty.more")} →
               </button>
-
-              {hasDocument && !isAsk ? (
-                <div className="space-y-2">
-                  {ai.modelStatus === "error" && (
-                    <div className="space-y-2">
-                      <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
-                        {ai.error ?? "Failed to load model"}
-                      </div>
-                      <Button variant="secondary" size="lg" onClick={() => ai.loadModel()} className="w-full">
-                        Retry
-                      </Button>
+            </div>
+            {!isAsk ? (
+              <div className="shrink-0 px-3 py-3 border-t border-border-subtle space-y-2">
+                {ai.modelStatus === "error" ? (
+                  <div className="space-y-2">
+                    <div className="px-3 py-2 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
+                      {ai.error ?? "Failed to load model"}
                     </div>
-                  )}
-                  {isOnDevice && (
-                    <p className="text-xs text-text-muted">
-                      ~{estimatedTokens.toLocaleString()} tokens
-                      {isOverOnDeviceLimit ? " · Too long for on-device · Use Deep Analysis." : null}
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    {workflowRun.isProcessing ? (
-                      <Button variant="secondary" size="lg" onClick={workflowRun.stop} className="flex-1">
-                        {t(language, "run.stop")}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        onClick={() => void handleRun()}
-                        disabled={
-                          !isModelReady ||
-                          !canUseDeepAnalysis ||
-                          isIndexing ||
-                          isOverOnDeviceLimit ||
-                          selectedDef?.status !== "ready" ||
-                          session.isGenerating ||
-                          (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||
-                          (selectedWorkflow === "evidence-finder" && !evidenceQuery.trim()) ||
-                          (selectedWorkflow === "extract" && extractType === "custom" && !customExtractQuery.trim())
-                        }
-                        className="flex-1"
-                        data-tour-id="run-button"
-                      >
-                        {!isModelReady
-                          ? t(language, "run.modelLoading")
-                          : isIndexing
-                            ? t(language, "run.preparing")
-                            : `${t(language, "run.label")} ${t(language, selectedDef?.nameKey ?? "workflow.summarize.name")}`}
-                      </Button>
-                    )}
+                    <Button variant="secondary" size="lg" onClick={() => ai.loadModel()} className="w-full">
+                      Retry
+                    </Button>
                   </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+                {isOnDevice && hasDocument ? (
+                  <p className="text-xs text-text-muted">
+                    ~{estimatedTokens.toLocaleString()} tokens
+                    {isOverOnDeviceLimit ? " · Too long for on-device · Use Deep Analysis." : null}
+                  </p>
+                ) : null}
+                {workflowRun.isProcessing ? (
+                  <Button variant="secondary" size="lg" onClick={workflowRun.stop} className="w-full">
+                    {t(language, "run.stop")}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => {
+                      setMobilePane(null);
+                      void handleRun();
+                    }}
+                    disabled={
+                      !hasDocument ||
+                      !isModelReady ||
+                      !canUseDeepAnalysis ||
+                      isIndexing ||
+                      isOverOnDeviceLimit ||
+                      selectedDef?.status !== "ready" ||
+                      session.isGenerating ||
+                      (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||
+                      (selectedWorkflow === "evidence-finder" && !evidenceQuery.trim()) ||
+                      (selectedWorkflow === "extract" && extractType === "custom" && !customExtractQuery.trim())
+                    }
+                    className="w-full"
+                    data-tour-id="run-button"
+                  >
+                    {!isModelReady
+                      ? t(language, "run.modelLoading")
+                      : isIndexing
+                        ? t(language, "run.preparing")
+                        : `${t(language, "run.label")} ${t(language, selectedDef?.nameKey ?? "workflow.summarize.name")}`}
+                  </Button>
+                )}
+              </div>
+            ) : null}
+          </aside>
 
-            <div
-              className="animate-fade-in min-h-[400px] min-w-0 space-y-3"
-              style={{ animationDelay: "0.1s" }}
-              data-tour-id="output-section"
-            >
-              {hasDocument ? (
-                <>
-                  <SessionThread
-                    language={language}
-                    entries={session.entries}
-                    liveWorkflowId={activeRun?.workflowId ?? selectedWorkflow}
-                    liveExtractType={activeRun?.extractType ?? extractType}
-                    isProcessing={workflowRun.isProcessing}
-                    isRepairing={workflowRun.isRepairing}
-                    isGenerating={session.isGenerating}
-                    liveError={workflowRun.error}
-                    livePartial={workflowRun.partial}
-                    liveValidated={workflowRun.validated}
-                    liveEvidenceById={evidenceById}
-                    documentNames={Object.fromEntries(
-                      doc.documents.map((d) => [d.id, d.fileName ?? "Document"]),
-                    )}
-                    extraQuestions={
-                      classification
-                        ? suggestedQuestionsForType(classification.type)
-                        : undefined
-                    }
-                    showAskComposer={isAsk}
-                    composerDisabled={!isModelReady || !canUseDeepAnalysis || isIndexing}
-                    composerDisabledReason={
-                      isIndexing
-                        ? "You can ask questions once the document has finished preparing."
-                        : undefined
-                    }
-                    onSend={handleChatSend}
-                    onClear={() => {
-                      workflowRun.reset();
-                      setActiveRun(null);
-                      useSessionStore.getState().clear();
-                      useChatStore.getState().clear();
-                    }}
-                    onStop={() => {
-                      workflowRun.stop();
-                      setActiveRun(null);
-                    }}
-                    onAsk={(message) => {
-                      setSelectedWorkflow("ask");
-                      void handleChatSend(message);
-                    }}
-                    onFollowUp={(text) => {
-                      setSelectedWorkflow("ask");
-                      void handleChatSend(text);
-                    }}
-                    onRerun={(workflowId, runExtractType) => {
-                      setSelectedWorkflow(workflowId);
-                      if (runExtractType) {
-                        extractTypeRef.current = runExtractType;
-                        setExtractType(runExtractType);
-                      }
-                      void handleRun({ workflowId, extractType: runExtractType });
-                    }}
-                  />
-                  <DebugPanel debugInfo={debugInfo} />
-                </>
-              ) : (
-                <AnalyzerEmptyState
+          <section
+            className="flex-1 min-w-0 min-h-0 flex flex-col bg-surface-0"
+            data-tour-id="output-section"
+          >
+            {classification ? (
+              <div className="shrink-0 px-4 pt-3">
+                <ClassificationBanner
                   language={language}
-                  onFile={handleFile}
-                  pasteValue={doc.rawText}
-                  onPasteChange={(value) => doc.setText(value)}
-                  error={doc.error}
+                  label={classification.label}
+                  recommendedIds={classification.recommendedWorkflowIds as WorkflowId[]}
+                  onSelect={handleWorkflowSelect}
                 />
-              )}
+              </div>
+            ) : null}
+            <div className="flex-1 min-h-0">
+              <SessionThread
+                language={language}
+                entries={session.entries}
+                liveWorkflowId={activeRun?.workflowId ?? selectedWorkflow}
+                liveExtractType={activeRun?.extractType ?? extractType}
+                isProcessing={workflowRun.isProcessing}
+                isRepairing={workflowRun.isRepairing}
+                isGenerating={session.isGenerating}
+                liveError={workflowRun.error}
+                livePartial={workflowRun.partial}
+                liveValidated={workflowRun.validated}
+                liveEvidenceById={evidenceById}
+                documentNames={Object.fromEntries(
+                  doc.documents.map((d) => [d.id, d.fileName ?? "Document"]),
+                )}
+                extraQuestions={
+                  classification
+                    ? suggestedQuestionsForType(classification.type)
+                    : undefined
+                }
+                showAskComposer={isAsk && hasDocument}
+                composerDisabled={!isModelReady || !canUseDeepAnalysis || isIndexing}
+                composerDisabledReason={
+                  isIndexing
+                    ? "You can ask questions once the document has finished preparing."
+                    : undefined
+                }
+                onSend={handleChatSend}
+                onClear={() => {
+                  workflowRun.reset();
+                  setActiveRun(null);
+                  useSessionStore.getState().clear();
+                  useChatStore.getState().clear();
+                }}
+                onStop={() => {
+                  workflowRun.stop();
+                  setActiveRun(null);
+                }}
+                onAsk={(message) => {
+                  setSelectedWorkflow("ask");
+                  void handleChatSend(message);
+                }}
+                onFollowUp={(text) => {
+                  setSelectedWorkflow("ask");
+                  void handleChatSend(text);
+                }}
+                onRerun={(workflowId, runExtractType) => {
+                  setSelectedWorkflow(workflowId);
+                  if (runExtractType) {
+                    extractTypeRef.current = runExtractType;
+                    setExtractType(runExtractType);
+                  }
+                  void handleRun({ workflowId, extractType: runExtractType });
+                }}
+              />
             </div>
-          </div>
+            <DebugPanel debugInfo={debugInfo} />
+          </section>
+
+          <aside
+            className={`
+              flex flex-col w-72 shrink-0 border-l border-border bg-surface-0
+              max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30 max-lg:w-80 max-lg:shadow-2xl
+              ${mobilePane === "sources" ? "max-lg:flex" : "max-lg:hidden"}
+              lg:flex
+            `}
+          >
+            <SourcesPanel
+              language={language}
+              documents={doc.documents}
+              activeDocumentId={doc.activeDocumentId}
+              isHosted={processingMode === "api"}
+              showCompareRoles={selectedWorkflow === "compare"}
+              compareRoles={doc.compareRoles}
+              pasteValue={doc.rawText}
+              error={doc.error}
+              onSelect={(id) => {
+                doc.setActive(id);
+                embedding.setActiveDocument(id);
+              }}
+              onFile={(file) => {
+                setMobilePane(null);
+                void handleFile(file);
+              }}
+              onAdd={(file) => void handleAddFile(file)}
+              onReplace={(id, file) => void handleReplaceFile(id, file)}
+              onRemove={(id) => {
+                embedding.removeDocument(id);
+                doc.removeDocument(id);
+                if (useDocumentStore.getState().documents.length === 0) {
+                  handleClear();
+                }
+              }}
+              onClearAll={handleClear}
+              onPasteChange={(value) => doc.setText(value)}
+              onCompareRoleChange={(side, id) => {
+                doc.setCompareRoles({ [side]: id });
+              }}
+            />
+          </aside>
         </div>
+      </div>
 
       <MoreWorkflowsModal
         open={moreOpen}
@@ -1255,7 +1317,7 @@ function AppContent() {
       {ai.processingMode === "api" && !isSignedIn && (
         <div
           role="alert"
-          className="fixed bottom-4 left-4 z-40 max-w-sm animate-fade-in
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-sm animate-fade-in
             rounded-lg border border-accent-border bg-accent-dim/95 backdrop-blur-sm
             px-4 py-3 shadow-lg"
           aria-live="polite"
@@ -1291,6 +1353,34 @@ function AppContent() {
         </div>
       )}
     </Layout>
+  );
+}
+
+function WorkspacePaneButton({
+  label,
+  pressed,
+  onClick,
+  children,
+}: {
+  label: string;
+  pressed: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={`inline-flex items-center justify-center w-8 h-8 rounded-md border transition-colors cursor-pointer ${
+        pressed
+          ? "border-accent-border bg-accent-dim text-accent"
+          : "border-border bg-surface-2 text-text-muted hover:text-text-primary hover:bg-surface-3"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
