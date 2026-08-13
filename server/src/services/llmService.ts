@@ -57,7 +57,7 @@ async function* streamRunpodWithOpenRouterFallback(
       outputLanguage,
       options,
     );
-    yield* streamRunpodFromResponse(response);
+    yield* streamRunpodFromResponse(response, options);
   } catch (error) {
     if (!canFallback) throw error;
     console.warn(
@@ -72,7 +72,7 @@ async function* streamRunpodWithOpenRouterFallback(
       outputLanguage,
       options,
     );
-    yield* streamOpenrouterFromResponse(response);
+    yield* streamOpenrouterFromResponse(response, options);
   }
 }
 

@@ -4,10 +4,17 @@ export type OutputLanguage = "en" | "de" | "fr" | "cs" | "mk";
 
 export type LlmProvider = "ollama" | "runpod" | "openrouter";
 
+export interface StreamCompletionMeta {
+  finishReason?: string | null;
+  usage?: Record<string, unknown> | null;
+  sawReasoning?: boolean;
+}
+
 export interface InferenceOptions {
   jsonMode?: boolean;
   extractType?: string;
   customQuery?: string;
+  streamMeta?: StreamCompletionMeta;
 }
 
 export interface AnalyzeRequest {

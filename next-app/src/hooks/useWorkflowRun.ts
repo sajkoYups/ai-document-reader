@@ -4,7 +4,7 @@ import { useAiStore } from "@/store/aiStore";
 import { analyzeViaApi } from "@/lib/apiClient";
 import { parsePartialJson, stripFences } from "@/workflows/parsePartial";
 import { getRepairPrompt, getSchemaHint } from "@/workflows/prompts";
-import { hasMeaningfulResult } from "@/workflows/resultQuality";
+import { hasMeaningfulResult, isDegenerateRawCompletion } from "@/workflows/resultQuality";
 import { workflowToTaskType, type ExtractType, type WorkflowId } from "@/workflows/types";
 import { SummaryResultSchema } from "@/workflows/schemas/summarize";
 import type { TaskType } from "@/types";
@@ -117,6 +117,20 @@ export function useWorkflowRun() {
     workflowId: WorkflowId,
     attempt: "first" | "repair",
   ) => {
+    if (!full.trim() || isDegenerateRawCompletion(full)) {
+      logWorkflow("finish:empty", {
+        attempt,
+        workflowId,
+        rawChars: full.length,
+        rawPreview: previewText(full),
+      });
+      return {
+        ok: false as const,
+        parsed: null,
+        error: "The model returned an empty response",
+      };
+    }
+
     const parsed = parsePartialJson(full);
     logWorkflow("finish:raw", {
       attempt,
@@ -262,6 +276,18 @@ export function useWorkflowRun() {
         const first = finishWith(full, args.schema, args.workflowId, "first");
         if (first.ok) {
           logWorkflow("run:success", { attempt: "first", workflowId: args.workflowId });
+          return;
+        }
+
+        if (!full.trim()) {
+          logWorkflow("run:failed", {
+            workflowId: args.workflowId,
+            firstError: first.error,
+            skippedRepair: true,
+          });
+          failTerminal(
+            `This analysis could not be completed. ${first.error}`,
+          );
           return;
         }
 

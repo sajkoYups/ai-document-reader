@@ -66,8 +66,9 @@ Each item: { "amount": "as written", "currency": "if stated", "meaning": "what i
 Each item: { "party": "who must act", "obligation": "what they must do", "deadline": "if stated, else Not specified", "condition": "if stated", "evidenceIds": ["E1"] }
 Never invent an owner or deadline.`;
     case "requirements":
-      return `Extract requirements (tenders, RFPs, policies, specifications). Fill the "requirements" array.
-Each item: { "requirement": "the requirement", "mandatory": "yes/no/unclear if stated", "deadline": "if stated, else Not specified", "evidenceIds": ["E1"] }`;
+      return `Extract stated requirements, deliverables, SLAs, mandatory duties, and acceptance criteria from contracts, agreements, policies, tenders, RFPs, and specifications. Fill only the "requirements" array. Other arrays may be empty.
+Each item: { "requirement": "the requirement", "mandatory": "yes/no/unclear if stated", "deadline": "if stated, else Not specified", "evidenceIds": ["E1"] }
+Prefer the 15–30 most important items rather than listing every minor clause.`;
     case "contacts":
       return `Extract contact information. Fill the "contacts" array.
 Each item: { "name": "name", "role": "if stated", "contact": "email, phone, or address if stated", "evidenceIds": ["E1"] }`;

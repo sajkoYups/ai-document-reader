@@ -3,6 +3,54 @@
  * (RunPod vLLM, OpenRouter, etc.).
  */
 
+import type { StreamCompletionMeta } from "../types/index.js";
+
+export type { StreamCompletionMeta };
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return undefined;
+}
+
+function chunkHasReasoning(obj: Record<string, unknown>): boolean {
+  const choices = obj.choices;
+  if (!Array.isArray(choices) || choices.length === 0) return false;
+  const choice0 = asRecord(choices[0]);
+  if (!choice0) return false;
+  for (const part of [asRecord(choice0.delta), asRecord(choice0.message)]) {
+    if (!part) continue;
+    if (typeof part.reasoning === "string" && part.reasoning.length > 0) return true;
+    if (typeof part.reasoning_content === "string" && part.reasoning_content.length > 0) {
+      return true;
+    }
+    if (Array.isArray(part.reasoning_details) && part.reasoning_details.length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function recordOpenAiStreamMeta(
+  chunk: unknown,
+  meta?: StreamCompletionMeta,
+): void {
+  if (!meta || chunk === null || typeof chunk !== "object") return;
+  const obj = chunk as Record<string, unknown>;
+  const usage = asRecord(obj.usage);
+  if (usage) meta.usage = usage;
+
+  const choices = obj.choices;
+  if (Array.isArray(choices) && choices.length > 0) {
+    const choice0 = asRecord(choices[0]);
+    if (choice0 && typeof choice0.finish_reason === "string") {
+      meta.finishReason = choice0.finish_reason;
+    }
+  }
+  if (chunkHasReasoning(obj)) meta.sawReasoning = true;
+}
+
 export function normalizeOpenAiContent(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -49,6 +97,8 @@ export function extractOpenAiStreamText(chunk: unknown): string {
 export interface StreamOpenAiSseOptions {
   /** Abort if no bytes arrive for this many ms while reading the body. */
   idleMs?: number;
+  /** Mutated as SSE chunks arrive so callers can log finish_reason / usage. */
+  meta?: StreamCompletionMeta;
 }
 
 /**
@@ -99,6 +149,7 @@ export async function* streamOpenAiSseTokens(
       return;
     }
     try {
+      recordOpenAiStreamMeta(chunk, options?.meta);
       const text = extractOpenAiStreamText(chunk);
       if (text.length > 0) yield text;
     } catch (e) {

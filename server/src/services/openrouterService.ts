@@ -72,7 +72,15 @@ export async function openOpenrouterChatCompletion(
         temperature: 0.2,
         max_tokens: getOpenrouterTaskMaxTokens(taskType),
         provider: buildProviderPreferences(),
-        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+        stream_options: { include_usage: true },
+        ...(jsonMode
+          ? {
+              // Thinking + json_object on DeepSeek V4 can yield empty content.
+              // json_object with thinking off yields dummy JSON like {"": ""}.
+              // Prompts already require JSON; Zod + parsePartial validate the shape.
+              reasoning: { enabled: false },
+            }
+          : {}),
       }),
     },
     config.openrouter.timeoutMs,
@@ -109,6 +117,7 @@ export async function* streamOpenrouterInference(
 
   yield* streamOpenAiSseTokens(response.body!, {
     idleMs: config.openrouter.timeoutMs,
+    meta: options?.streamMeta,
   });
 }
 
@@ -117,12 +126,14 @@ export async function* streamOpenrouterInference(
  */
 export async function* streamOpenrouterFromResponse(
   response: Response,
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   if (!response.body) {
     throw new Error("No response body from OpenRouter");
   }
   yield* streamOpenAiSseTokens(response.body, {
     idleMs: config.openrouter.timeoutMs,
+    meta: options?.streamMeta,
   });
 }
 

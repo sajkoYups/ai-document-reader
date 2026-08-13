@@ -82,17 +82,20 @@ export async function* streamRunpodInference(
 
   yield* streamOpenAiSseTokens(response.body!, {
     idleMs: config.runpod.timeoutMs,
+    meta: options?.streamMeta,
   });
 }
 
 export async function* streamRunpodFromResponse(
   response: Response,
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   if (!response.body) {
     throw new Error("No response body from RunPod");
   }
   yield* streamOpenAiSseTokens(response.body, {
     idleMs: config.runpod.timeoutMs,
+    meta: options?.streamMeta,
   });
 }
 
