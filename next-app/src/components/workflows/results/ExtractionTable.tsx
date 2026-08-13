@@ -13,6 +13,7 @@ interface ExtractionTableProps {
   result: ExtractResult;
   resolveEvidence: (ids: string[]) => EvidenceRef[];
   onOpenEvidence?: (ref: EvidenceRef) => void;
+  streaming?: boolean;
 }
 
 function EvidenceCell({
@@ -45,14 +46,16 @@ function EvidenceCell({
 function Table({
   headers,
   rows,
+  keepMounted = false,
 }: {
   headers: string[];
   rows: ReactNode[][];
+  keepMounted?: boolean;
 }) {
-  if (rows.length === 0) return null;
+  if (rows.length === 0 && !keepMounted) return null;
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full text-sm text-left">
+    <div className="overflow-x-auto rounded-xl border border-border [overflow-anchor:none]">
+      <table className="w-full text-sm text-left table-fixed">
         <thead className="bg-surface-2 text-xs uppercase tracking-wide text-text-muted">
           <tr>
             {headers.map((h) => (
@@ -64,9 +67,9 @@ function Table({
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-t border-border-subtle">
+            <tr key={`${String(row[0])}-${i}`} className="border-t border-border-subtle">
               {row.map((cell, j) => (
-                <td key={j} className="px-3 py-2 text-text-secondary align-top">
+                <td key={j} className="px-3 py-2 text-text-secondary align-top break-words">
                   {cell}
                 </td>
               ))}
@@ -84,6 +87,7 @@ export default function ExtractionTable({
   result,
   resolveEvidence,
   onOpenEvidence,
+  streaming = false,
 }: ExtractionTableProps) {
   const ev = (ids: string[]) => (
     <EvidenceCell ids={ids} resolveEvidence={resolveEvidence} onOpenEvidence={onOpenEvidence} />
@@ -95,6 +99,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="fields"
+        keepMounted={streaming && extractType === "key-information"}
         headers={[t(language, "table.field"), t(language, "table.value"), t(language, "table.source")]}
         rows={result.keyFields.map((row) => [row.field, row.value, ev(row.evidenceIds)])}
       />,
@@ -104,6 +109,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="dates"
+        keepMounted={streaming && extractType === "dates"}
         headers={[t(language, "table.date"), t(language, "table.event"), t(language, "table.source")]}
         rows={result.dates.map((row) => [row.date, row.event, ev(row.evidenceIds)])}
       />,
@@ -113,6 +119,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="entities"
+        keepMounted={streaming && extractType === "entities"}
         headers={[
           t(language, "table.entity"),
           t(language, "table.type"),
@@ -127,6 +134,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="amounts"
+        keepMounted={streaming && extractType === "amounts"}
         headers={[
           t(language, "table.amount"),
           t(language, "table.currency"),
@@ -141,6 +149,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="obligations"
+        keepMounted={streaming && extractType === "obligations"}
         headers={[
           t(language, "table.party"),
           t(language, "table.obligation"),
@@ -162,6 +171,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="req"
+        keepMounted={streaming && extractType === "requirements"}
         headers={[
           t(language, "table.requirement"),
           t(language, "table.mandatory"),
@@ -181,6 +191,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="contacts"
+        keepMounted={streaming && extractType === "contacts"}
         headers={[
           t(language, "table.name"),
           t(language, "table.role"),
@@ -195,6 +206,7 @@ export default function ExtractionTable({
     sections.push(
       <Table
         key="custom"
+        keepMounted={streaming && extractType === "custom"}
         headers={[t(language, "table.item"), t(language, "table.detail"), t(language, "table.source")]}
         rows={result.customRows.map((row) => [row.item, row.detail, ev(row.evidenceIds)])}
       />,

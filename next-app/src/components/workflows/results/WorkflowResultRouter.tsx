@@ -51,6 +51,17 @@ import SourceViewer from "./SourceViewer";
 import SuggestedFollowUps from "./SuggestedFollowUps";
 import FollowUpBar from "./FollowUpBar";
 
+const EMPTY_EXTRACT_RESULT: ExtractResult = {
+  keyFields: [],
+  dates: [],
+  entities: [],
+  amounts: [],
+  obligations: [],
+  requirements: [],
+  contacts: [],
+  customRows: [],
+};
+
 interface WorkflowResultRouterProps {
   language: OutputLanguage;
   workflowId: WorkflowId;
@@ -159,14 +170,15 @@ export default function WorkflowResultRouter({
         onOpenEvidence={setSource}
       />
     );
-  } else if (workflowId === "extract" && data && (isProcessing || hasMeaningfulResult("extract", data))) {
+  } else if (workflowId === "extract" && (data || isProcessing)) {
     body = (
       <ExtractionTable
         language={language}
         extractType={extractType}
-        result={data as ExtractResult}
+        result={(data as ExtractResult | null) ?? EMPTY_EXTRACT_RESULT}
         resolveEvidence={resolve}
         onOpenEvidence={setSource}
+        streaming={isProcessing}
       />
     );
   } else if (workflowId === "compare" && data && (isProcessing || hasMeaningfulResult("compare", data))) {
@@ -262,7 +274,7 @@ export default function WorkflowResultRouter({
   const showFollowUps = includeFollowUps && !isProcessing && !error && meaningful;
 
   return (
-    <Card className="space-y-6">
+    <Card className="space-y-6 [overflow-anchor:none]">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-text-muted font-medium tracking-wide uppercase">
           {isRepairing ? t(language, "run.preparing") : title}

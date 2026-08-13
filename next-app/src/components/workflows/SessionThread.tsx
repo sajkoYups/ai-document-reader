@@ -63,16 +63,23 @@ export default function SessionThread({
 }: SessionThreadProps) {
   const [input, setInput] = useState("");
   const [source, setSource] = useState<EvidenceReference | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
 
   const showLive = isProcessing || isRepairing;
   const empty = entries.length === 0 && !showLive;
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({
-      behavior: isProcessing || isGenerating ? "auto" : "smooth",
-      block: "end",
-    });
+    if (isProcessing || isRepairing || isGenerating) {
+      stickToBottomRef.current = true;
+    }
+  }, [isProcessing, isRepairing, isGenerating]);
+
+  useEffect(() => {
+    if (!stickToBottomRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [entries, isProcessing, isRepairing, isGenerating, livePartial, liveValidated]);
 
   const lastWorkflowIndex = entries.reduce((last, entry, i) => {
@@ -100,7 +107,16 @@ export default function SessionThread({
         ) : null}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 min-h-0">
+      <div
+        ref={scrollRef}
+        onScroll={() => {
+          const el = scrollRef.current;
+          if (!el) return;
+          stickToBottomRef.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight <= 96;
+        }}
+        className="flex-1 overflow-y-auto px-5 py-5 space-y-4 min-h-0 [scrollbar-gutter:stable] [overflow-anchor:none]"
+      >
         {empty ? (
           <div className="flex flex-col items-center justify-center min-h-[min(420px,60vh)] text-center px-6">
             <PiaThinkingLogo size={88} label="" className="mb-5" />
@@ -178,8 +194,6 @@ export default function SessionThread({
             onFollowUp={onFollowUp}
           />
         ) : null}
-
-        <div ref={endRef} />
       </div>
 
       <SourceViewer
