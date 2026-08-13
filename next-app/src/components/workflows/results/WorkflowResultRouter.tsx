@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { OutputLanguage } from "@/types";
 import type { ExtractType, EvidenceReference as EvidenceRef, WorkflowId } from "@/workflows/types";
 import type { SummaryResult } from "@/workflows/schemas/summarize";
@@ -34,6 +34,7 @@ interface WorkflowResultRouterProps {
   evidenceById: Record<string, EvidenceRef>;
   followUpKeys: string[];
   extraQuestions?: string[];
+  includeFollowUps?: boolean;
   onRerun: () => void;
   onStop?: () => void;
   onAsk: (message: string) => void;
@@ -52,13 +53,37 @@ export default function WorkflowResultRouter({
   evidenceById,
   followUpKeys,
   extraQuestions,
+  includeFollowUps = true,
   onRerun,
   onStop,
   onAsk,
   onFollowUp,
 }: WorkflowResultRouterProps) {
   const [source, setSource] = useState<EvidenceRef | null>(null);
-  const data = validated ?? partial;
+  const lastGoodRef = useRef<{ workflowId: WorkflowId; data: unknown } | null>(null);
+  const incoming = validated ?? partial;
+
+  let parsedData: unknown | null = null;
+  if (workflowId === "summarize" && incoming) {
+    const parsed = SummaryResultSchema.safeParse(incoming);
+    if (parsed.success) parsedData = parsed.data;
+  } else if (workflowId === "review" && incoming) {
+    const parsed = ReviewResultSchema.safeParse(incoming);
+    if (parsed.success) parsedData = parsed.data;
+  } else if (workflowId === "extract" && incoming) {
+    const parsed = ExtractResultSchema.safeParse(incoming);
+    if (parsed.success) parsedData = parsed.data;
+  }
+
+  if (parsedData) {
+    lastGoodRef.current = { workflowId, data: parsedData };
+  }
+
+  const sticky =
+    isProcessing && lastGoodRef.current?.workflowId === workflowId
+      ? lastGoodRef.current.data
+      : null;
+  const data = parsedData ?? sticky;
   const meaningful = data !== null && hasMeaningfulResult(workflowId, data);
   const resolve = (ids: string[]) => resolveEvidenceIds(ids, evidenceById);
 
@@ -132,7 +157,7 @@ export default function WorkflowResultRouter({
     return <EmptyResult language={language} />;
   }
 
-  const showFollowUps = !isProcessing && !error && meaningful;
+  const showFollowUps = includeFollowUps && !isProcessing && !error && meaningful;
 
   return (
     <Card className="space-y-6">

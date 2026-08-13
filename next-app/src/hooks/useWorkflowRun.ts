@@ -47,6 +47,26 @@ function logWorkflow(
   console.info(`[workflow] ${event}`, details);
 }
 
+/** Keep last complete rows when the current array item is still streaming. */
+function coerceStreamingResult(schema: z.ZodType, parsed: unknown): unknown | null {
+  const direct = schema.safeParse(parsed);
+  if (direct.success) return direct.data;
+  if (!parsed || typeof parsed !== "object") return null;
+
+  const obj = { ...(parsed as Record<string, unknown>) };
+  let dropped = false;
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+    if (Array.isArray(value) && value.length > 0) {
+      obj[key] = value.slice(0, -1);
+      dropped = true;
+    }
+  }
+  if (!dropped) return null;
+  const retry = schema.safeParse(obj);
+  return retry.success ? retry.data : null;
+}
+
 export function proseToSummary(text: string) {
   const cleaned = stripFences(text).trim();
   const lines = cleaned.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -88,6 +108,7 @@ export function useWorkflowRun() {
   const [error, setError] = useState<string | null>(null);
   const lastArgs = useRef<RunArgs | null>(null);
   const cancelled = useRef(false);
+  const rawRef = useRef("");
 
   const runTask = useAiStore((s) => s.runTask);
   const cancelTask = useAiStore((s) => s.cancelTask);
@@ -103,12 +124,20 @@ export function useWorkflowRun() {
   };
 
   const applyToken = (token: string) => {
-    setRaw((prev) => {
-      const next = prev + token;
-      const parsed = parsePartialJson(next);
-      if (parsed && typeof parsed === "object") setPartial(parsed);
-      return next;
-    });
+    rawRef.current += token;
+    const next = rawRef.current;
+    setRaw(next);
+    const parsed = parsePartialJson(next);
+    if (!parsed || typeof parsed !== "object") return;
+    const schema = lastArgs.current?.schema;
+    const nextPartial = schema ? coerceStreamingResult(schema, parsed) : parsed;
+    if (!nextPartial) return;
+    const workflowId = lastArgs.current?.workflowId;
+    if (workflowId && !hasMeaningfulResult(workflowId, nextPartial)) {
+      setPartial((prev) => prev ?? nextPartial);
+      return;
+    }
+    setPartial(nextPartial);
   };
 
   const finishWith = (
@@ -161,7 +190,7 @@ export function useWorkflowRun() {
         setPartial(result.data);
         setIsProcessing(false);
         setIsRepairing(false);
-        return { ok: true as const };
+        return { ok: true as const, data: result.data };
       }
       logWorkflow("finish:zod-fail", {
         attempt,
@@ -191,7 +220,7 @@ export function useWorkflowRun() {
         setPartial(fallback);
         setIsProcessing(false);
         setIsRepairing(false);
-        return { ok: true as const };
+        return { ok: true as const, data: fallback };
       } catch (err) {
         logWorkflow("finish:prose-fallback-error", {
           attempt,
@@ -250,6 +279,7 @@ export function useWorkflowRun() {
     async (args: RunArgs) => {
       lastArgs.current = args;
       cancelled.current = false;
+      rawRef.current = "";
       setRaw("");
       setPartial(null);
       setValidated(null);
@@ -276,7 +306,7 @@ export function useWorkflowRun() {
         const first = finishWith(full, args.schema, args.workflowId, "first");
         if (first.ok) {
           logWorkflow("run:success", { attempt: "first", workflowId: args.workflowId });
-          return;
+          return { ok: true as const, data: first.data };
         }
 
         if (!full.trim()) {
@@ -285,10 +315,9 @@ export function useWorkflowRun() {
             firstError: first.error,
             skippedRepair: true,
           });
-          failTerminal(
-            `This analysis could not be completed. ${first.error}`,
-          );
-          return;
+          const error = `This analysis could not be completed. ${first.error}`;
+          failTerminal(error);
+          return { ok: false as const, error };
         }
 
         logWorkflow("run:repair-start", {
@@ -296,8 +325,8 @@ export function useWorkflowRun() {
           firstError: first.error,
         });
         setIsRepairing(true);
+        rawRef.current = "";
         setRaw("");
-        setPartial(null);
         const repair = getRepairPrompt(
           getSchemaHint(args.workflowId, args.extractType, args.customQuery),
           first.error,
@@ -314,23 +343,25 @@ export function useWorkflowRun() {
         const second = finishWith(repaired, args.schema, args.workflowId, "repair");
         if (second.ok) {
           logWorkflow("run:success", { attempt: "repair", workflowId: args.workflowId });
-          return;
+          return { ok: true as const, data: second.data };
         }
         logWorkflow("run:failed", {
           workflowId: args.workflowId,
           firstError: first.error,
           secondError: second.error,
         });
-        failTerminal(
-          `This analysis could not be completed. ${second.error || first.error}`,
-        );
+        const error = `This analysis could not be completed. ${second.error || first.error}`;
+        failTerminal(error);
+        return { ok: false as const, error };
       } catch (err) {
         if (cancelled.current) return;
         logWorkflow("run:exception", {
           workflowId: args.workflowId,
           error: err instanceof Error ? err.message : String(err),
         });
-        failTerminal(err instanceof Error ? err.message : String(err));
+        const error = err instanceof Error ? err.message : String(err);
+        failTerminal(error);
+        return { ok: false as const, error };
       }
     },
     [streamOnce, processingMode],
@@ -339,6 +370,7 @@ export function useWorkflowRun() {
   const stop = useCallback(() => {
     cancelled.current = true;
     cancelTask();
+    rawRef.current = "";
     setPartial(null);
     setValidated(null);
     setIsProcessing(false);
@@ -347,6 +379,7 @@ export function useWorkflowRun() {
 
   const reset = useCallback(() => {
     cancelled.current = true;
+    rawRef.current = "";
     setRaw("");
     setPartial(null);
     setValidated(null);

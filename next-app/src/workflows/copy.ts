@@ -122,6 +122,8 @@ const EN: CopyDict = {
   "ask.example": "e.g. What are the payment terms?",
   "ask.send": "Send",
   "ask.clear": "Clear",
+  "ask.clearConversation": "Clear conversation",
+  "session.thread": "Analysis",
 
   "classify.looksLike": "This looks like a {label}.",
   "classify.recommended": "Recommended",
@@ -195,7 +197,8 @@ const DE: CopyDict = {
   "gate.body": "Ihre Dokumente werden nur vorübergehend verarbeitet und nicht gespeichert.",
   "gate.continue": "Privat fortfahren",
   "result.askAbout": "PIA zu dieser Analyse fragen…",
-  "ask.placeholder": "Fragen Sie alles zu diesem Dokument…",
+  "ask.clearConversation": "Unterhaltung löschen",
+  "session.thread": "Analyse",
   "classify.recommended": "Empfohlen",
   "comingSoon": "Demnächst",
 };
@@ -220,7 +223,8 @@ const FR: CopyDict = {
   "gate.body": "Vos documents sont traités temporairement et ne sont pas conservés.",
   "gate.continue": "Continuer en privé",
   "result.askAbout": "Demander à PIA au sujet de cette analyse…",
-  "ask.placeholder": "Posez n’importe quelle question sur ce document…",
+  "ask.clearConversation": "Effacer la conversation",
+  "session.thread": "Analyse",
   "classify.recommended": "Recommandé",
   "comingSoon": "Bientôt",
 };
@@ -245,7 +249,8 @@ const CS: CopyDict = {
   "gate.body": "Dokumenty se zpracovávají dočasně a neukládají se.",
   "gate.continue": "Pokračovat soukromě",
   "result.askAbout": "Zeptat se PIA na tuto analýzu…",
-  "ask.placeholder": "Zeptejte se na cokoli o tomto dokumentu…",
+  "ask.clearConversation": "Vymazat konverzaci",
+  "session.thread": "Analýza",
   "classify.recommended": "Doporučeno",
   "comingSoon": "Již brzy",
 };
@@ -270,7 +275,8 @@ const MK: CopyDict = {
   "gate.body": "Документите се обработуваат привремено и не се задржуваат.",
   "gate.continue": "Продолжи приватно",
   "result.askAbout": "Прашајте ја PIA за оваа анализа…",
-  "ask.placeholder": "Прашајте што било за овој документ…",
+  "ask.clearConversation": "Избриши разговор",
+  "session.thread": "Анализа",
   "classify.recommended": "Препорачано",
   "comingSoon": "Наскоро",
 };

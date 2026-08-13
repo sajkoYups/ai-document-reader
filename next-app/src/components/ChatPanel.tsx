@@ -15,6 +15,22 @@ interface ChatPanelProps {
   disabledReason?: string;
 }
 
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1.5" aria-hidden="true">
+      <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse" />
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse"
+        style={{ animationDelay: "0.2s" }}
+      />
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse"
+        style={{ animationDelay: "0.4s" }}
+      />
+    </div>
+  );
+}
+
 export default function ChatPanel({
   messages,
   isGenerating,
@@ -29,8 +45,11 @@ export default function ChatPanel({
   const language = useAiStore((s) => s.outputLanguage);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({
+      behavior: isGenerating ? "auto" : "smooth",
+      block: "end",
+    });
+  }, [messages, isGenerating]);
 
   const handleSubmit = () => {
     const trimmed = input.trim();
@@ -39,9 +58,11 @@ export default function ChatPanel({
     setInput("");
   };
 
+  const last = messages[messages.length - 1];
+  const lastAssistantStreaming = isGenerating && last?.role === "assistant";
+
   return (
     <div className="flex flex-col h-full bg-surface-1 border border-border rounded-xl overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
         <span className="text-xs font-medium text-text-muted tracking-wide uppercase">
           Ask about this document
@@ -53,7 +74,6 @@ export default function ChatPanel({
         )}
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -66,13 +86,28 @@ export default function ChatPanel({
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
+        {messages.map((msg, i) => {
+          const isLastAssistant =
+            lastAssistantStreaming && i === messages.length - 1 && msg.role === "assistant";
+          const isEmptyStreaming = isLastAssistant && !msg.content.trim();
+
+          if (isEmptyStreaming) {
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="bg-surface-2 rounded-xl rounded-bl-sm px-4 py-3">
+                  <TypingDots />
+                </div>
+              </div>
+            );
+          }
+
+          return (
             <div
-              className={`
+              key={i}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`
                 max-w-[85%] rounded-xl px-4 py-2.5 text-sm leading-relaxed
                 ${
                   msg.role === "user"
@@ -80,42 +115,32 @@ export default function ChatPanel({
                     : "bg-surface-2 text-text-secondary rounded-bl-sm"
                 }
               `}
-            >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+              >
+                <p className="whitespace-pre-wrap">
+                  {msg.content}
+                  {isLastAssistant ? (
+                    <span className="inline-block w-1.5 h-4 bg-accent/60 animate-pulse ml-0.5 align-text-bottom" />
+                  ) : null}
+                </p>
 
-              {msg.evidenceRefs && msg.evidenceRefs.length > 0 ? (
-                <EvidenceReference evidence={msg.evidenceRefs} onOpen={setSource} />
-              ) : msg.evidence && msg.evidence.length > 0 ? (
-                <div className="mt-2 pt-2 border-t border-white/10 space-y-1.5">
-                  {msg.evidence.map((snippet, j) => (
-                    <blockquote
-                      key={j}
-                      className="text-xs pl-2 border-l-2 border-accent/40 text-text-muted italic"
-                    >
-                      {snippet}
-                    </blockquote>
-                  ))}
-                </div>
-              ) : null}
+                {msg.evidenceRefs && msg.evidenceRefs.length > 0 ? (
+                  <EvidenceReference evidence={msg.evidenceRefs} onOpen={setSource} />
+                ) : msg.evidence && msg.evidence.length > 0 ? (
+                  <div className="mt-2 pt-2 border-t border-white/10 space-y-1.5">
+                    {msg.evidence.map((snippet, j) => (
+                      <blockquote
+                        key={j}
+                        className="text-xs pl-2 border-l-2 border-accent/40 text-text-muted italic"
+                      >
+                        {snippet}
+                      </blockquote>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
-
-        {isGenerating && (
-          <div className="flex justify-start">
-            <div className="bg-surface-2 rounded-xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse" />
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse"
-                style={{ animationDelay: "0.2s" }}
-              />
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-text-muted animate-pulse"
-                style={{ animationDelay: "0.4s" }}
-              />
-            </div>
-          </div>
-        )}
+          );
+        })}
 
         <div ref={messagesEndRef} />
       </div>
@@ -126,7 +151,6 @@ export default function ChatPanel({
         onClose={() => setSource(null)}
       />
 
-      {/* Input */}
       <div className="p-3 border-t border-border-subtle">
         {disabled && disabledReason && (
           <p className="mb-2 text-xs text-text-muted" role="status">

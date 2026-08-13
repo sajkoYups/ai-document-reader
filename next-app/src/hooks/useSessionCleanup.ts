@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useDocumentStore } from "@/store/documentStore";
 import { useChatStore } from "@/store/chatStore";
+import { useSessionStore } from "@/store/sessionStore";
 import { useAiStore } from "@/store/aiStore";
 import { useEmbeddingStore } from "@/store/embeddingStore";
 import { destroySessionKey } from "@/lib/cryptoService";
@@ -20,6 +21,7 @@ export function useSessionCleanup() {
 
     useDocumentStore.getState().clear();
     useChatStore.getState().clear();
+    useSessionStore.getState().clear();
     useEmbeddingStore.getState().clear();
 
     if (aiWorker) aiWorker.terminate();

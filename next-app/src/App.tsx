@@ -15,6 +15,7 @@ import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
 import { useChatStore } from "@/store/chatStore";
+import { useSessionStore } from "@/store/sessionStore";
 import { useEmbeddingStore } from "@/store/embeddingStore";
 import { useWorkflowRun } from "@/hooks/useWorkflowRun";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -42,7 +43,6 @@ import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
 import Layout from "./components/Layout";
 import PrivacyBadge from "./components/PrivacyBadge";
 import ModeToggle from "./components/ModeToggle";
-import ChatPanel from "./components/ChatPanel";
 import Button from "./components/Button";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer, { showToast } from "./components/Toast";
@@ -60,7 +60,7 @@ import ExtractSubmenu from "./components/workflows/ExtractSubmenu";
 import MoreWorkflowsModal from "./components/workflows/MoreWorkflowsModal";
 import CapabilityGate from "./components/workflows/CapabilityGate";
 import ClassificationBanner from "./components/workflows/ClassificationBanner";
-import WorkflowResultRouter from "./components/workflows/results/WorkflowResultRouter";
+import SessionThread from "./components/workflows/SessionThread";
 import { t } from "@/workflows/copy";
 import { classifyDocument, suggestedQuestionsForType } from "@/workflows/classify";
 import { buildLabeledContext } from "@/workflows/evidence";
@@ -80,9 +80,9 @@ function AppContent() {
   const setIsMobileDevice = useAiStore((s) => s.setIsMobileDevice);
   const setProcessingMode = useAiStore((s) => s.setProcessingMode);
   const processingMode = useAiStore((s) => s.processingMode);
-  const chat = useChatStore();
   const embedding = useEmbeddingStore();
   const workflowRun = useWorkflowRun();
+  const session = useSessionStore();
   const language = ai.outputLanguage;
 
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowId>("summarize");
@@ -94,6 +94,10 @@ function AppContent() {
   const [classification, setClassification] = useState<DocumentClassification | null>(null);
   const [evidenceById, setEvidenceById] = useState<Record<string, EvidenceReference>>({});
   const [debugInfo, setDebugInfo] = useState<RagDebugInfo | null>(null);
+  const [activeRun, setActiveRun] = useState<{
+    workflowId: WorkflowId;
+    extractType?: ExtractType;
+  } | null>(null);
   const lastIndexedText = useRef<string>("");
   const modeInitializedRef = useRef<boolean>(false);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -234,13 +238,20 @@ function AppContent() {
         }
 
         doc.setFromFile(text, file.name, fileType, { pageCount, pages });
+        useSessionStore.getState().clear();
+        useChatStore.getState().clear();
+        workflowRun.reset();
+        setClassification(null);
+        setEvidenceById({});
+        setDebugInfo(null);
+        setActiveRun(null);
         showToast(`Loaded ${file.name}`, "success");
       } catch {
         doc.setError("Failed to read file. It may be corrupted or encrypted.");
         showToast("Failed to read file", "error");
       }
     },
-    [doc],
+    [doc, workflowRun],
   );
 
   const MAX_DIRECT_CHARS = 10000;
@@ -262,10 +273,16 @@ function AppContent() {
     return SummaryResultSchema;
   };
 
-  const handleRun = useCallback(async () => {
+  const handleRun = useCallback(async (overrides?: {
+    workflowId?: WorkflowId;
+    extractType?: ExtractType;
+  }) => {
+    const workflowId = overrides?.workflowId ?? selectedWorkflow;
+    const runExtractType = overrides?.extractType ?? extractTypeRef.current;
     if (!hasDocument || !isModelReady || workflowRun.isProcessing) return;
-    if (selectedWorkflow === "ask") return;
-    const def = getWorkflow(selectedWorkflow);
+    if (useSessionStore.getState().isGenerating) return;
+    if (workflowId === "ask") return;
+    const def = getWorkflow(workflowId);
     if (!def || def.status !== "ready") return;
     if (isIndexing) {
       showToast(
@@ -300,8 +317,8 @@ function AppContent() {
           { text: doc.rawText, index: 0, startChar: 0, endChar: doc.rawText.length },
         ];
         method = "direct";
-      } else if (selectedWorkflow === "extract") {
-        query = queryForExtract(extractTypeRef.current, customExtractQuery);
+      } else if (workflowId === "extract") {
+        query = queryForExtract(runExtractType, customExtractQuery);
         chunks = await embedding.retrieveChunksHybrid(query, EXTRACT_TOP_K, { useMMR: false });
         method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
       } else {
@@ -321,7 +338,12 @@ function AppContent() {
       documentName,
       MAX_DIRECT_CHARS,
     );
-    setEvidenceById(labeled.evidenceById);
+    const evidenceSnapshot = { ...labeled.evidenceById };
+    setEvidenceById(evidenceSnapshot);
+    setActiveRun({
+      workflowId,
+      extractType: workflowId === "extract" ? runExtractType : undefined,
+    });
     setDebugInfo({
       method,
       query,
@@ -337,13 +359,31 @@ function AppContent() {
       timestamp: Date.now(),
     });
 
-    await workflowRun.run({
-      workflowId: selectedWorkflow,
+    const documentId = doc.documentId;
+    const outcome = await workflowRun.run({
+      workflowId,
       documentText: labeled.text || doc.rawText,
-      schema: schemaFor(selectedWorkflow),
-      extractType: selectedWorkflow === "extract" ? extractTypeRef.current : undefined,
-      customQuery: selectedWorkflow === "extract" ? customExtractQuery : undefined,
+      schema: schemaFor(workflowId),
+      extractType: workflowId === "extract" ? runExtractType : undefined,
+      customQuery: workflowId === "extract" ? customExtractQuery : undefined,
     });
+    if (!outcome) {
+      setActiveRun(null);
+      return;
+    }
+    if (useDocumentStore.getState().documentId !== documentId) {
+      setActiveRun(null);
+      return;
+    }
+    useSessionStore.getState().appendWorkflow({
+      workflowId,
+      extractType: workflowId === "extract" ? runExtractType : undefined,
+      result: outcome.ok ? outcome.data : undefined,
+      error: outcome.ok ? undefined : outcome.error,
+      evidenceById: evidenceSnapshot,
+    });
+    setActiveRun(null);
+    workflowRun.reset();
   }, [
     hasDocument,
     isModelReady,
@@ -400,6 +440,8 @@ function AppContent() {
   ]);
 
   const handleChatSend = async (message: string) => {
+    if (workflowRun.isProcessing) return;
+    if (useSessionStore.getState().isGenerating) return;
     if (isIndexing) {
       showToast(
         "Please wait — your document is still being prepared. You can ask questions when the progress bar above finishes.",
@@ -414,11 +456,12 @@ function AppContent() {
 
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
+    const priorMessages = useSessionStore.getState().chatMessages();
 
     if (ai.processingMode === "api") {
       // Prior turns only — server appends `message` again; including the current
       // question in history would duplicate the last user message for the LLM.
-      const history = capChatHistoryForApi(buildChatHistory(chat.messages));
+      const history = capChatHistoryForApi(buildChatHistory(priorMessages));
       const maxAssembled = maxAssembledDocumentCharsForApiChat(history, message);
 
       let documentForApi: string;
@@ -482,8 +525,9 @@ function AppContent() {
         );
       }
 
-      chat.addUserMessage(message);
-      chat.startAssistantMessage();
+      const thread = useSessionStore.getState();
+      thread.addUserMessage(message);
+      thread.startAssistantMessage();
 
       setDebugInfo({
         method,
@@ -515,31 +559,31 @@ function AppContent() {
         message,
         history,
         ai.outputLanguage,
-        (token) => chat.appendToLastAssistant(token),
+        (token) => useSessionStore.getState().appendToLastAssistant(token),
       )
         .then((result) => {
           const evidence = extractEvidence(result, doc.sections);
-          chat.finalizeAssistantMessage(
+          useSessionStore.getState().finalizeAssistantMessage(
             evidence.length > 0 ? evidence : undefined,
             evidenceRefs && evidenceRefs.length > 0 ? evidenceRefs : undefined,
           );
         })
         .catch((err) =>
-          chat.setAssistantError(
+          useSessionStore.getState().setAssistantError(
             err instanceof Error ? err.message : String(err),
           ),
         );
       return;
     }
 
-    chat.addUserMessage(message);
-    chat.startAssistantMessage();
+    const thread = useSessionStore.getState();
+    thread.addUserMessage(message);
+    thread.startAssistantMessage();
 
-    const allMessages = [
-      ...chat.messages,
+    const history = buildChatHistory([
+      ...priorMessages,
       { role: "user" as const, content: message },
-    ];
-    const history = buildChatHistory(allMessages);
+    ]);
 
     let contextDoc: string;
     let askEvidenceRefs: EvidenceReference[] | undefined;
@@ -588,29 +632,31 @@ function AppContent() {
       "chat",
       contextDoc,
       history,
-      (token) => chat.appendToLastAssistant(token),
+      (token) => useSessionStore.getState().appendToLastAssistant(token),
       (result) => {
         const evidence = extractEvidence(result, doc.sections);
-        chat.finalizeAssistantMessage(
+        useSessionStore.getState().finalizeAssistantMessage(
           evidence.length > 0 ? evidence : undefined,
           askEvidenceRefs && askEvidenceRefs.length > 0 ? askEvidenceRefs : undefined,
         );
       },
-      (error) => chat.setAssistantError(error),
+      (error) => useSessionStore.getState().setAssistantError(error),
     );
   };
 
   const handleClear = useCallback(() => {
     doc.clear();
     workflowRun.reset();
-    chat.clear();
+    useSessionStore.getState().clear();
+    useChatStore.getState().clear();
     embedding.clear();
     lastIndexedText.current = "";
     setClassification(null);
     setEvidenceById({});
+    setActiveRun(null);
     forceCleanup();
     showToast("Session cleared", "info");
-  }, [doc, workflowRun, chat, embedding, forceCleanup]);
+  }, [doc, workflowRun, embedding, forceCleanup]);
 
   const applyWorkflow = useCallback(
     (id: WorkflowId) => {
@@ -622,12 +668,11 @@ function AppContent() {
         return;
       }
       setSelectedWorkflow(id);
-      workflowRun.reset();
       if (id === "extract") {
         setExtractType("key-information");
       }
     },
-    [language, workflowRun],
+    [language],
   );
 
   const handleWorkflowSelect = useCallback(
@@ -844,7 +889,8 @@ function AppContent() {
                           !canUseDeepAnalysis ||
                           isIndexing ||
                           isOverOnDeviceLimit ||
-                          selectedDef?.status !== "ready"
+                          selectedDef?.status !== "ready" ||
+                          session.isGenerating
                         }
                         className="flex-1"
                         data-tour-id="run-button"
@@ -866,48 +912,58 @@ function AppContent() {
               style={{ animationDelay: "0.1s" }}
               data-tour-id="output-section"
             >
-              {isAsk ? (
-                <ChatPanel
-                  messages={chat.messages}
-                  isGenerating={chat.isGenerating}
-                  onSend={handleChatSend}
-                  onClear={() => chat.clear()}
-                  disabled={!isModelReady || !canUseDeepAnalysis || isIndexing}
-                  disabledReason={
-                    isIndexing
-                      ? "You can ask questions once the document has finished preparing."
-                      : undefined
+              <SessionThread
+                language={language}
+                entries={session.entries}
+                liveWorkflowId={activeRun?.workflowId ?? selectedWorkflow}
+                liveExtractType={activeRun?.extractType ?? extractType}
+                isProcessing={workflowRun.isProcessing}
+                isRepairing={workflowRun.isRepairing}
+                isGenerating={session.isGenerating}
+                liveError={workflowRun.error}
+                livePartial={workflowRun.partial}
+                liveValidated={workflowRun.validated}
+                liveEvidenceById={evidenceById}
+                extraQuestions={
+                  classification
+                    ? suggestedQuestionsForType(classification.type)
+                    : undefined
+                }
+                showAskComposer={isAsk}
+                composerDisabled={!isModelReady || !canUseDeepAnalysis || isIndexing}
+                composerDisabledReason={
+                  isIndexing
+                    ? "You can ask questions once the document has finished preparing."
+                    : undefined
+                }
+                onSend={handleChatSend}
+                onClear={() => {
+                  workflowRun.reset();
+                  setActiveRun(null);
+                  useSessionStore.getState().clear();
+                  useChatStore.getState().clear();
+                }}
+                onStop={() => {
+                  workflowRun.stop();
+                  setActiveRun(null);
+                }}
+                onAsk={(message) => {
+                  setSelectedWorkflow("ask");
+                  void handleChatSend(message);
+                }}
+                onFollowUp={(text) => {
+                  setSelectedWorkflow("ask");
+                  void handleChatSend(text);
+                }}
+                onRerun={(workflowId, runExtractType) => {
+                  setSelectedWorkflow(workflowId);
+                  if (runExtractType) {
+                    extractTypeRef.current = runExtractType;
+                    setExtractType(runExtractType);
                   }
-                />
-              ) : (
-                <WorkflowResultRouter
-                  language={language}
-                  workflowId={selectedWorkflow}
-                  extractType={extractType}
-                  isProcessing={workflowRun.isProcessing}
-                  isRepairing={workflowRun.isRepairing}
-                  error={workflowRun.error}
-                  partial={workflowRun.partial}
-                  validated={workflowRun.validated}
-                  evidenceById={evidenceById}
-                  followUpKeys={selectedDef?.suggestedFollowUpKeys ?? []}
-                  extraQuestions={
-                    classification
-                      ? suggestedQuestionsForType(classification.type)
-                      : undefined
-                  }
-                  onRerun={() => void handleRun()}
-                  onStop={workflowRun.stop}
-                  onAsk={(message) => {
-                    setSelectedWorkflow("ask");
-                    void handleChatSend(message);
-                  }}
-                  onFollowUp={(text) => {
-                    setSelectedWorkflow("ask");
-                    void handleChatSend(text);
-                  }}
-                />
-              )}
+                  void handleRun({ workflowId, extractType: runExtractType });
+                }}
+              />
               <DebugPanel debugInfo={debugInfo} />
             </div>
           </div>
