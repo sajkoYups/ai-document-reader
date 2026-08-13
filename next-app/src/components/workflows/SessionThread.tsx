@@ -86,7 +86,7 @@ export default function SessionThread({
   };
 
   return (
-    <div className="flex flex-col min-h-[400px] h-full bg-surface-1 border border-border rounded-xl overflow-hidden">
+    <div className="flex flex-col min-h-[400px] bg-surface-1 border border-border rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
         <span className="text-xs font-medium text-text-muted tracking-wide uppercase">
           {t(language, "session.thread")}

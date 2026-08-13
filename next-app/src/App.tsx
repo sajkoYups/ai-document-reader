@@ -792,41 +792,36 @@ function AppContent() {
         </div>
       )}
 
-      {!hasDocument ? (
-        <AnalyzerEmptyState
-          language={language}
-          selectedId={selectedWorkflow}
-          onSelect={handleWorkflowSelect}
-          onFile={handleFile}
-          pasteValue={doc.rawText}
-          onPasteChange={(value) => doc.setText(value)}
-          onMore={() => setMoreOpen(true)}
-          error={doc.error}
-        />
-      ) : (
-        <div className="space-y-4">
-          <DocumentReadyBar
-            language={language}
-            fileName={doc.fileName}
-            pageCount={doc.pageCount}
-            sectionCount={doc.sections.length}
-            isHosted={processingMode === "api"}
-            onReplace={() => replaceInputRef.current?.click()}
-            onRemove={handleClear}
-            replaceInputRef={replaceInputRef}
-            onFile={handleFile}
-          />
-          {classification ? (
-            <ClassificationBanner
+      <div className="w-full space-y-4">
+        {hasDocument ? (
+          <>
+            <DocumentReadyBar
               language={language}
-              label={classification.label}
-              recommendedIds={classification.recommendedWorkflowIds as WorkflowId[]}
-              onSelect={handleWorkflowSelect}
+              fileName={doc.fileName}
+              pageCount={doc.pageCount}
+              sectionCount={doc.sections.length}
+              isHosted={processingMode === "api"}
+              onReplace={() => replaceInputRef.current?.click()}
+              onRemove={handleClear}
+              replaceInputRef={replaceInputRef}
+              onFile={handleFile}
             />
-          ) : null}
+            {classification ? (
+              <ClassificationBanner
+                language={language}
+                label={classification.label}
+                recommendedIds={classification.recommendedWorkflowIds as WorkflowId[]}
+                onSelect={handleWorkflowSelect}
+              />
+            ) : null}
+          </>
+        ) : null}
 
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,32%)_minmax(0,1fr)] gap-6 items-start">
-            <div className="space-y-4 animate-fade-in" data-tour-id="task-selector">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,32%)_minmax(0,1fr)] gap-6 items-start">
+          <div
+            className="space-y-4 animate-fade-in self-start lg:sticky lg:top-20 lg:z-10 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+            data-tour-id="task-selector"
+          >
               <WorkflowSelector
                 workflows={listPrimary()}
                 selectedId={selectedWorkflow}
@@ -856,7 +851,7 @@ function AppContent() {
                 {t(language, "empty.more")} →
               </button>
 
-              {!isAsk ? (
+              {hasDocument && !isAsk ? (
                 <div className="space-y-2">
                   {ai.modelStatus === "error" && (
                     <div className="space-y-2">
@@ -912,63 +907,74 @@ function AppContent() {
               style={{ animationDelay: "0.1s" }}
               data-tour-id="output-section"
             >
-              <SessionThread
-                language={language}
-                entries={session.entries}
-                liveWorkflowId={activeRun?.workflowId ?? selectedWorkflow}
-                liveExtractType={activeRun?.extractType ?? extractType}
-                isProcessing={workflowRun.isProcessing}
-                isRepairing={workflowRun.isRepairing}
-                isGenerating={session.isGenerating}
-                liveError={workflowRun.error}
-                livePartial={workflowRun.partial}
-                liveValidated={workflowRun.validated}
-                liveEvidenceById={evidenceById}
-                extraQuestions={
-                  classification
-                    ? suggestedQuestionsForType(classification.type)
-                    : undefined
-                }
-                showAskComposer={isAsk}
-                composerDisabled={!isModelReady || !canUseDeepAnalysis || isIndexing}
-                composerDisabledReason={
-                  isIndexing
-                    ? "You can ask questions once the document has finished preparing."
-                    : undefined
-                }
-                onSend={handleChatSend}
-                onClear={() => {
-                  workflowRun.reset();
-                  setActiveRun(null);
-                  useSessionStore.getState().clear();
-                  useChatStore.getState().clear();
-                }}
-                onStop={() => {
-                  workflowRun.stop();
-                  setActiveRun(null);
-                }}
-                onAsk={(message) => {
-                  setSelectedWorkflow("ask");
-                  void handleChatSend(message);
-                }}
-                onFollowUp={(text) => {
-                  setSelectedWorkflow("ask");
-                  void handleChatSend(text);
-                }}
-                onRerun={(workflowId, runExtractType) => {
-                  setSelectedWorkflow(workflowId);
-                  if (runExtractType) {
-                    extractTypeRef.current = runExtractType;
-                    setExtractType(runExtractType);
-                  }
-                  void handleRun({ workflowId, extractType: runExtractType });
-                }}
-              />
-              <DebugPanel debugInfo={debugInfo} />
+              {hasDocument ? (
+                <>
+                  <SessionThread
+                    language={language}
+                    entries={session.entries}
+                    liveWorkflowId={activeRun?.workflowId ?? selectedWorkflow}
+                    liveExtractType={activeRun?.extractType ?? extractType}
+                    isProcessing={workflowRun.isProcessing}
+                    isRepairing={workflowRun.isRepairing}
+                    isGenerating={session.isGenerating}
+                    liveError={workflowRun.error}
+                    livePartial={workflowRun.partial}
+                    liveValidated={workflowRun.validated}
+                    liveEvidenceById={evidenceById}
+                    extraQuestions={
+                      classification
+                        ? suggestedQuestionsForType(classification.type)
+                        : undefined
+                    }
+                    showAskComposer={isAsk}
+                    composerDisabled={!isModelReady || !canUseDeepAnalysis || isIndexing}
+                    composerDisabledReason={
+                      isIndexing
+                        ? "You can ask questions once the document has finished preparing."
+                        : undefined
+                    }
+                    onSend={handleChatSend}
+                    onClear={() => {
+                      workflowRun.reset();
+                      setActiveRun(null);
+                      useSessionStore.getState().clear();
+                      useChatStore.getState().clear();
+                    }}
+                    onStop={() => {
+                      workflowRun.stop();
+                      setActiveRun(null);
+                    }}
+                    onAsk={(message) => {
+                      setSelectedWorkflow("ask");
+                      void handleChatSend(message);
+                    }}
+                    onFollowUp={(text) => {
+                      setSelectedWorkflow("ask");
+                      void handleChatSend(text);
+                    }}
+                    onRerun={(workflowId, runExtractType) => {
+                      setSelectedWorkflow(workflowId);
+                      if (runExtractType) {
+                        extractTypeRef.current = runExtractType;
+                        setExtractType(runExtractType);
+                      }
+                      void handleRun({ workflowId, extractType: runExtractType });
+                    }}
+                  />
+                  <DebugPanel debugInfo={debugInfo} />
+                </>
+              ) : (
+                <AnalyzerEmptyState
+                  language={language}
+                  onFile={handleFile}
+                  pasteValue={doc.rawText}
+                  onPasteChange={(value) => doc.setText(value)}
+                  error={doc.error}
+                />
+              )}
             </div>
           </div>
         </div>
-      )}
 
       <MoreWorkflowsModal
         open={moreOpen}

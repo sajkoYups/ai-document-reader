@@ -31,7 +31,7 @@ export default function Layout({
   const deviceLabel = inferenceDevice === "webgpu" ? "GPU" : inferenceDevice === "wasm" ? "CPU" : null;
 
   return (
-    <div className="min-h-screen bg-surface-0 grain flex flex-col overflow-x-hidden overflow-y-auto">
+    <div className="min-h-screen bg-surface-0 grain flex flex-col overflow-x-clip">
       {/* Header */}
       <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-surface-0/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 md:px-6 min-h-14 py-3 flex items-center justify-between flex-wrap gap-y-2">
@@ -60,7 +60,7 @@ export default function Layout({
       </header>
 
       {/* Main content - grows with content; page scrolls as a whole */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 flex-1 flex flex-col min-h-min">
+      <main className="w-full max-w-7xl mx-auto px-4 md:px-6 py-6 flex-1 flex flex-col min-h-min">
         {children}
       </main>
       <Footer />
