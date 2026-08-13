@@ -24,20 +24,20 @@ export const metadata: Metadata = {
     template: "%s | PIA",
   },
   description:
-    "Analyze documents with AI privately. Summarize, explain, extract key points, or chat with your docs — all in your browser. No account, no data stored.",
+    "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis. No account for Standard mode, no data stored.",
   openGraph: {
     type: "website",
     url: siteUrl,
     title: "Private AI Document Analysis | PIA",
     description:
-      "Analyze documents with AI privately. Summarize, explain, extract key points, or chat with your docs — all in your browser.",
+      "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis.",
     siteName: "PIA",
   },
   twitter: {
     card: "summary_large_image",
     title: "Private AI Document Analysis | PIA",
     description:
-      "Analyze documents with AI privately. Summarize, explain, extract key points, or chat with your docs — all in your browser.",
+      "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis.",
   },
 };
 

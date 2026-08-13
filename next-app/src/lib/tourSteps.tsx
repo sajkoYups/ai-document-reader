@@ -12,7 +12,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Welcome to PIA
         </h3>
         <p className="text-base text-text-secondary leading-relaxed">
-          This short tour will show you how to add a document, pick what you want the AI to do, and read the results.
+          This short tour shows how to add a private document, pick a workflow, and read structured results with follow-ups.
         </p>
       </div>
     ),
@@ -40,7 +40,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Standard vs Deep Analysis
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). We&apos;ll disable options automatically if they aren&apos;t available on your device.
+          Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). Review and Extract require Deep Analysis; Summarize and Ask work in both.
         </p>
       </div>
     ),
@@ -54,7 +54,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Output language
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Choose the language you want the AI to answer in. This affects summaries, explanations, and Deep Analysis responses, not your original document.
+          Choose the language you want the AI to answer in. This affects summaries, reviews, extractions, and Ask answers — not your original document.
         </p>
       </div>
     ),
@@ -121,10 +121,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
-          Choose what you want the AI to do
+          Choose a workflow
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Pick a task such as Summarize, Explain, or Chat. You can change this at any time without reloading your document.
+          Pick Summarize, Review, Extract, or Ask. Compare and Timeline are coming soon. You can change this any time without reloading your document.
         </p>
       </div>
     ),
@@ -138,7 +138,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Run the analysis
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          When you&apos;re ready, click Run. For longer documents you may see a quick preparation step before results appear.
+          When you&apos;re ready, click Run. Structured results appear as they stream in — key points, findings, or table rows — without waiting for a full JSON dump.
         </p>
       </div>
     ),
@@ -149,10 +149,10 @@ export const ONBOARDING_STEPS: StepType[] = [
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
-          Read results and chat
+          Read results and follow up
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Your summaries, explanations, or chat answers appear here. Switch to Chat to ask follow-up questions grounded in your document.
+          Summaries, review findings, and extraction tables appear here with clickable evidence. Use Ask or the follow-up bar to dig into anything that needs attention.
         </p>
       </div>
     ),

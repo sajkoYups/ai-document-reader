@@ -13,11 +13,10 @@ Build a privacy‑first AI assistant that analyzes and generates documents entir
 ### Functional Goals
 
 * Analyze documents locally (paste text or upload file)
-* Generate new documents from prompts
-* Explain complex text in plain language
-* Summarize long content
-* Extract key points, obligations, risks, dates
-* Q&A over the provided text
+* Workflow-driven analysis: Summarize, Review, Extract, Ask
+* Structured, evidence-backed results (not plain prose dumps)
+* Extract key points, obligations, amounts, dates, contacts
+* Q&A over the provided text with clickable evidence
 
 ### Non‑Functional Goals
 
@@ -78,13 +77,12 @@ Primary early adopters:
 
 ## 5. Core Use Cases
 
-1. "Explain this document to me"
-2. "Summarize this report"
-3. "What are the risks or obligations here?"
-4. "Rewrite this in simpler language"
-5. "Draft a document based on this description"
-6. "Answer questions about this text"
-7. **Chat with document:** Ask natural-language questions about the uploaded/pasted document (e.g., “Is termination covered?”, “Where is payment defined?”, “Does it mention a refund policy?”) and get grounded answers with references to the relevant sections.
+1. "Summarize this report"
+2. "Review this contract for items needing attention"
+3. "Extract obligations, dates, and amounts"
+4. "Ask: Is termination covered? Where is payment defined?"
+5. Follow up on a finding or table row after a workflow run
+6. Run Deep Analysis for Review/Extract when Standard/local is not enough
 
 ---
 
@@ -263,17 +261,17 @@ Provide a simple explanation modal:
 
 Main components:
 
-1. Input area (paste or upload)
-2. Task selector (summarize, explain, draft, etc.)
-3. Run analysis button
-4. Output panel
-5. Privacy badge
-6. **Chat with document panel**
+1. Empty state / compact document bar (paste or upload)
+2. Workflow selector (Summarize, Review, Extract, Ask; Compare/Timeline coming soon)
+3. Run analysis button (structured workflows)
+4. Workflow result pane (Summary / FindingCards / ExtractionTable)
+5. Privacy badge + capability gate for Deep-only workflows
+6. **Ask panel + follow-up bar**
 
-   * Chat input + message history
+   * Ask input + message history
    * Answers grounded in the provided document only
-   * Show “evidence” by quoting short snippets and/or indicating section headings / page references (when available)
-   * Allow follow-up questions that keep context within the current session
+   * Clickable evidence (page / section) when page map exists
+   * Follow-ups after every structured result, session-only
 
 ---
 
@@ -375,36 +373,45 @@ No costs for:
 
 ---
 
-## 12. Future Roadmap (Post‑Beta)
+## 12. Workflow System & Roadmap
 
-### Phase 0.5 — Premium Deep Analysis (Current)
+### Product model
 
-* Backend API with Ollama model serving
-* End‑to‑end encrypted API calls (ECDH + AES‑256‑GCM)
-* Account gating for premium features
-* Larger models for higher quality analysis of long documents (200+ pages)
+Workflows are product objects (registry on the client), not prompt buttons.
+The frontend owns UI metadata, Zod schemas, result renderers, and evidence mapping.
+The server looks up prompts by `workflowId`, optionally enables JSON mode, and stays a memory-only inference layer.
+Documents, workflow outputs, and chat are never persisted — refresh / idle timeout still clears the session.
 
-### Phase 1 — Local Persistence
+```
+Document → Action (workflow) → Structured Result → Follow-up (Ask)
+```
 
-* Encrypted save on device
-* IndexedDB storage
+### Phase 1 — Workflow System (current)
 
-### Phase 2 — Cloud Sync (Optional)
+* Core workflows: **Summarize**, **Review**, **Extract**, **Ask**
+* Compare and Timeline visible but coming soon / disabled
+* Evidence-backed structured streaming (partial JSON → UI; never show broken JSON)
+* Review & Extract require Deep Analysis; Summarize & Ask work in Standard/local
+* Heuristic document classification + recommended workflows (no extra LLM call)
+* Capability gate with explicit “Continue privately” (no silent mode switch)
 
-* End‑to‑end encrypted uploads
-* Multi‑device access
+### Phase 2 — Multi-document & deeper analysis
 
-### Phase 3 — Collaboration
+* Compare and Timeline (multi-document session)
+* Evidence Finder, contradictions, missing information, action items, document map
+* Stronger multi-pass Deep Analysis retrieval
 
-* Secure sharing
-* Team features
-* Access control
+### Phase 3 — Packs, library, builder
 
-### Phase 4 — Advanced Assistant
+* Legal / compliance / research / finance / HR packs
+* Persistent library (still privacy-preserving), workflow builder, analytics
+* Full UI i18n framework; PDF page jump inside a rendered viewer
 
-* Cross‑document reasoning
-* Personal knowledge base
-* Email and workflow integrations
+### Earlier premium foundation (shipped)
+
+* Backend API with Ollama / RunPod / OpenRouter
+* End-to-end encrypted API calls (ECDH + AES-256-GCM)
+* Account gating for Deep Analysis
 
 ---
 

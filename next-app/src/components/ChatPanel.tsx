@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import type { ChatMessage } from "@/types";
+import type { ChatMessage, EvidenceRef } from "@/types";
 import Button from "./Button";
+import EvidenceReference from "./workflows/results/EvidenceReference";
+import SourceViewer from "./workflows/results/SourceViewer";
+import { useAiStore } from "@/store/aiStore";
 
 interface ChatPanelProps {
   messages: ChatMessage[];
@@ -21,7 +24,9 @@ export default function ChatPanel({
   disabledReason,
 }: ChatPanelProps) {
   const [input, setInput] = useState("");
+  const [source, setSource] = useState<EvidenceRef | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const language = useAiStore((s) => s.outputLanguage);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,7 +44,7 @@ export default function ChatPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
         <span className="text-xs font-medium text-text-muted tracking-wide uppercase">
-          Chat with Document
+          Ask about this document
         </span>
         {messages.length > 0 && (
           <Button variant="ghost" size="sm" onClick={onClear}>
@@ -53,10 +58,10 @@ export default function ChatPanel({
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <p className="text-sm text-text-muted">
-              Ask a question about your document
+              Ask anything about this document…
             </p>
             <p className="text-xs text-text-muted/60 mt-1">
-              e.g., &ldquo;What are the key obligations?&rdquo;
+              e.g., &ldquo;What are the payment terms?&rdquo;
             </p>
           </div>
         )}
@@ -78,7 +83,9 @@ export default function ChatPanel({
             >
               <p className="whitespace-pre-wrap">{msg.content}</p>
 
-              {msg.evidence && msg.evidence.length > 0 && (
+              {msg.evidenceRefs && msg.evidenceRefs.length > 0 ? (
+                <EvidenceReference evidence={msg.evidenceRefs} onOpen={setSource} />
+              ) : msg.evidence && msg.evidence.length > 0 ? (
                 <div className="mt-2 pt-2 border-t border-white/10 space-y-1.5">
                   {msg.evidence.map((snippet, j) => (
                     <blockquote
@@ -89,7 +96,7 @@ export default function ChatPanel({
                     </blockquote>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         ))}
@@ -112,6 +119,12 @@ export default function ChatPanel({
 
         <div ref={messagesEndRef} />
       </div>
+      <SourceViewer
+        open={source !== null}
+        language={language}
+        reference={source}
+        onClose={() => setSource(null)}
+      />
 
       {/* Input */}
       <div className="p-3 border-t border-border-subtle">
@@ -138,7 +151,7 @@ export default function ChatPanel({
                 ? disabledReason
                   ? "Wait for document to finish preparing..."
                   : "Load a document first..."
-                : "Ask about your document..."
+                : "Ask anything about this document..."
             }
             disabled={disabled || isGenerating}
             className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-sm

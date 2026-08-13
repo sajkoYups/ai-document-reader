@@ -14,7 +14,7 @@ export const SEO_CONFIG: Record<string, SeoMeta> = {
   "/": {
     title: "Private AI Document Analysis | PIA",
     description:
-      "Analyze documents with AI privately. Summarize, explain, extract key points, or chat with your docs — all in your browser. No account, no data stored. Try it free.",
+      "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis. No account for Standard mode, no data stored.",
     withSocial: true,
   },
   "/about": {
@@ -26,12 +26,12 @@ export const SEO_CONFIG: Record<string, SeoMeta> = {
   "/who-is-this-for": {
     title: "Who Is PIA For? | Private Document AI",
     description:
-      "PIA is for anyone with sensitive documents: contracts, reports, policies. Get summaries and plain-language explanations without sending content to third parties. Free in-browser option.",
+      "PIA is for anyone with sensitive documents: contracts, reports, policies. Run Summarize, Review, Extract, or Ask without sending content to third parties. Free in-browser option.",
   },
   "/how-does-it-work": {
     title: "How PIA Works | Private AI in Your Browser",
     description:
-      "Add your document, choose summarize or explain or chat, get results. AI runs in your browser so your document never leaves your device. Optional API for faster processing.",
+      "Add your document, choose Summarize, Review, Extract, or Ask. AI runs in your browser so your document never leaves your device. Optional Deep Analysis for stronger workflows.",
   },
   "/what-else-do-we-do": {
     title: "What Else We Do | Private AI Servers & Consulting",

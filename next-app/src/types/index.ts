@@ -1,4 +1,4 @@
-export type TaskType = "summarize" | "explain" | "extract" | "draft" | "chat";
+export type TaskType = "summarize" | "explain" | "extract" | "draft" | "chat" | "review";
 
 export type OutputLanguage = "en" | "de" | "fr" | "cs" | "mk";
 
@@ -33,6 +33,12 @@ export interface DocumentSection {
   endChar?: number;
 }
 
+export interface PageSpan {
+  pageNumber: number;
+  startChar: number;
+  endChar: number;
+}
+
 export interface DocumentState {
   rawText: string;
   sections: DocumentSection[];
@@ -40,8 +46,17 @@ export interface DocumentState {
   fileType: string | null;
 }
 
+export interface EvidenceRef {
+  documentId: string;
+  documentName: string;
+  page?: number;
+  section?: string;
+  excerpt?: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   evidence?: string[];
+  evidenceRefs?: EvidenceRef[];
 }

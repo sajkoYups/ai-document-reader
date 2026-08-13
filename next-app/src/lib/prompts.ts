@@ -1,4 +1,11 @@
 import type { OutputLanguage } from "@/types";
+import type { ExtractType } from "@/workflows/types";
+import {
+  ASK_PROMPT_ADDENDUM,
+  getExtractPrompt,
+  REVIEW_JSON_PROMPT,
+  SUMMARIZE_JSON_PROMPT,
+} from "@/workflows/prompts";
 
 export const SYSTEM_PROMPTS: Record<string, string> = {
   summarize: `You are a document summarization assistant. Your job is to produce a short, accurate summary that helps the reader grasp the document quickly.
@@ -543,7 +550,9 @@ export const TASK_LABELS: Record<string, string> = {
   explain: "Explain",
   extract: "Extract",
   draft: "Draft",
-  chat: "Chat",
+  chat: "Ask",
+  review: "Review",
+  ask: "Ask",
 };
 
 const OUTPUT_LANGUAGE_NAMES: Record<OutputLanguage, string> = {
@@ -563,17 +572,46 @@ const LANGUAGE_USER_CUE: Record<OutputLanguage, string> = {
   mk: "Одговори исклучиво на македонски. Напиши го целиот одговор на македонски.",
 };
 
-/** Returns the full system prompt for the given task and output language. For de/fr/cs the entire prompt is in that language; for en uses English prompt with a language line. */
-export function getSystemPrompt(taskType: string, outputLanguage: OutputLanguage): string {
+function languageLine(outputLanguage: OutputLanguage): string {
+  if (outputLanguage === "de") {
+    return "CRITICAL: Write your entire response in German only. JSON keys stay in English. String values must be in German.\n\n";
+  }
+  if (outputLanguage === "fr") {
+    return "CRITICAL: Write your entire response in French only. JSON keys stay in English. String values must be in French.\n\n";
+  }
+  if (outputLanguage === "cs") {
+    return "CRITICAL: Write your entire response in Czech only. JSON keys stay in English. String values must be in Czech.\n\n";
+  }
+  if (outputLanguage === "mk") {
+    return "CRITICAL: Write your entire response in Macedonian only. JSON keys stay in English. String values must be in Macedonian.\n\n";
+  }
+  return "CRITICAL: Write your entire response in English only. Every heading, sentence, bullet, and number must be in English. Do not use any other language.\n\n";
+}
+
+function legacyPrompt(taskType: string, outputLanguage: OutputLanguage): string {
   if (outputLanguage === "de") return SYSTEM_PROMPTS_DE[taskType] ?? SYSTEM_PROMPTS_DE.summarize!;
   if (outputLanguage === "fr") return SYSTEM_PROMPTS_FR[taskType] ?? SYSTEM_PROMPTS_FR.summarize!;
   if (outputLanguage === "cs") return SYSTEM_PROMPTS_CS[taskType] ?? SYSTEM_PROMPTS_CS.summarize!;
-  if (outputLanguage === "mk") {
-    const langLine = `CRITICAL: Write your entire response in Macedonian only. Every heading, sentence, bullet, and number must be in Macedonian. Do not use any other language.\n\n`;
-    return langLine + (SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS.summarize!);
+  return SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS.summarize!;
+}
+
+/** Returns the full system prompt for the given task and output language. */
+export function getSystemPrompt(
+  taskType: string,
+  outputLanguage: OutputLanguage,
+  extractType?: ExtractType,
+  customQuery?: string,
+): string {
+  const prefix = languageLine(outputLanguage);
+  if (taskType === "summarize") return prefix + SUMMARIZE_JSON_PROMPT;
+  if (taskType === "review") return prefix + REVIEW_JSON_PROMPT;
+  if (taskType === "extract") {
+    return prefix + getExtractPrompt(extractType ?? "key-information", customQuery);
   }
-  const langLine = `CRITICAL: Write your entire response in English only. Every heading, sentence, bullet, and number must be in English. Do not use any other language.\n\n`;
-  return langLine + (SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS.summarize!);
+  if (taskType === "chat" || taskType === "ask") {
+    return prefix + legacyPrompt("chat", outputLanguage) + "\n\n" + ASK_PROMPT_ADDENDUM;
+  }
+  return prefix + legacyPrompt(taskType, outputLanguage);
 }
 
 /** Returns a short cue in the target language to prepend to the user message. Empty for English. When using full translated prompts (de/fr/cs) the cue can still help; for en we don't add it. */

@@ -104,7 +104,7 @@ export default function UsagePanel() {
         <StatCard
           label="Total API calls"
           value={String(data.totalCalls)}
-          sub="Analyze + Chat"
+          sub="Analyze + Ask"
         />
       </div>
 
@@ -121,7 +121,7 @@ export default function UsagePanel() {
                 icon: "📄",
               },
               {
-                label: "Chat",
+                label: "Ask",
                 data: chatBreakdown,
                 icon: "💬",
               },

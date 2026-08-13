@@ -11,12 +11,12 @@ import {
 import WaitlistModal from "./components/WaitlistModal";
 import FeedbackModal from "./components/FeedbackModal";
 import UsagePanel from "./components/UsagePanel";
-import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage, type TaskType } from "@/types";
+import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage } from "@/types";
 import { useDocumentStore } from "@/store/documentStore";
 import { useAiStore } from "@/store/aiStore";
 import { useChatStore } from "@/store/chatStore";
 import { useEmbeddingStore } from "@/store/embeddingStore";
-import { useAiTask } from "@/hooks/useAiTask";
+import { useWorkflowRun } from "@/hooks/useWorkflowRun";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSessionCleanup } from "@/hooks/useSessionCleanup";
 import { checkBrowserCompatibility } from "@/lib/compatibility";
@@ -39,14 +39,9 @@ import {
 } from "@/lib/contextBudget";
 import { estimateTokenCount, MAX_ON_DEVICE_TOKENS } from "@/lib/tokenEstimate";
 import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
-import { TASK_LABELS } from "@/lib/prompts";
 import Layout from "./components/Layout";
 import PrivacyBadge from "./components/PrivacyBadge";
-import TextArea from "./components/TextArea";
-import FileUpload from "./components/FileUpload";
-import TaskSelector from "./components/TaskSelector";
 import ModeToggle from "./components/ModeToggle";
-import OutputPanel from "./components/OutputPanel";
 import ChatPanel from "./components/ChatPanel";
 import Button from "./components/Button";
 import ProgressBar from "./components/ProgressBar";
@@ -58,6 +53,24 @@ import DebugPanel, {
 import { TourProvider } from "@reactour/tour";
 import { ONBOARDING_STEPS } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
+import AnalyzerEmptyState from "./components/workflows/AnalyzerEmptyState";
+import DocumentReadyBar from "./components/workflows/DocumentReadyBar";
+import WorkflowSelector from "./components/workflows/WorkflowSelector";
+import ExtractSubmenu from "./components/workflows/ExtractSubmenu";
+import MoreWorkflowsModal from "./components/workflows/MoreWorkflowsModal";
+import CapabilityGate from "./components/workflows/CapabilityGate";
+import ClassificationBanner from "./components/workflows/ClassificationBanner";
+import WorkflowResultRouter from "./components/workflows/results/WorkflowResultRouter";
+import { t } from "@/workflows/copy";
+import { classifyDocument, suggestedQuestionsForType } from "@/workflows/classify";
+import { buildLabeledContext } from "@/workflows/evidence";
+import { queryForExtract } from "@/workflows/extractQuery";
+import { getWorkflow, listPrimary } from "@/workflows/registry";
+import { SummaryResultSchema } from "@/workflows/schemas/summarize";
+import { ReviewResultSchema } from "@/workflows/schemas/review";
+import { ExtractResultSchema } from "@/workflows/schemas/extract";
+import type { ExtractType, EvidenceReference, WorkflowId } from "@/workflows/types";
+import type { DocumentClassification } from "@/workflows/schemas/classify";
 
 function AppContent() {
   const { isSignedIn } = useAuth();
@@ -69,12 +82,24 @@ function AppContent() {
   const processingMode = useAiStore((s) => s.processingMode);
   const chat = useChatStore();
   const embedding = useEmbeddingStore();
-  const task = useAiTask();
+  const workflowRun = useWorkflowRun();
+  const language = ai.outputLanguage;
 
-  const [selectedTask, setSelectedTask] = useState<TaskType>("summarize");
+  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowId>("summarize");
+  const [extractType, setExtractType] = useState<ExtractType>("key-information");
+  const [customExtractQuery, setCustomExtractQuery] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [gatedWorkflow, setGatedWorkflow] = useState<"review" | "extract">("review");
+  const [classification, setClassification] = useState<DocumentClassification | null>(null);
+  const [evidenceById, setEvidenceById] = useState<Record<string, EvidenceReference>>({});
   const [debugInfo, setDebugInfo] = useState<RagDebugInfo | null>(null);
   const lastIndexedText = useRef<string>("");
-  const modeInitializedRef = useRef(false);
+  const modeInitializedRef = useRef<boolean>(false);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const pendingWorkflowRef = useRef<WorkflowId | null>(null);
+  const extractTypeRef = useRef<ExtractType>(extractType);
+  extractTypeRef.current = extractType;
 
   const compat = useMemo(() => checkBrowserCompatibility(), []);
 
@@ -159,7 +184,18 @@ function AppContent() {
   }, [doc.rawText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasDocument = doc.rawText.trim().length > 0;
-  const isChat = selectedTask === "chat";
+  const isAsk = selectedWorkflow === "ask";
+  const selectedDef = getWorkflow(selectedWorkflow);
+
+  useEffect(() => {
+    if (!hasDocument) {
+      setClassification(null);
+      return;
+    }
+    setClassification(
+      classifyDocument(doc.rawText, doc.fileName, language),
+    );
+  }, [hasDocument, doc.rawText, doc.fileName, language]);
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -181,8 +217,13 @@ function AppContent() {
 
       try {
         let text: string;
+        let pageCount: number | undefined;
+        let pages: { pageNumber: number; startChar: number; endChar: number }[] | undefined;
         if (fileType === "pdf") {
-          text = await extractTextFromPdf(file);
+          const extracted = await extractTextFromPdf(file);
+          text = extracted.text;
+          pageCount = extracted.pageCount;
+          pages = extracted.pages;
         } else {
           text = await file.text();
         }
@@ -192,7 +233,7 @@ function AppContent() {
           return;
         }
 
-        doc.setFromFile(text, file.name, fileType);
+        doc.setFromFile(text, file.name, fileType, { pageCount, pages });
         showToast(`Loaded ${file.name}`, "success");
       } catch {
         doc.setError("Failed to read file. It may be corrupted or encrypted.");
@@ -215,8 +256,17 @@ function AppContent() {
     doc.rawText.length > MAX_DIRECT_CHARS &&
     (embedding.status === "loading-model" || embedding.status === "indexing");
 
+  const schemaFor = (id: WorkflowId) => {
+    if (id === "review") return ReviewResultSchema;
+    if (id === "extract") return ExtractResultSchema;
+    return SummaryResultSchema;
+  };
+
   const handleRun = useCallback(async () => {
-    if (!hasDocument || !isModelReady || task.isProcessing) return;
+    if (!hasDocument || !isModelReady || workflowRun.isProcessing) return;
+    if (selectedWorkflow === "ask") return;
+    const def = getWorkflow(selectedWorkflow);
+    if (!def || def.status !== "ready") return;
     if (isIndexing) {
       showToast(
         "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes.",
@@ -239,91 +289,115 @@ function AppContent() {
     const totalDocChars = doc.rawText.length;
     const totalDocChunks = embedding.chunks.length;
     const isShortDoc = totalDocChars <= MAX_DIRECT_CHARS;
-
-    if (isShortDoc) {
-      setDebugInfo({
-        method: "direct",
-        retrievedChunks: [],
-        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
-        totalDocChars,
-        totalDocChunks,
-        timestamp: Date.now(),
-      });
-      task.run(selectedTask, doc.rawText);
-      return;
-    }
-
-    if ((selectedTask === "summarize" || selectedTask === "explain") && embedding.status !== "ready") {
-      setDebugInfo({
-        method: "direct",
-        retrievedChunks: [],
-        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
-        totalDocChars,
-        totalDocChunks,
-        timestamp: Date.now(),
-      });
-      task.run(selectedTask, doc.rawText);
-      return;
-    }
+    const documentName = doc.fileName ?? "Document";
+    let chunks: DocumentChunk[] = [];
+    let method: RagDebugInfo["method"] = "direct";
+    let query: string | undefined;
 
     try {
-      let contextText: string;
-      let retrievedChunks: import("@/lib/documentChunker").DocumentChunk[];
-      let method: RagDebugInfo["method"];
-      let query: string | undefined;
-
-      if (selectedTask === "summarize" || selectedTask === "explain") {
-        retrievedChunks = embedding.getSpreadChunks(MAX_DIRECT_CHARS, doc.sections);
-        const { text, meta } = assembleContext(retrievedChunks, MAX_DIRECT_CHARS);
-        contextText = text;
-        method = "spread";
-        setDebugInfo({ method, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
-      } else if (selectedTask === "extract") {
-        query = "key points obligations risks dates terms price cost amount payment";
-        if (embedding.chunks.length > 0) {
-          retrievedChunks = await embedding.retrieveChunksHybrid(query, EXTRACT_TOP_K, { useMMR: false });
-          const { text, meta } = assembleContext(retrievedChunks, MAX_DIRECT_CHARS);
-          contextText = text;
-          method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
-          setDebugInfo({ method, query, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
-        } else {
-          setDebugInfo({
-            method: "direct",
-            retrievedChunks: [],
-            contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
-            totalDocChars,
-            totalDocChunks,
-            timestamp: Date.now(),
-          });
-          task.run(selectedTask, doc.rawText);
-          return;
-        }
+      if (isShortDoc || embedding.chunks.length === 0) {
+        chunks = embedding.chunks.length > 0 ? embedding.chunks : [
+          { text: doc.rawText, index: 0, startChar: 0, endChar: doc.rawText.length },
+        ];
+        method = "direct";
+      } else if (selectedWorkflow === "extract") {
+        query = queryForExtract(extractTypeRef.current, customExtractQuery);
+        chunks = await embedding.retrieveChunksHybrid(query, EXTRACT_TOP_K, { useMMR: false });
+        method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
       } else {
-        setDebugInfo({
-          method: "direct",
-          retrievedChunks: [],
-          contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
-          totalDocChars,
-          totalDocChunks,
-          timestamp: Date.now(),
-        });
-        task.run(selectedTask, doc.rawText);
-        return;
+        chunks = embedding.getSpreadChunks(MAX_DIRECT_CHARS, doc.sections);
+        method = "spread";
       }
-
-      task.run(selectedTask, contextText);
     } catch {
-      setDebugInfo({
-        method: "fallback",
-        retrievedChunks: [],
-        contextMeta: { chunksIncluded: 0, totalChars: totalDocChars, truncatedChunks: 0, gapMarkers: 0 },
-        totalDocChars,
-        totalDocChunks,
-        timestamp: Date.now(),
-      });
-      task.run(selectedTask, doc.rawText);
+      chunks = embedding.chunks.slice(0, 8);
+      method = "fallback";
     }
-  }, [hasDocument, isModelReady, isIndexing, isOverOnDeviceLimit, task, selectedTask, doc.rawText, doc.sections, embedding, ai.processingMode, isSignedIn]);
+
+    const labeled = buildLabeledContext(
+      chunks,
+      doc.pages,
+      doc.sections,
+      doc.documentId,
+      documentName,
+      MAX_DIRECT_CHARS,
+    );
+    setEvidenceById(labeled.evidenceById);
+    setDebugInfo({
+      method,
+      query,
+      retrievedChunks: chunks,
+      contextMeta: {
+        chunksIncluded: chunks.length,
+        totalChars: labeled.text.length,
+        truncatedChunks: 0,
+        gapMarkers: 0,
+      },
+      totalDocChars,
+      totalDocChunks,
+      timestamp: Date.now(),
+    });
+
+    await workflowRun.run({
+      workflowId: selectedWorkflow,
+      documentText: labeled.text || doc.rawText,
+      schema: schemaFor(selectedWorkflow),
+      extractType: selectedWorkflow === "extract" ? extractTypeRef.current : undefined,
+      customQuery: selectedWorkflow === "extract" ? customExtractQuery : undefined,
+    });
+  }, [
+    hasDocument,
+    isModelReady,
+    isIndexing,
+    isOverOnDeviceLimit,
+    workflowRun,
+    selectedWorkflow,
+    extractType,
+    customExtractQuery,
+    doc.rawText,
+    doc.sections,
+    doc.pages,
+    doc.documentId,
+    doc.fileName,
+    embedding,
+    ai.processingMode,
+    isSignedIn,
+  ]);
+
+  const autoRunArmedRef = useRef(false);
+  useEffect(() => {
+    // Selecting a workflow on the empty state should run once the document is ready.
+    if (!hasDocument || !autoRunArmedRef.current) return;
+    if (!isModelReady || isIndexing || workflowRun.isProcessing) return;
+    if (selectedWorkflow === "ask") {
+      autoRunArmedRef.current = false;
+      return;
+    }
+    const def = getWorkflow(selectedWorkflow);
+    if (!def || def.status !== "ready") {
+      autoRunArmedRef.current = false;
+      return;
+    }
+    if (!def.localSupported && processingMode === "local") {
+      // Capability gate: never silent-switch; prompt the user instead.
+      autoRunArmedRef.current = false;
+      pendingWorkflowRef.current = selectedWorkflow;
+      if (selectedWorkflow === "review" || selectedWorkflow === "extract") {
+        setGatedWorkflow(selectedWorkflow);
+        setGateOpen(true);
+      }
+      return;
+    }
+    autoRunArmedRef.current = false;
+    void handleRun();
+  }, [
+    hasDocument,
+    isModelReady,
+    isIndexing,
+    selectedWorkflow,
+    processingMode,
+    workflowRun.isProcessing,
+    handleRun,
+  ]);
 
   const handleChatSend = async (message: string) => {
     if (isIndexing) {
@@ -421,6 +495,21 @@ function AppContent() {
         timestamp: Date.now(),
       });
 
+      const labeledAsk =
+        retrievedChunks.length > 0
+          ? buildLabeledContext(
+              retrievedChunks,
+              doc.pages,
+              doc.sections,
+              doc.documentId,
+              doc.fileName ?? "Document",
+              maxAssembled,
+            )
+          : null;
+      const evidenceRefs = labeledAsk
+        ? Object.values(labeledAsk.evidenceById).slice(0, 5)
+        : undefined;
+
       chatViaApi(
         documentForApi,
         message,
@@ -432,6 +521,7 @@ function AppContent() {
           const evidence = extractEvidence(result, doc.sections);
           chat.finalizeAssistantMessage(
             evidence.length > 0 ? evidence : undefined,
+            evidenceRefs && evidenceRefs.length > 0 ? evidenceRefs : undefined,
           );
         })
         .catch((err) =>
@@ -452,11 +542,21 @@ function AppContent() {
     const history = buildChatHistory(allMessages);
 
     let contextDoc: string;
+    let askEvidenceRefs: EvidenceReference[] | undefined;
     if (embedding.chunks.length > 0) {
       try {
         const retrievedChunks = await embedding.retrieveChunksHybrid(message, CHAT_TOP_K);
         const { text, meta } = assembleContext(retrievedChunks);
         contextDoc = text;
+        const labeledAsk = buildLabeledContext(
+          retrievedChunks,
+          doc.pages,
+          doc.sections,
+          doc.documentId,
+          doc.fileName ?? "Document",
+          MAX_DIRECT_CHARS,
+        );
+        askEvidenceRefs = Object.values(labeledAsk.evidenceById).slice(0, 5);
         const method = embedding.status === "ready" ? "hybrid" : "keyword-fallback";
         setDebugInfo({ method, query: message, retrievedChunks, contextMeta: meta, totalDocChars, totalDocChunks, timestamp: Date.now() });
       } catch {
@@ -493,6 +593,7 @@ function AppContent() {
         const evidence = extractEvidence(result, doc.sections);
         chat.finalizeAssistantMessage(
           evidence.length > 0 ? evidence : undefined,
+          askEvidenceRefs && askEvidenceRefs.length > 0 ? askEvidenceRefs : undefined,
         );
       },
       (error) => chat.setAssistantError(error),
@@ -501,18 +602,64 @@ function AppContent() {
 
   const handleClear = useCallback(() => {
     doc.clear();
-    task.reset();
+    workflowRun.reset();
     chat.clear();
     embedding.clear();
     lastIndexedText.current = "";
+    setClassification(null);
+    setEvidenceById({});
     forceCleanup();
     showToast("Session cleared", "info");
-  }, [doc, task, chat, embedding, forceCleanup]);
+  }, [doc, workflowRun, chat, embedding, forceCleanup]);
 
-  const handleTaskSwitch = (newTask: TaskType) => {
-    setSelectedTask(newTask);
-    task.reset();
-  };
+  const applyWorkflow = useCallback(
+    (id: WorkflowId) => {
+      const def = getWorkflow(id);
+      if (!def || def.status !== "ready") {
+        if (def?.status === "coming_soon") {
+          showToast(t(language, "comingSoon"), "info");
+        }
+        return;
+      }
+      setSelectedWorkflow(id);
+      workflowRun.reset();
+      if (id === "extract") {
+        setExtractType("key-information");
+      }
+    },
+    [language, workflowRun],
+  );
+
+  const handleWorkflowSelect = useCallback(
+    (id: WorkflowId) => {
+      const def = getWorkflow(id);
+      if (!def) return;
+      if (def.status === "coming_soon") {
+        showToast(t(language, "comingSoon"), "info");
+        return;
+      }
+      if (!hasDocument && id !== "ask") {
+        autoRunArmedRef.current = true;
+      }
+      if (!def.localSupported && processingMode === "local" && (id === "review" || id === "extract")) {
+        pendingWorkflowRef.current = id;
+        setGatedWorkflow(id);
+        setGateOpen(true);
+        return;
+      }
+      applyWorkflow(id);
+      setMoreOpen(false);
+    },
+    [applyWorkflow, hasDocument, language, processingMode],
+  );
+
+  const handleGateContinue = useCallback(() => {
+    setGateOpen(false);
+    setProcessingMode("api");
+    const pending = pendingWorkflowRef.current;
+    pendingWorkflowRef.current = null;
+    if (pending) applyWorkflow(pending);
+  }, [applyWorkflow, setProcessingMode]);
 
   useKeyboardShortcuts({
     onRun: handleRun,
@@ -600,254 +747,197 @@ function AppContent() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        {/* Left panel: Input - no column scroll; page scrolls as a whole */}
-        <div className="space-y-5 animate-fade-in">
-          <div className="space-y-1">
-            <h2 className="font-display text-2xl text-text-primary tracking-tight">
-              Your Document
-            </h2>
-            <p className="text-sm text-text-muted">
-              Paste text or add a file to get started.
-            </p>
-            <p className="text-xs text-text-muted leading-relaxed">
-              1. Add your document (paste or upload). 2. Wait for it to be prepared (progress bar above, if it appears). 3. Choose a task and click Run.
-            </p>
-          </div>
-
-          <FileUpload onFile={handleFile} data-tour-id="file-upload" />
-
-          {doc.error && (
-            <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger animate-fade-in">
-              {doc.error}
-            </div>
-          )}
-
-          {doc.fileName && (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-2 border border-border rounded-lg text-xs text-text-secondary animate-fade-in">
-              <span className="font-mono">{doc.fileName}</span>
-              <span className="text-text-muted">
-                ({doc.sections.length}{" "}
-                {doc.sections.length === 1 ? "section" : "sections"})
-              </span>
-            </div>
-          )}
-
-          <div className="relative">
-            <div className="absolute inset-x-0 top-0 flex items-center justify-center -translate-y-1/2">
-              <span className="bg-surface-0 px-3 text-xs text-text-muted">
-                or paste your text
-              </span>
-            </div>
-          </div>
-
-          <TextArea
-            value={doc.rawText}
-            onChange={(e) => doc.setText(e.target.value)}
-            placeholder="Paste your document content here..."
-            rows={10}
-            data-tour-id="text-input"
+      {!hasDocument ? (
+        <AnalyzerEmptyState
+          language={language}
+          selectedId={selectedWorkflow}
+          onSelect={handleWorkflowSelect}
+          onFile={handleFile}
+          pasteValue={doc.rawText}
+          onPasteChange={(value) => doc.setText(value)}
+          onMore={() => setMoreOpen(true)}
+          error={doc.error}
+        />
+      ) : (
+        <div className="space-y-4">
+          <DocumentReadyBar
+            language={language}
+            fileName={doc.fileName}
+            pageCount={doc.pageCount}
+            sectionCount={doc.sections.length}
+            isHosted={processingMode === "api"}
+            onReplace={() => replaceInputRef.current?.click()}
+            onRemove={handleClear}
+            replaceInputRef={replaceInputRef}
+            onFile={handleFile}
           />
-
-          {hasDocument && (
-            <div className="flex items-center justify-between text-xs text-text-muted">
-              <span className="font-mono">
-                {doc.rawText.length.toLocaleString()} chars &middot;{" "}
-                {doc.sections.length}{" "}
-                {doc.sections.length === 1 ? "section" : "sections"}
-              </span>
-              <Button variant="ghost" size="sm" onClick={handleClear}>
-                Clear
-              </Button>
-            </div>
-          )}
-
-          {ai.processingMode === "api" && !isSignedIn && (
-            <p className="text-xs text-text-muted">
-              Sign in (top right) to use Deep Analysis.
-            </p>
-          )}
-
-          <div className="space-y-3" data-tour-id="task-selector">
-            <label className="block text-xs font-medium text-text-secondary tracking-wide uppercase">
-              Task
-            </label>
-            <TaskSelector
-              selected={selectedTask}
-              onSelect={handleTaskSwitch}
-              disabled={!hasDocument}
+          {classification ? (
+            <ClassificationBanner
+              language={language}
+              label={classification.label}
+              recommendedIds={classification.recommendedWorkflowIds as WorkflowId[]}
+              onSelect={handleWorkflowSelect}
             />
-          </div>
+          ) : null}
 
-          {!isChat && (
-            <div className="space-y-2">
-              {ai.modelStatus === "error" && (
-                <div className="space-y-2">
-                  <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
-                    {ai.error ?? "Failed to load model"}
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    onClick={() => ai.loadModel()}
-                    className="w-full"
-                  >
-                    Retry
-                  </Button>
-                </div>
-              )}
-              {isOnDevice && hasDocument && (
-                <p className="text-xs text-text-muted text-center">
-                  ~{estimatedTokens.toLocaleString()} tokens
-                  {isOverOnDeviceLimit && (
-                    <> · Too long for on-device · Use Deep Analysis or shorten the document.</>
-                  )}
-                </p>
-              )}
-              <div className="flex flex-col sm:flex-row gap-2 w-full">
-                {task.isProcessing ? (
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    onClick={task.stop}
-                    className="flex-1 sm:flex-initial"
-                  >
-                    Stop
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={handleRun}
-                      disabled={
-                        !hasDocument ||
-                        !isModelReady ||
-                        !canUseDeepAnalysis ||
-                        isIndexing ||
-                        isOverOnDeviceLimit
-                      }
-                      className="flex-1"
-                      title={
-                        isOverOnDeviceLimit
-                          ? "Document is too long for on-device analysis"
-                          : isIndexing
-                            ? "Please wait — your document is still being prepared. You can run analysis when the progress bar above finishes."
-                            : undefined
-                      }
-                      data-tour-id="run-button"
-                    >
-                      {!isModelReady
-                        ? "Model loading..."
-                        : isIndexing
-                          ? "Preparing document…"
-                          : `Run ${TASK_LABELS[selectedTask] ?? selectedTask}`}
-                    </Button>
-                    {task.output && (
-                    <Button
-                      variant="secondary"
-                      size="lg"
-                      onClick={handleRun}
-                      disabled={
-                        !hasDocument ||
-                        !isModelReady ||
-                        !canUseDeepAnalysis ||
-                        isIndexing ||
-                        isOverOnDeviceLimit
-                      }
-                    >
-                      Regenerate
-                    </Button>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {isModelReady && (
-                <p className="text-xs text-text-muted text-center">
-                  <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">
-                    Ctrl+Enter
-                  </kbd>{" "}
-                  to run &middot;{" "}
-                  <kbd className="px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono">
-                    Esc
-                  </kbd>{" "}
-                  to clear
-                </p>
-              )}
-            </div>
-          )}
-
-          {isChat && ai.modelStatus === "error" && (
-            <div className="space-y-2">
-              <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
-                {ai.error ?? "Failed to load model"}
-              </div>
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => ai.loadModel()}
-                className="w-full"
-              >
-                Retry
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Right panel: Output or Chat - grows with content; page scrolls as a whole */}
-        <div
-          className="animate-fade-in min-h-[400px] lg:min-h-0 min-w-0 flex flex-col space-y-3"
-          style={{ animationDelay: "0.1s" }}
-          data-tour-id="output-section"
-        >
-          {selectedTask === "summarize" && (
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Summarize produces a short overview and a numbered list of key points from your document. You’ll get a quick grasp of the main topic and the most important findings or actions. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response. If you run another task (e.g. Explain) in the same session, the second result can occasionally be less accurate; run again or refresh for a fresh start.
-            </p>
-          )}
-          {selectedTask === "explain" && (
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Explain gives you a plain-language summary that highlights the main ideas and briefly explains any technical or specialized terms so a general reader can follow. The AI can sometimes make mistakes—if the result isn’t right, run it again to regenerate a response. If you run another task (e.g. Summarize) in the same session, the second result can occasionally be less accurate; run again or refresh for a fresh start.
-            </p>
-          )}
-          {selectedTask === "chat" && (
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Chat lets you ask questions about your document and get answers grounded in its content. Use it to find specific information, clarify sections, or explore topics in the text. The AI can sometimes make mistakes—if an answer isn’t right, you can ask again or rephrase to get a better response.
-            </p>
-          )}
-          {isChat ? (
-            <div className="flex flex-col">
-              <ChatPanel
-                messages={chat.messages}
-                isGenerating={chat.isGenerating}
-                onSend={handleChatSend}
-                onClear={() => chat.clear()}
-                disabled={
-                  !hasDocument ||
-                  !isModelReady ||
-                  !canUseDeepAnalysis ||
-                  isIndexing
-                }
-                disabledReason={
-                  isIndexing
-                    ? "You can ask questions once the document has finished preparing (see progress bar above)."
-                    : undefined
-                }
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,32%)_minmax(0,1fr)] gap-6 items-start">
+            <div className="space-y-4 animate-fade-in" data-tour-id="task-selector">
+              <WorkflowSelector
+                workflows={listPrimary()}
+                selectedId={selectedWorkflow}
+                language={language}
+                onSelect={handleWorkflowSelect}
+                compact
               />
+              {selectedWorkflow === "extract" ? (
+                <ExtractSubmenu
+                  language={language}
+                  selected={extractType}
+                  customQuery={customExtractQuery}
+                  onSelect={(type) => {
+                    extractTypeRef.current = type;
+                    setExtractType(type);
+                    if (type !== "custom") void handleRun();
+                  }}
+                  onCustomQueryChange={setCustomExtractQuery}
+                  onRunCustom={() => void handleRun()}
+                />
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                className="text-sm text-accent hover:underline cursor-pointer"
+              >
+                {t(language, "empty.more")} →
+              </button>
+
+              {!isAsk ? (
+                <div className="space-y-2">
+                  {ai.modelStatus === "error" && (
+                    <div className="space-y-2">
+                      <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-lg text-sm text-danger">
+                        {ai.error ?? "Failed to load model"}
+                      </div>
+                      <Button variant="secondary" size="lg" onClick={() => ai.loadModel()} className="w-full">
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  {isOnDevice && (
+                    <p className="text-xs text-text-muted">
+                      ~{estimatedTokens.toLocaleString()} tokens
+                      {isOverOnDeviceLimit ? " · Too long for on-device · Use Deep Analysis." : null}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    {workflowRun.isProcessing ? (
+                      <Button variant="secondary" size="lg" onClick={workflowRun.stop} className="flex-1">
+                        {t(language, "run.stop")}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        onClick={() => void handleRun()}
+                        disabled={
+                          !isModelReady ||
+                          !canUseDeepAnalysis ||
+                          isIndexing ||
+                          isOverOnDeviceLimit ||
+                          selectedDef?.status !== "ready"
+                        }
+                        className="flex-1"
+                        data-tour-id="run-button"
+                      >
+                        {!isModelReady
+                          ? t(language, "run.modelLoading")
+                          : isIndexing
+                            ? t(language, "run.preparing")
+                            : `${t(language, "run.label")} ${t(language, selectedDef?.nameKey ?? "workflow.summarize.name")}`}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : (
-            <OutputPanel
-              content={task.output}
-              isLoading={task.isProcessing}
-              taskLabel={TASK_LABELS[selectedTask] ?? selectedTask}
-              error={task.error}
-              onStop={task.isProcessing ? task.stop : undefined}
-            />
-          )}
-          <DebugPanel debugInfo={debugInfo} />
+
+            <div
+              className="animate-fade-in min-h-[400px] min-w-0 space-y-3"
+              style={{ animationDelay: "0.1s" }}
+              data-tour-id="output-section"
+            >
+              {isAsk ? (
+                <ChatPanel
+                  messages={chat.messages}
+                  isGenerating={chat.isGenerating}
+                  onSend={handleChatSend}
+                  onClear={() => chat.clear()}
+                  disabled={!isModelReady || !canUseDeepAnalysis || isIndexing}
+                  disabledReason={
+                    isIndexing
+                      ? "You can ask questions once the document has finished preparing."
+                      : undefined
+                  }
+                />
+              ) : (
+                <WorkflowResultRouter
+                  language={language}
+                  workflowId={selectedWorkflow}
+                  extractType={extractType}
+                  isProcessing={workflowRun.isProcessing}
+                  isRepairing={workflowRun.isRepairing}
+                  error={workflowRun.error}
+                  partial={workflowRun.partial}
+                  validated={workflowRun.validated}
+                  evidenceById={evidenceById}
+                  followUpKeys={selectedDef?.suggestedFollowUpKeys ?? []}
+                  extraQuestions={
+                    classification
+                      ? suggestedQuestionsForType(classification.type)
+                      : undefined
+                  }
+                  onRerun={() => void handleRun()}
+                  onStop={workflowRun.stop}
+                  onAsk={(message) => {
+                    setSelectedWorkflow("ask");
+                    void handleChatSend(message);
+                  }}
+                  onFollowUp={(text) => {
+                    setSelectedWorkflow("ask");
+                    void handleChatSend(text);
+                  }}
+                />
+              )}
+              <DebugPanel debugInfo={debugInfo} />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      <MoreWorkflowsModal
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        language={language}
+        suggestedIds={
+          (classification?.recommendedWorkflowIds as WorkflowId[] | undefined) ?? [
+            "review",
+            "extract",
+            "summarize",
+          ]
+        }
+        onSelect={handleWorkflowSelect}
+      />
+      <CapabilityGate
+        open={gateOpen}
+        workflowId={gatedWorkflow}
+        language={language}
+        onContinue={handleGateContinue}
+        onCancel={() => {
+          setGateOpen(false);
+          pendingWorkflowRef.current = null;
+          autoRunArmedRef.current = false;
+        }}
+      />
 
       {ai.processingMode === "api" && !isSignedIn && (
         <div

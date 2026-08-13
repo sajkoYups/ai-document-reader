@@ -12,7 +12,7 @@ const fullUrl = `${
 export const metadata: Metadata = {
   title: "How does it work",
   description:
-    "Add your document, choose summarize, explain, or chat, and get private AI results without storing your data.",
+    "Add your document, choose Summarize, Review, Extract, or Ask, and get private AI results without storing your data.",
   alternates: {
     canonical: fullUrl,
   },
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "How PIA Works | Private AI in Your Browser",
     description:
-      "Understand how PIA keeps your documents private while using AI to summarize, explain, and chat.",
+      "Understand how PIA keeps your documents private while using AI workflows like Summarize, Review, Extract, and Ask.",
   },
 };
 
@@ -44,15 +44,16 @@ export default function HowDoesItWorkPage() {
           stay in control.
         </p>
         <p>
-          You then choose what you want:{" "}
-          <strong className="text-text-primary">Summarize</strong> gives you a
-          short overview and key points;{" "}
-          <strong className="text-text-primary">Explain</strong> rewrites the
-          text in plain language so anyone can follow it;{" "}
-          <strong className="text-text-primary">Chat</strong> lets you ask
-          questions and get answers grounded in your document. The result
-          appears in the app next to your doc. No account is required for the
-          standard, in-browser version.
+          You then choose a workflow:{" "}
+          <strong className="text-text-primary">Summarize</strong> gives a
+          structured overview and key points;{" "}
+          <strong className="text-text-primary">Review</strong> surfaces items
+          that may need attention with evidence;{" "}
+          <strong className="text-text-primary">Extract</strong> pulls dates,
+          amounts, obligations, and more into tables;{" "}
+          <strong className="text-text-primary">Ask</strong> lets you question
+          the document with grounded answers. Results appear next to your doc.
+          No account is required for the standard, in-browser version.
         </p>
         <p>
           In standard mode, the AI runs entirely in your browser. Your document

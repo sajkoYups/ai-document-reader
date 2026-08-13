@@ -7,6 +7,15 @@ import {
 } from "./e2eEncryption";
 import type { OutputLanguage, TaskType } from "@/types";
 
+export interface AnalyzeApiOptions {
+  workflowId?: string;
+  jsonMode?: boolean;
+  workflowParams?: {
+    extractType?: string;
+    customQuery?: string;
+  };
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 async function ensureSession(): Promise<void> {
@@ -33,15 +42,20 @@ async function processSSEStream(
   const decoder = new TextDecoder();
   let buffer = "";
   let fullResult = "";
+  let eventCount = 0;
+  let skippedJson = 0;
+  let skippedDecrypt = 0;
 
   const consumeEncryptedPayload = async (data: string) => {
     let parsed: { iv: string; ciphertext: string };
     try {
       parsed = JSON.parse(data) as { iv: string; ciphertext: string };
     } catch {
+      skippedJson += 1;
       return;
     }
     if (typeof parsed.iv !== "string" || typeof parsed.ciphertext !== "string") {
+      skippedJson += 1;
       return;
     }
 
@@ -49,6 +63,7 @@ async function processSSEStream(
     try {
       decrypted = await decryptPayload(parsed.iv, parsed.ciphertext);
     } catch {
+      skippedDecrypt += 1;
       return;
     }
 
@@ -56,6 +71,7 @@ async function processSSEStream(
       throw new Error(decrypted.slice(10));
     }
 
+    eventCount += 1;
     fullResult += decrypted;
     onToken(decrypted);
   };
@@ -89,6 +105,18 @@ async function processSSEStream(
     reader.releaseLock();
   }
 
+  console.info("[analyze-client] stream complete", {
+    resultChars: fullResult.length,
+    eventCount,
+    skippedJson,
+    skippedDecrypt,
+    preview:
+      fullResult.length > 600
+        ? `${fullResult.slice(0, 600).replace(/\s+/g, " ")}…`
+        : fullResult.replace(/\s+/g, " "),
+    empty: fullResult.length === 0,
+  });
+
   return fullResult;
 }
 
@@ -97,6 +125,7 @@ export async function analyzeViaApi(
   documentText: string,
   outputLanguage: OutputLanguage,
   onToken: (token: string) => void,
+  options?: AnalyzeApiOptions,
 ): Promise<string> {
   await ensureSession();
 
@@ -104,6 +133,9 @@ export async function analyzeViaApi(
     taskType,
     documentText,
     outputLanguage: outputLanguage ?? "en",
+    workflowId: options?.workflowId,
+    jsonMode: options?.jsonMode,
+    workflowParams: options?.workflowParams,
   });
 
   const response = await fetch(`${API_BASE_URL}/api/analyze`, {
