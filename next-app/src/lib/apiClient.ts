@@ -110,10 +110,6 @@ async function processSSEStream(
     eventCount,
     skippedJson,
     skippedDecrypt,
-    preview:
-      fullResult.length > 600
-        ? `${fullResult.slice(0, 600).replace(/\s+/g, " ")}…`
-        : fullResult.replace(/\s+/g, " "),
     empty: fullResult.length === 0,
   });
 

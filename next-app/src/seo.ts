@@ -14,24 +14,24 @@ export const SEO_CONFIG: Record<string, SeoMeta> = {
   "/": {
     title: "Private AI Document Analysis | PIA",
     description:
-      "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis. No account for Standard mode, no data stored.",
+      "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis. No account for Standard mode; PIA does not store documents.",
     withSocial: true,
   },
   "/about": {
     title: "About Us | PIA – Private AI for Your Documents",
     description:
-      "We're Yups — a team building PIA so you can use AI on documents without sending them to the cloud. Tech, marketing, and data enthusiasts putting privacy first.",
+      "We're Yups — a team building PIA so you can use AI on documents privately. Tech, marketing, and data enthusiasts putting privacy first.",
     withSocial: true,
   },
   "/who-is-this-for": {
     title: "Who Is PIA For? | Private Document AI",
     description:
-      "PIA is for anyone with sensitive documents: contracts, reports, policies. Run Summarize, Review, Extract, or Ask without sending content to third parties. Free in-browser option.",
+      "PIA is for anyone with sensitive documents: contracts, reports, policies. Run Summarize, Review, Extract, or Ask on-device, or use Deep Analysis with named providers. Free in-browser option.",
   },
   "/how-does-it-work": {
     title: "How PIA Works | Private AI in Your Browser",
     description:
-      "Add your document, choose Summarize, Review, Extract, or Ask. AI runs in your browser so your document never leaves your device. Optional Deep Analysis for stronger workflows.",
+      "Add your document, choose Summarize, Review, Extract, or Ask. Standard mode runs in your browser. Optional Deep Analysis encrypts the request to our API for stronger workflows.",
   },
   "/what-else-do-we-do": {
     title: "What Else We Do | Private AI Servers & Consulting",
@@ -42,6 +42,16 @@ export const SEO_CONFIG: Record<string, SeoMeta> = {
     title: "Our Mission | Making Private AI Accessible | PIA",
     description:
       "Our mission is to make private AI accessible to everyone. We keep PIA free so anyone can summarize and understand documents without giving up privacy or control.",
+  },
+  "/privacy": {
+    title: "Privacy Policy | PIA",
+    description:
+      "How PIA handles documents, accounts, analytics, and subprocessors in Standard and Deep Analysis modes.",
+  },
+  "/cookies": {
+    title: "Cookie Policy | PIA",
+    description:
+      "Necessary cookies, optional analytics, and waitlist reCAPTCHA on PIA.",
   },
   "/vision": {
     title: "Our Vision | Privacy-First AI for Everyone | PIA",

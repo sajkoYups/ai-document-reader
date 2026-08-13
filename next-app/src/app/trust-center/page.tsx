@@ -68,10 +68,12 @@ export default function TrustCenterPage() {
               <strong className="text-text-primary">
                 Minimal data retention
               </strong>
-              . We do not maintain a persistent document database. Session
-              state, including document content and analysis context, is stored
-              in memory in the user&apos;s browser and is discarded when the
-              page is refreshed, the tab is closed, or the session expires.
+              . We do not maintain a persistent document database. While a
+              session is open, document text is held in browser memory
+              (including parsed sections and retrieval chunks) so analysis can
+              run. That working copy is not encrypted at rest in the client. It
+              is discarded when the page is refreshed, the tab is closed, idle
+              timeout fires, or the session expires.
             </li>
             <li>
               <strong className="text-text-primary">
@@ -123,10 +125,10 @@ export default function TrustCenterPage() {
                 Secure communication channels
               </strong>
               . Communication between the browser and backend APIs is performed
-              exclusively over HTTPS with TLS (TLS 1.2+). Security headers such
-              as HSTS and secure cookie flags help defend against downgrade and
-              session theft attacks. API endpoints are authenticated where
-              applicable and are rate-limited to reduce abuse.
+              exclusively over HTTPS with TLS (TLS 1.2+). API endpoints are
+              authenticated where applicable and are rate-limited to reduce
+              abuse. Hosting providers may also apply transport security such as
+              HSTS.
             </li>
             <li>
               <strong className="text-text-primary">AI model interaction</strong>
@@ -155,10 +157,11 @@ export default function TrustCenterPage() {
               . Both the web client and backend services are designed to treat
               analysis sessions as short-lived. Document content and derived
               context, such as extracted text or segmented chunks, are stored in
-              browser memory for the current session only. Backend components
-              are stateless with respect to document content; any transient data
-              needed for processing is held in memory or short-lived storage and
-              is automatically discarded after completion of the request.
+              browser memory in plaintext for the current session so run, chat,
+              and retrieval stay synchronous. They are not encrypted in the
+              client store. Backend components are stateless with respect to
+              document content; any transient data needed for processing is held
+              in memory and is discarded after completion of the request.
             </li>
           </ul>
           <p>
@@ -203,12 +206,13 @@ export default function TrustCenterPage() {
               <strong>AI interaction.</strong> If local or in-browser models are
               used, the model runs entirely within the browser context and the
               document content remains on the device. For Deep Analysis, the
-              browser encrypts payloads to our backend (E2E session keys); we
-              decrypt in memory, forward only the relevant text over TLS to the
-              configured AI provider, and return the streamed result. We do not
-              store original document content, prompts, or chat queries in our
-              database. Inference providers process plaintext for the duration
-              of the request under their published policies (see{" "}
+              browser encrypts payloads to our backend (application-layer
+              session keys); we decrypt in memory, forward the relevant text
+              over TLS to the configured AI provider, and return the streamed
+              result. We do not store original document content, prompts, or
+              chat queries in our database. Inference providers process
+              plaintext for the duration of the request under their published
+              policies (see{" "}
               <a href="#ai-subprocessors" className="text-accent underline">
                 AI subprocessors
               </a>
@@ -236,9 +240,11 @@ export default function TrustCenterPage() {
               <strong>Document content and prompts.</strong> There is no
               persistent document or prompt database. We do not store uploaded
               documents, analysis prompts, or chat queries in application
-              storage. Usage metering, when enabled, records only aggregate
-              token estimates—not document or prompt text. Any short-lived
-              in-memory data used for processing is discarded when the request
+              storage. While you work, the open browser tab holds document text
+              in memory; that copy is discarded on idle timeout, refresh, or
+              close. Usage metering, when enabled, records only aggregate token
+              estimates—not document or prompt text. Backend in-memory data used
+              for a Deep Analysis request is discarded when the request
               completes.
             </li>
             <li>
@@ -280,8 +286,9 @@ export default function TrustCenterPage() {
               <strong>HTTPS / TLS for all traffic.</strong> All communication
               between client and server uses HTTPS with TLS (TLS 1.2+). We use
               certificates from trusted Certificate Authorities and follow
-              modern TLS configurations and cipher suites. HTTP Strict Transport
-              Security (HSTS) and related headers help enforce secure transport.
+              modern TLS configurations and cipher suites. Our cloud host may
+              apply HTTP Strict Transport Security (HSTS); we do not currently
+              set HSTS in application config.
             </li>
             <li>
               <strong>Secure client-server communication.</strong> Authentication
@@ -293,9 +300,11 @@ export default function TrustCenterPage() {
             </li>
             <li>
               <strong>Encrypted AI requests.</strong> Requests from the browser
-              to our API use end-to-end session encryption. After in-memory
-              decrypt on our servers, requests to hosted AI models (OpenRouter
-              or optional self-hosted pods) are transmitted over TLS-protected
+              to our API use application-layer session encryption (ECDH +
+              AES-256-GCM). This protects payloads from TLS-terminating proxies;
+              PIA servers hold the session key and decrypt in memory. After
+              decrypt, requests to hosted AI models (OpenRouter or optional
+              self-hosted pods) are transmitted as plaintext over TLS-protected
               channels. Separate credentials are used for AI providers and are
               stored in dedicated secrets management systems. We avoid sending
               unnecessary identifiers in AI payloads and keep payloads scoped to

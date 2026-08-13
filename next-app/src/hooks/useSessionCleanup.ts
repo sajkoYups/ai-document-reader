@@ -4,7 +4,6 @@ import { useChatStore } from "@/store/chatStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useAiStore } from "@/store/aiStore";
 import { useEmbeddingStore } from "@/store/embeddingStore";
-import { destroySessionKey } from "@/lib/cryptoService";
 import { destroyApiSession } from "@/lib/apiClient";
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -27,7 +26,6 @@ export function useSessionCleanup() {
     if (aiWorker) aiWorker.terminate();
     if (embeddingWorker) embeddingWorker.terminate();
 
-    destroySessionKey();
     destroyApiSession();
   }, []);
 

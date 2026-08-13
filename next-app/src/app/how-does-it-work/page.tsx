@@ -38,8 +38,8 @@ export default function HowDoesItWorkPage() {
         <p>
           You add your document by pasting text or uploading a file. We support
           PDF, plain text, and Markdown. Once the document is in the app, it is
-          processed locally in your browser so we can find the right parts to
-          send to the AI — or, with Deep Analysis, we encrypt the request and run
+          processed locally in your browser so we can find the right parts —
+          or, with Deep Analysis, we encrypt the request to our API and run
           a stronger model via privacy-constrained providers. Either way, you
           stay in control.
         </p>
@@ -65,8 +65,8 @@ export default function HowDoesItWorkPage() {
           or training on it.
         </p>
         <p>
-          If you use Deep Analysis, we encrypt your request to our API, process
-          it in memory, and send only what is needed to privacy-constrained AI
+          If you use Deep Analysis, we encrypt your request to our API, decrypt
+          it in memory, and send the needed text over TLS to privacy-constrained AI
           providers listed in our{" "}
           <a href="/trust-center#ai-subprocessors" className="text-accent underline">
             Trust Center

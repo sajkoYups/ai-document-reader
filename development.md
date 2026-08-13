@@ -4,7 +4,7 @@
 
 Build a privacy‑first AI assistant that analyzes and generates documents entirely on the user’s device (browser). No accounts, no cloud processing, no file storage. The product should behave like a trustworthy private assistant for sensitive work.
 
-**Core principle:** User data never leaves the device for the free tier. The premium tier sends data to a private backend with end‑to‑end encryption — the server processes in memory only and stores nothing.
+**Core principle:** User data never leaves the device for Standard (free) mode. Deep Analysis sends document text to a PIA backend using application-layer encryption (ECDH + AES-256-GCM). The server decrypts in memory, forwards plaintext over TLS to the configured LLM provider, and does not persist documents or prompts.
 
 ---
 
@@ -39,20 +39,20 @@ Build a privacy‑first AI assistant that analyzes and generates documents entir
 * Closing the page clears the session data
 * Only static assets are served from hosting
 
-### Privacy Guarantees — Deep Analysis Mode (Premium, Account‑Gated Later)
+### Privacy Guarantees — Deep Analysis Mode (Premium, Account‑Gated)
 
-* Document text is encrypted client‑side with AES‑256‑GCM before transmission
-* End‑to‑end encryption via ECDH (P‑256) key exchange — even a compromised TLS proxy cannot read payloads
-* Server processes in memory only — zero persistence (no database, no file writes, no Redis)
-* Server logging never includes request/response bodies
+* Document text is encrypted client‑side with AES‑256‑GCM before transmission to the PIA API
+* Application-layer encryption via ECDH (P‑256) — a compromised TLS proxy cannot read payloads; PIA servers hold the session key and decrypt
+* After decrypt, plaintext is sent over TLS to the configured provider (OpenRouter, RunPod, or Ollama)
+* Server processes in memory only — no document/prompt database (usage metering is aggregate counts only)
+* Server logging is metadata only (no request/response bodies or document previews)
 * Session keys are ephemeral and auto‑expire after 30 minutes
 * Server‑side AES keys are overwritten with zeros on session expiry
 
-### Client‑Side Encryption at Rest
+### Client‑Side Session Memory
 
-* A per‑session AES‑256‑GCM key is generated on page load (non‑extractable via WebCrypto)
-* All document text stored in Zustand is encrypted in memory
-* Encrypted buffers are overwritten with random data before releasing on session clear
+* Document text is held in browser memory (Zustand `rawText`, parsed sections, RAG chunks) for the open session so run/chat/retrieval stay synchronous
+* This is not client-side encryption at rest; the control is wipe-on-idle / wipe-on-close
 * Web Workers are terminated (not just cleared) on session end
 * 15‑minute idle timeout with auto‑clear of all session data
 
@@ -96,7 +96,7 @@ Two processing modes:
 User → Static Web App → Local AI Model (0.5B, in‑browser) → Result
 
 **Deep Analysis mode (premium):**
-User → Static Web App → E2E Encrypt → Node.js Backend → Ollama (larger model) → Encrypt Response → User
+User → Web App → Application-layer encrypt → Node.js Backend → OpenRouter / RunPod / Ollama → Encrypt Response → User
 
 ---
 
@@ -197,7 +197,7 @@ Zero‑persistence guarantees:
 
 ---
 
-### 6.7 End‑to‑End Encryption Protocol
+### 6.7 Application-Layer Encryption Protocol (browser ↔ PIA API)
 
 1. Client generates ephemeral ECDH key pair (P‑256)
 2. Client sends public key to `POST /api/session/init`
@@ -331,13 +331,11 @@ Use privacy‑focused analytics tools.
 
 ### Client‑Side
 
-* Per‑session AES‑256‑GCM encryption of document data in memory
+* Document text lives in browser memory for the open session; wiped on idle, refresh, or tab close
 * `autocomplete="off"` and `spellcheck="false"` on all document inputs
 * Web Workers terminated on session end
-* Encrypted buffers overwritten with random data before release
 * 15‑minute idle timeout with auto‑clear
-* No third‑party scripts that can access user input
-* Prevent XSS vulnerabilities
+* Analytics scripts load only after cookie consent; reCAPTCHA loads on waitlist only
 
 ### Server‑Side (Deep Analysis)
 
@@ -392,7 +390,7 @@ Document → Action (workflow) → Structured Result → Follow-up (Ask)
 * Evidence-backed structured streaming (partial JSON → UI; never show broken JSON)
 * Review & Extract require Deep Analysis; Summarize & Ask work in Standard/local
 * Heuristic document classification + recommended workflows (no extra LLM call)
-* Capability gate with explicit “Continue privately” (no silent mode switch)
+* Capability gate with explicit “Continue with Deep Analysis” (no silent mode switch)
 
 ### Phase 2 — Multi-document & deeper analysis (current)
 
@@ -455,7 +453,7 @@ When generating code or features:
 1. Prefer client‑side solutions for the free tier
 2. Maintain privacy‑first constraints at all times
 3. Never persist document data on the server — memory‑only processing
-4. All API payloads must be end‑to‑end encrypted
+4. All Deep Analysis API payloads must use application-layer encryption (browser ↔ PIA). After decrypt, providers see plaintext.
 5. Optimize for performance and bundle size
 6. Use well‑maintained libraries
 7. Ensure frontend compatibility with static hosting
@@ -481,7 +479,7 @@ npm run dev
 
 The beta product is a privacy‑first AI web application with two tiers:
 
-* **Free tier:** Document intelligence entirely on the user’s device with near‑zero operational cost.
-* **Premium tier (Deep Analysis):** End‑to‑end encrypted backend API using a larger model via Ollama for higher quality analysis of long documents.
+* **Free tier:** Document intelligence on the user’s device.
+* **Premium tier (Deep Analysis):** Application-layer encrypted API; larger model via OpenRouter, RunPod, or Ollama. PIA does not persist documents.
 
-Both tiers guarantee that documents are never persisted — processed in memory only, cleared on session end. The focus is validation of value, trust, and usability — not scale or feature completeness.
+Both tiers keep documents out of PIA storage — processed in memory, cleared on session end. Deep Analysis providers process plaintext for the request under their policies. The focus is validation of value, trust, and usability — not scale or feature completeness.

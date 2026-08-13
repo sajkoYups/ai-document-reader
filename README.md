@@ -1,77 +1,46 @@
-# Private AI Doc Analyzer
+# Private AI Doc Analyzer (PIA)
 
-A privacy-first AI document assistant that runs entirely in your browser. No accounts, no cloud processing, no file storage.
+A privacy-first AI document assistant with two processing modes:
+
+- **Standard** — Transformers.js in the browser. Documents are not uploaded.
+- **Deep Analysis** — Clerk-gated. The browser encrypts the request to the PIA API (ECDH + AES-256-GCM). The API decrypts in memory and sends plaintext over TLS to named privacy-constrained providers (OpenRouter / optional RunPod). PIA does not persist documents or prompts.
+
+Details: [Trust Center](next-app/src/app/trust-center/page.tsx) (also `/trust-center` in the running app).
 
 ## Features
 
-- **Document analysis** -- summarize, explain, extract key points, obligations, risks, and dates
-- **Document generation** -- draft new documents from prompts
-- **Chat with documents** -- ask questions and get grounded answers with evidence snippets
-- **100% on-device** -- powered by Transformers.js with WASM inference
-- **Privacy guaranteed** -- your files never leave your device
+- Workflows: Summarize, Review, Extract, Compare, Timeline, Ask, and related analysis
+- Grounded answers with evidence snippets
+- Standard mode: on-device WASM / WebGPU inference
+- Deep Analysis: larger hosted models behind application-layer encryption to the API
 
 ## Tech Stack
 
-- React 19 + Vite 7 + TypeScript
-- Tailwind CSS v4
-- Zustand (state management)
-- Hugging Face Transformers.js (local AI inference via Web Workers)
+- Next.js (App Router) + React 19 + TypeScript (`next-app/`)
+- Express + TypeScript API (`server/`)
+- Tailwind CSS
+- Zustand
+- Hugging Face Transformers.js (local inference via Web Workers)
 - PDF.js (client-side PDF text extraction)
+- Clerk (Deep Analysis accounts)
+- OpenRouter / RunPod / Ollama (Deep Analysis providers)
 
 ## Getting Started
 
 ```bash
-npm install
-npm run dev
+# Frontend
+cd next-app && npm install && npm run dev
+
+# Backend (Deep Analysis)
+cd server && npm install && npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-### Production Build
-
-```bash
-npm run build
-npm run preview
-```
-
-The `dist/` folder contains a fully static site ready for deployment to Cloudflare Pages, Vercel, Netlify, or GitHub Pages.
-
-## Usage
-
-1. **Paste text** or **upload a file** (PDF, TXT, Markdown)
-2. Click **Load AI Model** (first time downloads ~200MB, cached afterward)
-3. Select a **task** (Summarize, Explain, Extract, Draft, or Chat)
-4. Click **Run** or press `Ctrl+Enter`
-
-### Keyboard Shortcuts
-
-| Shortcut      | Action     |
-| ------------- | ---------- |
-| `Ctrl+Enter`  | Run task   |
-| `Escape`      | Clear all  |
-
-### Tips
-
-- For best results, run one analysis type per session (e.g. Summarize or Explain). If you run a second task in the same session (e.g. Summarize then Explain), the second result can occasionally be less accurate or repetitive—run again or refresh the page for a fresh start.
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Privacy
 
-All document processing happens locally in the browser via WebAssembly. Your files are never uploaded to any server. The only network requests are for:
+**Standard:** parsing and inference run in the browser. Files are not uploaded. The open tab holds document text in memory (including sections and retrieval chunks) until idle timeout, refresh, or close.
 
-- Loading the static web app
-- Downloading the AI model (cached in IndexedDB)
-- Loading web fonts
+**Deep Analysis:** payloads are encrypted to the PIA API. After decrypt, inference providers see plaintext for that request under their published policies. PIA logs metadata only (no document or completion bodies). Usage metering stores aggregate token estimates, not text.
 
-Closing the tab clears all session data.
-
-## Project Structure
-
-```
-src/
-  components/   -- UI components (Button, Card, Modal, ChatPanel, etc.)
-  hooks/        -- Custom React hooks (useAiTask, useKeyboardShortcuts, etc.)
-  lib/          -- Utilities (document parser, PDF extractor, AI pipeline, prompts)
-  store/        -- Zustand stores (document, AI, chat)
-  types/        -- TypeScript type definitions
-  workers/      -- Web Worker for AI inference
-```
+The only other typical network requests are loading the app, downloading local model weights (cached), fonts, optional consent-gated analytics, and auth (Clerk).

@@ -169,8 +169,8 @@ export default function UsagePanel() {
       )}
 
       <p className="text-xs text-[--clerk-text-tertiary]">
-        Your documents and prompts are never stored. Only aggregate token counts
-        are recorded for billing purposes.
+        PIA does not store your documents or prompts. Only aggregate token counts
+        are recorded for billing.
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { updateConsent } from "@/lib/analytics";
 
 type AnalyticsConsent = "granted" | "denied";
@@ -73,7 +74,15 @@ export default function CookieBanner() {
             <p>
               We use cookies to understand how PIA is used. You can
               accept or reject analytics cookies. The app will still work even
-              if you reject.
+              if you reject. See our{" "}
+              <Link href="/cookies" className="text-accent underline">
+                Cookie Policy
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="text-accent underline">
+                Privacy Policy
+              </Link>
+              .
             </p>
           </div>
           <div className="flex flex-wrap gap-3 justify-end">

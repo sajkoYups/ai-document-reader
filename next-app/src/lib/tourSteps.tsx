@@ -26,7 +26,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Privacy & where your data lives
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          This indicator shows whether your document is kept on-device (Standard) or sent as encrypted data for Deep Analysis. Click it any time to see a detailed explanation of how we handle your privacy.
+          This indicator shows whether your document stays on-device (Standard) or is encrypted to our API for Deep Analysis, then processed by named privacy-constrained providers. Click it any time for details.
         </p>
       </div>
     ),
@@ -40,7 +40,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Standard vs Deep Analysis
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). Review, Extract, Compare, and most advanced workflows need Deep Analysis; Summarize, Ask, and Document map work on-device.
+          Use these modes to choose between fast on-device analysis (Standard) and stronger Deep Analysis. Deep Analysis encrypts the request to our API; privacy-constrained providers then process the text. Review, Extract, Compare, and most advanced workflows need Deep Analysis; Summarize, Ask, and Document map work on-device.
         </p>
       </div>
     ),

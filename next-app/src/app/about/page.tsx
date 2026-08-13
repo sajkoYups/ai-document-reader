@@ -39,7 +39,8 @@ export default function AboutPage() {
           We are <strong className="text-text-primary">Yups</strong> — a team of
           creatives who wanted a tool to help people understand documents in a
           private way. We built PIA so you can use AI on your docs
-          without sending them to the cloud.
+          without sending them to a public chatbot. In Standard mode the model
+          runs in your browser. Deep Analysis uses our API and named providers.
         </p>
         <p>
           We are tech, marketing, and data enthusiasts who want to help the

@@ -44,8 +44,10 @@ export default function WhoIsThisForPage() {
           If you work with sensitive or confidential material — legal drafts,
           internal memos, health or financial info — you need a way to get
           summaries and plain-language explanations without sending that content
-          to third parties. We built PIA for you. Your document stays
-          on your device or is handled under encryption; we don’t store it.
+          to third parties in Standard mode. We built PIA for you. In Standard
+          mode your document stays on your device. Deep Analysis encrypts the
+          request to our API; named providers then process the text. PIA does
+          not store it.
         </p>
         <p>
           Small teams and solo professionals often don’t have enterprise

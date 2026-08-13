@@ -31,22 +31,22 @@ export default function PrivacyBadge() {
       <Modal open={showModal} onClose={() => setShowModal(false)}>
         <div className="space-y-4">
           <h2 className="font-display text-2xl text-text-primary">
-            Your Privacy, Guaranteed
+            How we handle your document
           </h2>
           {isDeepAnalysis ? (
             <div className="space-y-3 text-text-secondary text-sm leading-relaxed">
               <p>
                 In Deep Analysis mode your document is{" "}
-                <strong className="text-text-primary">encrypted</strong> before
-                it leaves your device. Our API decrypts it in memory only to run
-                inference via privacy-constrained AI providers. We{" "}
+                <strong className="text-text-primary">encrypted to our API</strong>
+                . We decrypt it in memory, then send the text over TLS to named
+                privacy-constrained AI providers. We{" "}
                 <strong className="text-text-primary">do not save</strong> your
                 document, prompts, or results in our database.
               </p>
               <ul className="space-y-2 pl-4">
                 <li className="flex items-start gap-2">
                   <span className="text-accent mt-0.5">&#10003;</span>
-                  Encrypted in transit to PIA; session keys stay in your browser
+                  Encrypted to PIA (application-layer session keys in your browser)
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-accent mt-0.5">&#10003;</span>

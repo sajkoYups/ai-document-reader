@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { OutputLanguage } from "@/types";
 import type { WorkflowId } from "@/workflows/types";
 import { t } from "@/workflows/copy";
@@ -41,7 +42,10 @@ export default function CapabilityGate({
           {t(language, titleKey)}
         </h2>
         <p className="text-sm text-text-secondary leading-relaxed">
-          {t(language, "gate.body")}
+          {t(language, "gate.body")}{" "}
+          <Link href="/trust-center#ai-subprocessors" className="text-accent underline">
+            Trust Center
+          </Link>
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
           <Button variant="primary" onClick={onContinue}>

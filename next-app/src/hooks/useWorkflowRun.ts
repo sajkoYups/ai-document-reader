@@ -10,18 +10,11 @@ import { SummaryResultSchema } from "@/workflows/schemas/summarize";
 import type { TaskType } from "@/types";
 
 const MAX_ERROR_CHARS = 280;
-const LOG_PREVIEW_CHARS = 600;
 
 function truncateError(message: string): string {
   const trimmed = message.trim();
   if (trimmed.length <= MAX_ERROR_CHARS) return trimmed;
   return `${trimmed.slice(0, MAX_ERROR_CHARS - 1)}…`;
-}
-
-function previewText(text: string, max = LOG_PREVIEW_CHARS): string {
-  const trimmed = text.replace(/\s+/g, " ").trim();
-  if (trimmed.length <= max) return trimmed;
-  return `${trimmed.slice(0, max)}…`;
 }
 
 function summarizeParsed(value: unknown): Record<string, unknown> {
@@ -152,7 +145,6 @@ export function useWorkflowRun() {
         attempt,
         workflowId,
         rawChars: full.length,
-        rawPreview: previewText(full),
       });
       return {
         ok: false as const,
@@ -166,7 +158,6 @@ export function useWorkflowRun() {
       attempt,
       workflowId,
       rawChars: full.length,
-      rawPreview: previewText(full),
       parsed: parsed ? summarizeParsed(parsed) : null,
     });
 
@@ -295,7 +286,6 @@ export function useWorkflowRun() {
           workflowId: args.workflowId,
           processingMode,
           documentChars: args.documentText.length,
-          documentPreview: previewText(args.documentText, 240),
           extractType: args.extractType ?? null,
         });
         const full = await streamOnce(args);
@@ -304,7 +294,6 @@ export function useWorkflowRun() {
           attempt: "first",
           workflowId: args.workflowId,
           rawChars: full.length,
-          rawPreview: previewText(full),
         });
         const first = finishWith(full, args.schema, args.workflowId, "first");
         if (first.ok) {
@@ -341,7 +330,6 @@ export function useWorkflowRun() {
           attempt: "repair",
           workflowId: args.workflowId,
           rawChars: repaired.length,
-          rawPreview: previewText(repaired),
         });
         const second = finishWith(repaired, args.schema, args.workflowId, "repair");
         if (second.ok) {

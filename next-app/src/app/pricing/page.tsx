@@ -165,7 +165,7 @@ export default function PricingPage() {
             </div>
             <p className="text-text-secondary max-w-2xl">
               A stronger, server-side AI model for deeper document analysis.
-              We encrypt your document for processing and never store it on PIA
+              We encrypt your document to our API and do not store it on PIA
               systems; providers are listed in our{" "}
               <a href="/trust-center#ai-subprocessors" className="text-accent underline">
                 Trust Center

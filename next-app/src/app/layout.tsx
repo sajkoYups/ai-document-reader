@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import ClerkWrapper from "@/components/ClerkWrapper";
 import CookieBanner from "@/components/CookieBanner";
-import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 import "./globals.css";
 
 const siteUrl =
@@ -24,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | PIA",
   },
   description:
-    "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis. No account for Standard mode, no data stored.",
+    "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis. No account for Standard mode; PIA does not store documents.",
   openGraph: {
     type: "website",
     url: siteUrl,
@@ -69,42 +67,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased bg-surface-0 text-text-primary">
-        {GA_MEASUREMENT_ID ? (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ga-consent-default" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){window.dataLayer.push(arguments);}
-                gtag('consent', 'default', {
-                  ad_storage: 'denied',
-                  ad_user_data: 'denied',
-                  ad_personalization: 'denied',
-                  analytics_storage: 'denied',
-                  functionality_storage: 'granted',
-                  security_storage: 'granted'
-                });
-              `}
-            </Script>
-            <Script id="ga-config" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){window.dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${GA_MEASUREMENT_ID}');
-              `}
-            </Script>
-          </>
-        ) : null}
-        {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ? (
-          <Script
-            src={`https://www.google.com/recaptcha/enterprise.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
-            strategy="afterInteractive"
-          />
-        ) : null}
         <ClerkWrapper>
           <script
             type="application/ld+json"

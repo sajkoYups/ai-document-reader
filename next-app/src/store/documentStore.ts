@@ -1,12 +1,6 @@
 import { create } from "zustand";
 import type { DocumentSection, PageSpan } from "@/types";
 import { parseIntoSections } from "@/lib/documentParser";
-import {
-  encryptText,
-  decryptText,
-  sanitizeEncryptedData,
-  type EncryptedData,
-} from "@/lib/cryptoService";
 
 export const MAX_SESSION_DOCUMENTS = 3;
 
@@ -25,7 +19,6 @@ export interface SessionDocument {
   fileType: string | null;
   pageCount: number | null;
   pages: PageSpan[];
-  _encrypted: EncryptedData | null;
 }
 
 export interface CompareRoles {
@@ -76,7 +69,6 @@ interface DocumentStore {
   setCompareRoles: (roles: Partial<CompareRoles>) => void;
   ensureCompareRoles: () => void;
   setError: (error: string | null) => void;
-  getDecryptedText: (id?: string) => Promise<string>;
   clear: () => void;
 }
 
@@ -119,18 +111,7 @@ function makeSessionDoc(
     fileType,
     pageCount: meta?.pageCount ?? null,
     pages: meta?.pages ?? [],
-    _encrypted: null,
   };
-}
-
-function encryptAsync(id: string, text: string, set: (partial: Partial<DocumentStore> | ((s: DocumentStore) => Partial<DocumentStore>)) => void) {
-  encryptText(text).then((encrypted) => {
-    set((state) => ({
-      documents: state.documents.map((d) =>
-        d.id === id ? { ...d, _encrypted: encrypted } : d,
-      ),
-    }));
-  });
 }
 
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
@@ -157,7 +138,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       error: null,
       ...activeFieldsFrom(doc),
     });
-    encryptAsync(doc.id, text, set);
   },
 
   setFromFile: (text, fileName, fileType, meta) => {
@@ -169,7 +149,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       error: null,
       ...activeFieldsFrom(doc),
     });
-    encryptAsync(doc.id, text, set);
   },
 
   addFromFile: (text, fileName, fileType, meta) => {
@@ -190,7 +169,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       error: null,
       ...activeFieldsFrom(doc),
     });
-    encryptAsync(doc.id, text, set);
     return { ok: true, id: doc.id };
   },
 
@@ -207,7 +185,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       error: null,
       ...activeFieldsFrom(active),
     });
-    encryptAsync(id, text, set);
   },
 
   setActive: (id) => {
@@ -221,9 +198,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   removeDocument: (id) => {
     const { documents, activeDocumentId, compareRoles } = get();
-    const target = documents.find((d) => d.id === id);
-    if (target?._encrypted) sanitizeEncryptedData(target._encrypted);
-
     const nextDocs = documents.filter((d) => d.id !== id);
     const nextActiveId =
       activeDocumentId === id
@@ -267,23 +241,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   setError: (error) => set({ error }),
 
-  getDecryptedText: async (id) => {
-    const doc = id ? get().getById(id) : get().getActive();
-    if (!doc) return "";
-    if (doc._encrypted) {
-      try {
-        return await decryptText(doc._encrypted);
-      } catch {
-        return doc.rawText;
-      }
-    }
-    return doc.rawText;
-  },
-
   clear: () => {
-    for (const d of get().documents) {
-      if (d._encrypted) sanitizeEncryptedData(d._encrypted);
-    }
     set({
       documents: [],
       activeDocumentId: null,

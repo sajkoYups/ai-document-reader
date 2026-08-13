@@ -26,7 +26,7 @@ export default function HomePage() {
           <p className="text-lg text-text-secondary max-w-2xl mx-auto">
             Paste or upload a document, pick a workflow, and get structured
             summaries, reviews, extractions, or Ask answers — with AI processing in
-            your browser or via private Deep Analysis.
+            your browser or via Deep Analysis.
           </p>
         </section>
 
@@ -83,8 +83,8 @@ export default function HomePage() {
               <strong className="text-text-primary">in your browser</strong> —
               your document never leaves your device. With{" "}
               <strong className="text-text-primary">Deep Analysis</strong>, we
-              encrypt your request and analyze it via privacy-constrained
-              providers; we do not store documents or prompts on PIA systems.
+              encrypt your request to our API, then named privacy-constrained
+              providers process the text; we do not store documents or prompts on PIA systems.
             </p>
             <p>
               When you refresh the browser, everything is cleared. Your
@@ -122,7 +122,7 @@ export default function HomePage() {
               </div>
               <p className="text-text-secondary text-sm">
                 A stronger, server-side AI model for more capable document
-                analysis. We encrypt your document for processing and never
+                analysis. We encrypt your document to our API for processing and do not
                 store it on PIA systems; inference uses privacy-constrained
                 providers listed in our{" "}
                 <Link href="/trust-center#ai-subprocessors" className="text-accent underline">
