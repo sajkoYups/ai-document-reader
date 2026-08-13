@@ -1,7 +1,11 @@
 import { config, isOpenRouterConfigured } from "../config.js";
-import type { OutputLanguage, TaskType } from "../types/index.js";
+import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.js";
+import { taskUsesJsonMode } from "../types/index.js";
 import { buildInferenceMessages } from "./ollamaService.js";
-import { streamOpenAiSseTokens } from "./openaiCompatibleStream.js";
+import {
+  fetchStreamingChatCompletion,
+  streamOpenAiSseTokens,
+} from "./openaiCompatibleStream.js";
 
 export function getOpenrouterTaskMaxTokens(_taskType: TaskType): number {
   return Math.max(300, config.openrouter.maxTokens);
@@ -39,6 +43,7 @@ export async function openOpenrouterChatCompletion(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): Promise<Response> {
   if (!isOpenRouterConfigured()) {
     throw new Error("OpenRouter is not configured (missing OPENROUTER_API_KEY)");
@@ -50,14 +55,16 @@ export async function openOpenrouterChatCompletion(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 
-  const response = await fetch(
+  const jsonMode = taskUsesJsonMode(taskType, options?.jsonMode);
+
+  const response = await fetchStreamingChatCompletion(
     `${config.openrouter.baseUrl}/chat/completions`,
     {
       method: "POST",
       headers: buildOpenRouterHeaders(),
-      signal: AbortSignal.timeout(config.openrouter.timeoutMs),
       body: JSON.stringify({
         model: config.openrouter.model,
         messages,
@@ -65,8 +72,10 @@ export async function openOpenrouterChatCompletion(
         temperature: 0.2,
         max_tokens: getOpenrouterTaskMaxTokens(taskType),
         provider: buildProviderPreferences(),
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
       }),
     },
+    config.openrouter.timeoutMs,
   );
 
   if (!response.ok) {
@@ -87,6 +96,7 @@ export async function* streamOpenrouterInference(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   const response = await openOpenrouterChatCompletion(
     taskType,
@@ -94,9 +104,12 @@ export async function* streamOpenrouterInference(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 
-  yield* streamOpenAiSseTokens(response.body!);
+  yield* streamOpenAiSseTokens(response.body!, {
+    idleMs: config.openrouter.timeoutMs,
+  });
 }
 
 /**
@@ -108,7 +121,9 @@ export async function* streamOpenrouterFromResponse(
   if (!response.body) {
     throw new Error("No response body from OpenRouter");
   }
-  yield* streamOpenAiSseTokens(response.body);
+  yield* streamOpenAiSseTokens(response.body, {
+    idleMs: config.openrouter.timeoutMs,
+  });
 }
 
 export async function checkOpenrouterHealth(): Promise<boolean> {

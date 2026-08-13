@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const taskTypes = ["summarize", "explain", "extract", "draft", "chat"] as const;
+const taskTypes = ["summarize", "explain", "extract", "draft", "chat", "review"] as const;
 
 const sessionInitSchema = z.object({
   clientPublicKey: z.object({
@@ -17,6 +17,14 @@ const analyzeRequestSchema = z.object({
   taskType: z.enum(taskTypes),
   documentText: z.string().min(1).max(5_000_000),
   outputLanguage: outputLanguageEnum.optional().default("en"),
+  workflowId: z.string().max(64).optional(),
+  jsonMode: z.boolean().optional(),
+  workflowParams: z
+    .object({
+      extractType: z.string().max(64).optional(),
+      customQuery: z.string().max(2000).optional(),
+    })
+    .optional(),
 });
 
 const chatRequestSchema = z.object({

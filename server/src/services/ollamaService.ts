@@ -1,5 +1,12 @@
 import { config } from "../config.js";
-import type { OutputLanguage, TaskType } from "../types/index.js";
+import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.js";
+import { taskUsesJsonMode } from "../types/index.js";
+import {
+  ASK_PROMPT_ADDENDUM,
+  getExtractPrompt,
+  REVIEW_JSON_PROMPT,
+  SUMMARIZE_JSON_PROMPT,
+} from "../workflows/prompts.js";
 
 /** User-message language cue (target language). Empty for English. */
 const LANGUAGE_USER_CUE: Record<OutputLanguage, string> = {
@@ -15,7 +22,7 @@ function getLanguageUserCue(code: OutputLanguage): string {
 }
 
 // Canonical source: ../../src/lib/prompts.ts — keep SYSTEM_PROMPTS in sync when editing prompts.
-const SYSTEM_PROMPTS: Record<TaskType, string> = {
+const SYSTEM_PROMPTS: Record<string, string> = {
   summarize: `You are a document summarization assistant. Your job is to produce a short, accurate summary that helps the reader grasp the document quickly.
 
 ## Output format
@@ -148,7 +155,7 @@ Use exactly these section headings (copy them exactly). Omit any section that ha
 };
 
 // Full prompts in German (mirror next-app/src/lib/prompts.ts SYSTEM_PROMPTS_DE)
-const SYSTEM_PROMPTS_DE: Record<TaskType, string> = {
+const SYSTEM_PROMPTS_DE: Record<string, string> = {
   summarize: `Du bist ein Assistent für Dokumentenzusammenfassungen. Deine Aufgabe ist es, eine kurze, präzise Zusammenfassung zu erstellen, die dem Leser hilft, das Dokument schnell zu erfassen.
 
 ## Ausgabeformat
@@ -277,7 +284,7 @@ Verwende genau diese Überschriften. Lasse Abschnitte ohne relevanten Inhalt weg
 };
 
 // Full prompts in French (mirror next-app SYSTEM_PROMPTS_FR)
-const SYSTEM_PROMPTS_FR: Record<TaskType, string> = {
+const SYSTEM_PROMPTS_FR: Record<string, string> = {
   summarize: `Vous êtes un assistant de synthèse de documents. Votre rôle est de produire un résumé court et précis qui permet au lecteur de saisir rapidement le document.
 
 ## Format de sortie
@@ -406,7 +413,7 @@ Utilisez exactement ces titres. Omettez toute section sans contenu pertinent.
 };
 
 // Full prompts in Czech (mirror next-app SYSTEM_PROMPTS_CS)
-const SYSTEM_PROMPTS_CS: Record<TaskType, string> = {
+const SYSTEM_PROMPTS_CS: Record<string, string> = {
   summarize: `Jste asistent pro shrnutí dokumentů. Vaším úkolem je vytvořit krátké, přesné shrnutí, které čtenáři pomůže rychle pochopit dokument.
 
 ## Formát výstupu
@@ -534,16 +541,44 @@ Použijte přesně tyto nadpisy. Vynechte oddíl, pokud v dokumentu k němu nen�
 - Odpovědi stručné a přímé. Při nejednoznačnosti požádejte o upřesnění.`,
 };
 
-function getSystemPrompt(taskType: TaskType, outputLanguage: OutputLanguage): string {
-  if (outputLanguage === "de") return SYSTEM_PROMPTS_DE[taskType];
-  if (outputLanguage === "fr") return SYSTEM_PROMPTS_FR[taskType];
-  if (outputLanguage === "cs") return SYSTEM_PROMPTS_CS[taskType];
-  if (outputLanguage === "mk") {
-    const langLine = `CRITICAL: Write your entire response in Macedonian only. Every heading, sentence, bullet, and number must be in Macedonian. Do not use any other language.\n\n`;
-    return langLine + SYSTEM_PROMPTS[taskType];
+function languageLine(outputLanguage: OutputLanguage): string {
+  if (outputLanguage === "de") {
+    return "CRITICAL: Write your entire response in German only. JSON keys stay in English. String values must be in German.\n\n";
   }
-  const langLine = `CRITICAL: Write your entire response in English only. Every heading, sentence, bullet, and number must be in English. Do not use any other language.\n\n`;
-  return langLine + SYSTEM_PROMPTS[taskType];
+  if (outputLanguage === "fr") {
+    return "CRITICAL: Write your entire response in French only. JSON keys stay in English. String values must be in French.\n\n";
+  }
+  if (outputLanguage === "cs") {
+    return "CRITICAL: Write your entire response in Czech only. JSON keys stay in English. String values must be in Czech.\n\n";
+  }
+  if (outputLanguage === "mk") {
+    return "CRITICAL: Write your entire response in Macedonian only. JSON keys stay in English. String values must be in Macedonian.\n\n";
+  }
+  return "CRITICAL: Write your entire response in English only. Every heading, sentence, bullet, and number must be in English. Do not use any other language.\n\n";
+}
+
+function legacyPrompt(taskType: TaskType, outputLanguage: OutputLanguage): string {
+  if (outputLanguage === "de") return SYSTEM_PROMPTS_DE[taskType] ?? SYSTEM_PROMPTS_DE.summarize!;
+  if (outputLanguage === "fr") return SYSTEM_PROMPTS_FR[taskType] ?? SYSTEM_PROMPTS_FR.summarize!;
+  if (outputLanguage === "cs") return SYSTEM_PROMPTS_CS[taskType] ?? SYSTEM_PROMPTS_CS.summarize!;
+  return SYSTEM_PROMPTS[taskType] ?? SYSTEM_PROMPTS.summarize!;
+}
+
+function getSystemPrompt(
+  taskType: TaskType,
+  outputLanguage: OutputLanguage,
+  options?: InferenceOptions,
+): string {
+  const prefix = languageLine(outputLanguage);
+  if (taskType === "summarize") return prefix + SUMMARIZE_JSON_PROMPT;
+  if (taskType === "review") return prefix + REVIEW_JSON_PROMPT;
+  if (taskType === "extract") {
+    return prefix + getExtractPrompt(options?.extractType, options?.customQuery);
+  }
+  if (taskType === "chat") {
+    return prefix + legacyPrompt("chat", outputLanguage) + "\n\n" + ASK_PROMPT_ADDENDUM;
+  }
+  return prefix + legacyPrompt(taskType, outputLanguage);
 }
 
 export interface InferenceMessage {
@@ -562,8 +597,9 @@ export function buildInferenceMessages(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): InferenceMessage[] {
-  const systemPrompt = getSystemPrompt(taskType, outputLanguage);
+  const systemPrompt = getSystemPrompt(taskType, outputLanguage, options);
   const userCue = getLanguageUserCue(outputLanguage);
 
   if (taskType === "chat") {
@@ -601,6 +637,7 @@ export async function* streamInference(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   const messages = buildInferenceMessages(
     taskType,
@@ -608,7 +645,10 @@ export async function* streamInference(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
+
+  const jsonMode = taskUsesJsonMode(taskType, options?.jsonMode);
 
   const response = await fetch(`${config.ollama.baseUrl}/api/chat`, {
     method: "POST",
@@ -617,6 +657,7 @@ export async function* streamInference(
       model: config.ollama.model,
       messages,
       stream: true,
+      format: jsonMode ? "json" : undefined,
       options: {
         num_ctx: config.ollama.contextWindow,
         temperature: taskType === "chat" ? 0.3 : 0.1,

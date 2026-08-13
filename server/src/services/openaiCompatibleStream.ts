@@ -46,16 +46,44 @@ export function extractOpenAiStreamText(chunk: unknown): string {
   return normalizeOpenAiContent(message?.content);
 }
 
+export interface StreamOpenAiSseOptions {
+  /** Abort if no bytes arrive for this many ms while reading the body. */
+  idleMs?: number;
+}
+
 /**
  * Reads an OpenAI-style SSE body and yields text deltas.
  * Caller must have already validated response.ok and response.body.
  */
 export async function* streamOpenAiSseTokens(
   body: ReadableStream<Uint8Array>,
+  options?: StreamOpenAiSseOptions,
 ): AsyncGenerator<string> {
+  const idleMs = options?.idleMs;
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+
+  const readNext = async (): Promise<ReadableStreamReadResult<Uint8Array>> => {
+    if (!idleMs || idleMs <= 0) {
+      return reader.read();
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        reader.read(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            void reader.cancel("Inference timed out").catch(() => {});
+            reject(new Error("Inference timed out"));
+          }, idleMs);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
 
   const yieldTokensFromSseLine = async function* (rawLine: string) {
     const line = rawLine.trim();
@@ -80,7 +108,7 @@ export async function* streamOpenAiSseTokens(
 
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      const { done, value } = await readNext();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
@@ -99,5 +127,37 @@ export async function* streamOpenAiSseTokens(
     }
   } finally {
     reader.releaseLock();
+  }
+}
+
+/**
+ * Opens a streaming chat completion fetch.
+ * Uses a connect-phase abort only (cleared once headers arrive) so an active
+ * token stream is not killed by a wall-clock whole-response timeout.
+ */
+export async function fetchStreamingChatCompletion(
+  url: string,
+  init: RequestInit,
+  connectTimeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const connectTimer = setTimeout(() => controller.abort(), connectTimeoutMs);
+
+  try {
+    const { signal: _ignored, ...rest } = init;
+    return await fetch(url, {
+      ...rest,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "AbortError" || /aborted|timeout/i.test(error.message))
+    ) {
+      throw new Error("Inference timed out");
+    }
+    throw error;
+  } finally {
+    clearTimeout(connectTimer);
   }
 }

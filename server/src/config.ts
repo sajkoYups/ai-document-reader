@@ -52,7 +52,7 @@ export const config = {
     timeoutMs: parseInt(
       process.env.RUNPOD_TIMEOUT_MS ??
         process.env.RUNPOD_VLLM_TIMEOUT_MS ??
-        "60000",
+        "180000",
       10,
     ),
     maxTokens: parseInt(
@@ -75,8 +75,8 @@ export const config = {
     baseUrl:
       process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
     model: process.env.OPENROUTER_MODEL ?? "qwen/qwen2.5-7b-instruct",
-    timeoutMs: parseInt(process.env.OPENROUTER_TIMEOUT_MS ?? "60000", 10),
-    maxTokens: parseInt(process.env.OPENROUTER_MAX_TOKENS ?? "2048", 10),
+    timeoutMs: parseInt(process.env.OPENROUTER_TIMEOUT_MS ?? "180000", 10),
+    maxTokens: parseInt(process.env.OPENROUTER_MAX_TOKENS ?? "8192", 10),
     contextWindow: parseInt(
       process.env.OPENROUTER_CONTEXT_WINDOW ?? "8192",
       10,

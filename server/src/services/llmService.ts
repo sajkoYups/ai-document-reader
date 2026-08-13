@@ -1,6 +1,6 @@
 import { config, isOpenRouterConfigured } from "../config.js";
 import { assertDeepInferenceWithinContext } from "../contextBudget.js";
-import type { OutputLanguage, TaskType } from "../types/index.js";
+import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.js";
 import {
   checkOllamaHealth,
   streamInference as streamOllamaInference,
@@ -25,6 +25,7 @@ async function* streamRunpodWithOpenRouterFallback(
     | Array<{ role: "user" | "assistant"; content: string }>
     | undefined,
   outputLanguage: OutputLanguage,
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   const canFallback = isOpenRouterConfigured();
 
@@ -41,6 +42,7 @@ async function* streamRunpodWithOpenRouterFallback(
         userMessage,
         conversationHistory,
         outputLanguage,
+        options,
       );
       return;
     }
@@ -53,6 +55,7 @@ async function* streamRunpodWithOpenRouterFallback(
       userMessage,
       conversationHistory,
       outputLanguage,
+      options,
     );
     yield* streamRunpodFromResponse(response);
   } catch (error) {
@@ -67,6 +70,7 @@ async function* streamRunpodWithOpenRouterFallback(
       userMessage,
       conversationHistory,
       outputLanguage,
+      options,
     );
     yield* streamOpenrouterFromResponse(response);
   }
@@ -78,6 +82,7 @@ export async function* streamDeepInference(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   assertDeepInferenceWithinContext(
     taskType,
@@ -85,6 +90,7 @@ export async function* streamDeepInference(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 
   if (config.deepAnalysis.provider === "openrouter") {
@@ -94,6 +100,7 @@ export async function* streamDeepInference(
       userMessage,
       conversationHistory,
       outputLanguage,
+      options,
     );
     return;
   }
@@ -105,6 +112,7 @@ export async function* streamDeepInference(
       userMessage,
       conversationHistory,
       outputLanguage,
+      options,
     );
     return;
   }
@@ -115,6 +123,7 @@ export async function* streamDeepInference(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 }
 

@@ -1,5 +1,5 @@
 import { config } from "./config.js";
-import type { OutputLanguage, TaskType } from "./types/index.js";
+import type { InferenceOptions, OutputLanguage, TaskType } from "./types/index.js";
 import { buildInferenceMessages } from "./services/ollamaService.js";
 import { getOpenrouterTaskMaxTokens } from "./services/openrouterService.js";
 import { getRunpodTaskMaxTokens } from "./services/runpodService.js";
@@ -67,6 +67,7 @@ export function assertDeepInferenceWithinContext(
     content: string;
   }> | undefined,
   outputLanguage: OutputLanguage,
+  options?: InferenceOptions,
 ): void {
   const messages = buildInferenceMessages(
     taskType,
@@ -74,6 +75,7 @@ export function assertDeepInferenceWithinContext(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
   const inputTokens = estimateInputTokensFromMessages(messages);
   const limit = getDeepAnalysisContextLimit();

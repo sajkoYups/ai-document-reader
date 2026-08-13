@@ -1,7 +1,11 @@
 import { config } from "../config.js";
-import type { OutputLanguage, TaskType } from "../types/index.js";
+import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.js";
+import { taskUsesJsonMode } from "../types/index.js";
 import { buildInferenceMessages } from "./ollamaService.js";
-import { streamOpenAiSseTokens } from "./openaiCompatibleStream.js";
+import {
+  fetchStreamingChatCompletion,
+  streamOpenAiSseTokens,
+} from "./openaiCompatibleStream.js";
 
 export function getRunpodTaskMaxTokens(_taskType: TaskType): number {
   return Math.max(300, config.runpod.maxTokens);
@@ -17,6 +21,7 @@ export async function openRunpodChatCompletion(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): Promise<Response> {
   const messages = buildInferenceMessages(
     taskType,
@@ -24,20 +29,27 @@ export async function openRunpodChatCompletion(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 
-  const response = await fetch(`${config.runpod.baseUrl}/v1/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(config.runpod.timeoutMs),
-    body: JSON.stringify({
-      model: config.runpod.model,
-      messages,
-      stream: true,
-      temperature: 0.2,
-      max_tokens: getRunpodTaskMaxTokens(taskType),
-    }),
-  });
+  const jsonMode = taskUsesJsonMode(taskType, options?.jsonMode);
+
+  const response = await fetchStreamingChatCompletion(
+    `${config.runpod.baseUrl}/v1/chat/completions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: config.runpod.model,
+        messages,
+        stream: true,
+        temperature: 0.2,
+        max_tokens: getRunpodTaskMaxTokens(taskType),
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      }),
+    },
+    config.runpod.timeoutMs,
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "unknown error");
@@ -57,6 +69,7 @@ export async function* streamRunpodInference(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   const response = await openRunpodChatCompletion(
     taskType,
@@ -64,9 +77,12 @@ export async function* streamRunpodInference(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 
-  yield* streamOpenAiSseTokens(response.body!);
+  yield* streamOpenAiSseTokens(response.body!, {
+    idleMs: config.runpod.timeoutMs,
+  });
 }
 
 export async function* streamRunpodFromResponse(
@@ -75,7 +91,9 @@ export async function* streamRunpodFromResponse(
   if (!response.body) {
     throw new Error("No response body from RunPod");
   }
-  yield* streamOpenAiSseTokens(response.body);
+  yield* streamOpenAiSseTokens(response.body, {
+    idleMs: config.runpod.timeoutMs,
+  });
 }
 
 export async function checkRunpodHealth(): Promise<boolean> {
