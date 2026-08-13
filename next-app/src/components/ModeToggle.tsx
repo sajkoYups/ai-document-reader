@@ -59,30 +59,30 @@ export default function ModeToggle({ compact = false }: ModeToggleProps) {
                   ? "bg-surface-0 shadow-sm border border-border"
                   : "hover:bg-surface-3 border border-transparent"
               }
-              ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}
+              ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}
               ${compact ? "flex-row gap-1.5 px-2.5 py-1" : "flex-col items-start px-3 py-1.5"}
             `}
           >
             <span
-              className={`font-medium ${isActive ? "text-text-primary" : "text-text-secondary"} ${compact ? "text-[11px] whitespace-nowrap" : "text-xs"}`}
+              className={`font-medium text-xs ${isActive ? "text-text-primary" : "text-text-secondary"} ${compact ? "whitespace-nowrap" : ""}`}
             >
               {mode.label}
             </span>
             {!compact && (
-              <span className="text-[10px] text-text-muted leading-tight">
+              <span className="text-xs text-text-secondary leading-tight">
                 {mode.description}
               </span>
             )}
             {mode.id === "local" && isMobileDevice && (
               <span
-                className={`text-text-muted ${compact ? "text-[9px] ml-0.5" : "text-[9px] mt-0.5"}`}
+                className={`text-text-secondary ${compact ? "text-xs ml-0.5" : "text-xs mt-0.5"}`}
               >
                 Desktop only
               </span>
             )}
             {mode.id === "api" && apiAvailable === false && (
               <span
-                className={`text-warning ${compact ? "text-[9px] ml-0.5" : "text-[9px] mt-0.5"}`}
+                className={`text-warning ${compact ? "text-xs ml-0.5" : "text-xs mt-0.5"}`}
               >
                 Unavailable
               </span>

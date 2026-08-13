@@ -37,7 +37,7 @@ export default function FindingCard({
       </p>
       {evidence.length > 0 ? (
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-text-muted">
+          <p className="text-xs uppercase tracking-wide text-text-muted">
             {t(language, "result.evidence")}
           </p>
           <EvidenceReference evidence={evidence} onOpen={onOpenEvidence} />

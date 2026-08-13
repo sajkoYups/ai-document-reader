@@ -44,7 +44,7 @@ export default function ExtractSubmenu({
             `}
           >
             <span className="block font-medium">{t(language, keys.nameKey)}</span>
-            <span className="block text-xs text-text-muted mt-0.5">
+            <span className="block text-xs text-text-secondary mt-0.5">
               {t(language, keys.descriptionKey)}
             </span>
           </button>

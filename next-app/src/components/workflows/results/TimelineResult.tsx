@@ -44,7 +44,7 @@ export default function TimelineResultView({
         <p className="text-sm text-text-secondary mt-1 leading-relaxed">{event.description}</p>
       ) : null}
       {event.documentId && documentNames?.[event.documentId] ? (
-        <p className="text-[11px] text-text-muted mt-1">{documentNames[event.documentId]}</p>
+        <p className="text-xs text-text-muted mt-1">{documentNames[event.documentId]}</p>
       ) : null}
       <EvidenceReferenceChips
         evidence={resolveEvidence(event.evidenceIds)}

@@ -977,7 +977,7 @@ function AppContent() {
               <p key={i}>{w}</p>
             ))}
           </div>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-secondary">
             Please use a modern browser like Chrome, Edge, or Firefox over HTTPS so secure Web Crypto–based encryption is available.
           </p>
         </div>
@@ -1081,7 +1081,7 @@ function AppContent() {
               <p className="text-xs font-medium text-text-muted tracking-wide uppercase">
                 {t(language, "workspace.workflows")}
               </p>
-              <p className="text-[11px] text-text-muted mt-0.5">
+              <p className="text-xs text-text-secondary mt-0.5">
                 {t(language, "workflow.chooseThenRun")}
               </p>
             </div>
@@ -1127,7 +1127,7 @@ function AppContent() {
               data-tour-id="run-button"
             >
               {isAsk ? (
-                <p className="text-xs text-text-muted leading-snug">
+                <p className="text-xs text-text-secondary leading-snug">
                   {t(language, "workspace.askHint")}
                 </p>
               ) : (
@@ -1392,7 +1392,7 @@ function WorkspacePaneButton({
       className={`inline-flex items-center justify-center w-8 h-8 rounded-md border transition-colors cursor-pointer ${
         pressed
           ? "border-accent-border bg-accent-dim text-accent"
-          : "border-border bg-surface-2 text-text-muted hover:text-text-primary hover:bg-surface-3"
+          : "border-border bg-surface-2 text-text-secondary hover:text-text-primary hover:bg-surface-3"
       }`}
     >
       {children}
@@ -1417,7 +1417,7 @@ function AppHeaderRight() {
         type="button"
         onClick={() => setFeedbackOpen(true)}
         data-tour-id="header-feedback"
-        className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-full bg-surface-2 border border-border text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full bg-surface-2 border border-border text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors"
       >
         <svg
           width="11"
@@ -1436,7 +1436,7 @@ function AppHeaderRight() {
       <button
         type="button"
         onClick={startTour}
-        className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-full bg-surface-2 border border-border text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-surface-2 border border-border text-text-secondary hover:text-text-primary hover:bg-surface-3 transition-colors"
         data-tour-id="header-tour-button"
       >
         <span className="inline-block w-3 h-3 rounded-full bg-accent/80" />
@@ -1463,7 +1463,7 @@ function AppHeaderRight() {
         )}
       </select>
       {!canUseMacedonian && (
-        <p className="text-[11px] text-text-muted">Sign in to enable Macedonian.</p>
+        <p className="text-xs text-text-secondary">Sign in to enable Macedonian.</p>
       )}
       <div data-tour-id="header-mode-toggle">
         <ModeToggle compact />
@@ -1567,12 +1567,12 @@ export default function App() {
           color: "var(--color-text-primary)",
           borderRadius: 12,
           boxSizing: "border-box",
-          width: "min(calc(100vw - 32px), 400px)",
-          maxWidth: "min(calc(100vw - 32px), 400px)",
+          width: "min(calc(100vw - 32px), 560px)",
+          maxWidth: "min(calc(100vw - 32px), 560px)",
           maxHeight: "calc(100dvh - 32px)",
           overflowX: "hidden",
           overflowY: "auto",
-          padding: "20px 20px 16px",
+          padding: "28px 28px 20px",
           boxShadow: "0 18px 45px rgba(0,0,0,0.75), 0 0 0 1px var(--color-border)",
           textAlign: "left",
         }),

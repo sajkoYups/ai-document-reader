@@ -66,7 +66,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased bg-surface-0 text-text-primary">
+      <body className="bg-surface-0 text-text-primary">
         <ClerkWrapper>
           <script
             type="application/ld+json"

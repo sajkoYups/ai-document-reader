@@ -203,7 +203,7 @@ export default function ExtractionTable({
 
   const visible = sections.filter(Boolean);
   if (visible.length === 0) {
-    return <p className="text-sm text-text-muted">{t(language, "result.empty")}</p>;
+    return <p className="text-sm text-text-secondary">{t(language, "result.empty")}</p>;
   }
 
   return <div className="space-y-6">{visible}</div>;

@@ -32,7 +32,7 @@ export default function TaskSelector({
           className={`
             inline-flex items-center gap-2 px-3.5 py-2 rounded-lg
             text-sm font-medium transition-all duration-150 cursor-pointer
-            disabled:opacity-40 disabled:pointer-events-none
+            disabled:opacity-60 disabled:pointer-events-none
             ${
               selected === task.id
                 ? "bg-accent text-surface-0 shadow-[0_0_12px_rgba(45,212,191,0.15)]"

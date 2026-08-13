@@ -34,7 +34,7 @@ function FileGlyph({ fileName }: { fileName: string | null }) {
   return (
     <span
       className="shrink-0 w-8 h-8 rounded-md bg-surface-2 border border-border flex items-center justify-center
-        text-[9px] font-mono font-medium uppercase text-text-muted"
+        text-xs font-mono font-medium uppercase text-text-muted"
     >
       {label}
     </span>
@@ -72,7 +72,7 @@ export default function SourcesPanel({
             {t(language, "workspace.sources")}
           </p>
           {empty ? null : (
-            <p className="text-[11px] text-text-muted mt-0.5">
+            <p className="text-xs text-text-muted mt-0.5">
               {documents.length}/{MAX_SESSION_DOCUMENTS} {t(language, "doc.documents")}
             </p>
           )}
@@ -117,7 +117,7 @@ export default function SourcesPanel({
                 {error}
               </div>
             ) : null}
-            <p className="text-[11px] text-center text-text-muted uppercase tracking-wide">
+            <p className="text-xs text-center text-text-secondary uppercase tracking-wide">
               {t(language, "empty.paste")}
             </p>
             <TextArea
@@ -171,7 +171,7 @@ export default function SourcesPanel({
                         <span className="block text-sm font-medium truncate">
                           {doc.fileName ?? "Document"}
                         </span>
-                        <span className="block text-[11px] text-text-muted mt-0.5">
+                        <span className="block text-xs text-text-muted mt-0.5">
                           {meta} · {t(language, "doc.ready")}
                         </span>
                         <span className="mt-1.5 flex gap-1.5">
@@ -190,11 +190,11 @@ export default function SourcesPanel({
                                 replaceInputRef.current?.click();
                               }
                             }}
-                            className="text-[10px] text-accent hover:underline"
+                            className="text-xs text-accent hover:underline"
                           >
                             {t(language, "doc.replace")}
                           </span>
-                          <span className="text-[10px] text-text-muted">·</span>
+                          <span className="text-xs text-text-muted">·</span>
                           <span
                             role="button"
                             tabIndex={0}
@@ -208,7 +208,7 @@ export default function SourcesPanel({
                                 onRemove(doc.id);
                               }
                             }}
-                            className="text-[10px] text-text-muted hover:text-danger"
+                            className="text-xs text-text-muted hover:text-danger"
                           >
                             {t(language, "doc.remove")}
                           </span>
@@ -223,7 +223,7 @@ export default function SourcesPanel({
             {showCompareRoles && documents.length >= 2 && compareRoles && onCompareRoleChange ? (
               <div className="space-y-2 pt-1">
                 <label className="flex flex-col gap-1 text-sm text-text-secondary">
-                  <span className="text-[10px] uppercase tracking-wide text-text-muted">
+                  <span className="text-xs uppercase tracking-wide text-text-muted">
                     {t(language, "doc.compareA")}
                   </span>
                   <select
@@ -239,7 +239,7 @@ export default function SourcesPanel({
                   </select>
                 </label>
                 <label className="flex flex-col gap-1 text-sm text-text-secondary">
-                  <span className="text-[10px] uppercase tracking-wide text-text-muted">
+                  <span className="text-xs uppercase tracking-wide text-text-muted">
                     {t(language, "doc.compareB")}
                   </span>
                   <select
@@ -261,7 +261,7 @@ export default function SourcesPanel({
       </div>
 
       <div className="shrink-0 px-3 py-3 border-t border-border-subtle space-y-2">
-        <p className="text-[11px] text-text-muted leading-snug">
+        <p className="text-xs text-text-secondary leading-snug">
           {isHosted ? t(language, "doc.privateHosted") : t(language, "doc.privateOnDevice")}
         </p>
         {empty ? null : (

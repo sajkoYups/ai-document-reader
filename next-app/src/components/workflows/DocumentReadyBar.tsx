@@ -38,10 +38,10 @@ export default function DocumentReadyBar({
         <p className="text-sm text-text-primary font-medium truncate">
           {fileName ?? "Document"}
         </p>
-        <p className="text-xs text-text-muted mt-0.5">
+        <p className="text-xs text-text-secondary mt-0.5">
           {meta} · {t(language, "doc.ready")}
         </p>
-        <p className="text-xs text-text-muted mt-1">
+        <p className="text-xs text-text-secondary mt-1">
           {isHosted ? t(language, "doc.privateHosted") : t(language, "doc.privateOnDevice")}
         </p>
       </div>

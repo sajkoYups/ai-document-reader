@@ -113,7 +113,7 @@ export default function WorkflowSelector({
                 className={`
                   group relative flex items-center gap-2.5 w-full text-left rounded-md
                   px-2.5 py-2 transition-colors duration-150 cursor-pointer
-                  disabled:opacity-45 disabled:cursor-not-allowed
+                  disabled:opacity-60 disabled:cursor-not-allowed
                   ${
                     selected
                       ? "bg-surface-2 text-text-primary"
@@ -134,7 +134,7 @@ export default function WorkflowSelector({
                   {t(language, workflow.nameKey)}
                 </span>
                 {disabled ? (
-                  <span className="text-[10px] uppercase tracking-wide text-text-muted shrink-0">
+                  <span className="text-xs uppercase tracking-wide text-text-muted shrink-0">
                     {t(language, "comingSoon")}
                   </span>
                 ) : null}
@@ -161,7 +161,7 @@ export default function WorkflowSelector({
               disabled={disabled}
               className={`
                 text-left rounded-lg px-3.5 py-2.5 transition-all duration-150 cursor-pointer
-                disabled:opacity-45 disabled:cursor-not-allowed
+                disabled:opacity-60 disabled:cursor-not-allowed
                 ${
                   selected
                     ? "bg-accent text-surface-0 shadow-[0_0_12px_rgba(45,212,191,0.15)]"
@@ -172,12 +172,12 @@ export default function WorkflowSelector({
               <span className="flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium">{t(language, workflow.nameKey)}</span>
                 {disabled ? (
-                  <span className={`text-[10px] uppercase tracking-wide ${selected ? "opacity-70" : "text-text-muted"}`}>
+                  <span className={`text-xs uppercase tracking-wide ${selected ? "text-surface-0/80" : "text-text-muted"}`}>
                     {t(language, "comingSoon")}
                   </span>
                 ) : null}
               </span>
-              <span className={`block text-xs mt-0.5 leading-snug ${selected ? "opacity-80" : "text-text-muted"}`}>
+              <span className={`block text-xs mt-0.5 leading-snug ${selected ? "text-surface-0/80" : "text-text-secondary"}`}>
                 {t(language, workflow.shortDescriptionKey)}
               </span>
             </button>

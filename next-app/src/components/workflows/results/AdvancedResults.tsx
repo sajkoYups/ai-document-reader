@@ -65,7 +65,7 @@ export function MissingInformationResultView({
         <div key={item.id || i} className="rounded-lg border border-border bg-surface-2 px-3 py-3 space-y-2">
           <div className="flex items-start justify-between gap-2">
             <h3 className="text-sm font-medium text-text-primary">{item.title}</h3>
-            <span className="text-[10px] uppercase text-text-muted">{item.importance}</span>
+            <span className="text-xs uppercase text-text-muted">{item.importance}</span>
           </div>
           <p className="text-sm text-text-secondary leading-relaxed">{item.explanation}</p>
           <EvidenceReferenceChips evidence={resolveEvidence(item.evidenceIds)} onOpen={onOpenEvidence} />

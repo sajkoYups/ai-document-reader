@@ -37,7 +37,7 @@ export default function FollowUpBar({ language, disabled, onAsk }: FollowUpBarPr
         disabled={disabled}
         className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-sm
           text-text-primary placeholder:text-text-muted
-          focus:outline-none focus:border-accent/40 disabled:opacity-40"
+          focus:outline-none focus:border-accent/40 disabled:opacity-60"
       />
       <Button variant="secondary" size="md" onClick={submit} disabled={disabled || !value.trim()}>
         {t(language, "ask.send")}

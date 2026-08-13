@@ -22,14 +22,14 @@ function StatCard({
 }) {
   return (
     <div className="rounded-xl border border-[--clerk-border] bg-[--clerk-bg-surface-2] px-4 py-3 space-y-0.5">
-      <p className="text-xs text-[--clerk-text-tertiary] font-medium uppercase tracking-wide">
+      <p className="text-xs text-text-muted font-medium uppercase tracking-wide">
         {label}
       </p>
-      <p className="text-2xl font-semibold text-[--clerk-text-primary] leading-tight">
+      <p className="text-2xl font-semibold text-text-primary leading-tight">
         {value}
       </p>
       {sub && (
-        <p className="text-xs text-[--clerk-text-secondary]">{sub}</p>
+        <p className="text-xs text-text-secondary">{sub}</p>
       )}
     </div>
   );
@@ -65,7 +65,7 @@ export default function UsagePanel() {
 
   if (status === "loading") {
     return (
-      <div className="py-8 text-center text-sm text-[--clerk-text-tertiary]">
+      <div className="py-8 text-center text-sm text-text-secondary">
         Loading usage data…
       </div>
     );
@@ -73,7 +73,7 @@ export default function UsagePanel() {
 
   if (status === "error" || !data) {
     return (
-      <div className="py-8 text-center text-sm text-[--clerk-text-tertiary]">
+      <div className="py-8 text-center text-sm text-text-secondary">
         Could not load usage data. Please try again later.
       </div>
     );
@@ -85,10 +85,10 @@ export default function UsagePanel() {
   return (
     <div className="space-y-6 py-2">
       <div>
-        <h2 className="text-base font-semibold text-[--clerk-text-primary] mb-1">
+        <h2 className="text-base font-semibold text-text-primary mb-1">
           Deep Analysis usage
         </h2>
-        <p className="text-sm text-[--clerk-text-secondary]">
+        <p className="text-sm text-text-secondary">
           Token counts are estimates based on document and response length.
           Only Deep Analysis (server-side) calls are tracked — local on-device
           processing is never sent to our servers.
@@ -110,7 +110,7 @@ export default function UsagePanel() {
 
       {data.breakdown.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-[--clerk-text-tertiary]">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
             Breakdown by type
           </p>
           <div className="rounded-xl border border-[--clerk-border] overflow-hidden">
@@ -136,11 +136,11 @@ export default function UsagePanel() {
                       : ""
                   }`}
                 >
-                  <span className="flex items-center gap-2 text-[--clerk-text-secondary]">
+                  <span className="flex items-center gap-2 text-text-secondary">
                     <span>{row.icon}</span>
                     {row.label}
                   </span>
-                  <span className="font-medium text-[--clerk-text-primary]">
+                  <span className="font-medium text-text-primary">
                     {formatTokens(row.data!.tokens)} tokens &middot;{" "}
                     {row.data!.calls} calls
                   </span>
@@ -152,7 +152,7 @@ export default function UsagePanel() {
 
       {data.activity.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-[--clerk-text-tertiary]">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
             Last 30 days
           </p>
           <MiniChart activity={data.activity} />
@@ -161,14 +161,14 @@ export default function UsagePanel() {
 
       {data.totalCalls === 0 && (
         <div className="rounded-xl border border-[--clerk-border] px-4 py-6 text-center">
-          <p className="text-sm text-[--clerk-text-secondary]">
+          <p className="text-sm text-text-secondary">
             No Deep Analysis calls yet. Switch to Deep Analysis mode in the app
             and run your first analysis to see usage here.
           </p>
         </div>
       )}
 
-      <p className="text-xs text-[--clerk-text-tertiary]">
+      <p className="text-xs text-text-muted">
         PIA does not store your documents or prompts. Only aggregate token counts
         are recorded for billing.
       </p>
@@ -198,7 +198,7 @@ function MiniChart({
           );
         })}
       </div>
-      <p className="text-xs text-[--clerk-text-tertiary] mt-2 text-center">
+      <p className="text-xs text-text-muted mt-2 text-center">
         Daily token usage (last 30 days)
       </p>
     </div>

@@ -66,7 +66,7 @@ export default function DocumentStrip({
                   <p className="text-sm font-medium truncate">
                     {doc.fileName ?? "Document"}
                   </p>
-                  <p className="text-[11px] text-text-muted mt-0.5">
+                  <p className="text-xs text-text-muted mt-0.5">
                     {meta} · {t(language, "doc.ready")}
                   </p>
                   <div className="mt-1.5 flex gap-1">
@@ -85,11 +85,11 @@ export default function DocumentStrip({
                           replaceInputRef.current?.click();
                         }
                       }}
-                      className="text-[10px] text-accent hover:underline"
+                      className="text-xs text-accent hover:underline"
                     >
                       {t(language, "doc.replace")}
                     </span>
-                    <span className="text-[10px] text-text-muted">·</span>
+                    <span className="text-xs text-text-muted">·</span>
                     <span
                       role="button"
                       tabIndex={0}
@@ -103,7 +103,7 @@ export default function DocumentStrip({
                           onRemove(doc.id);
                         }
                       }}
-                      className="text-[10px] text-text-muted hover:text-danger"
+                      className="text-xs text-text-muted hover:text-danger"
                     >
                       {t(language, "doc.remove")}
                     </span>
@@ -112,7 +112,7 @@ export default function DocumentStrip({
               );
             })}
           </div>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-secondary">
             {isHosted ? t(language, "doc.privateHosted") : t(language, "doc.privateOnDevice")}
             {documents.length > 1
               ? ` · ${documents.length}/${MAX_SESSION_DOCUMENTS} ${t(language, "doc.documents")}`

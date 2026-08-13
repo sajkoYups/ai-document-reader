@@ -27,7 +27,7 @@ export default function ConfidenceBadge({
       : `result.confidence.${level}`;
   return (
     <span
-      className={`inline-flex text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border ${styles[level] ?? styles.medium}`}
+      className={`inline-flex text-xs uppercase tracking-wide px-2 py-0.5 rounded-full border ${styles[level] ?? styles.medium}`}
     >
       {t(language, key)}
     </span>

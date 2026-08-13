@@ -68,7 +68,7 @@ export default function ChatMessageBubble({
             {message.evidence.map((snippet, j) => (
               <blockquote
                 key={j}
-                className="text-xs pl-2 border-l-2 border-accent/40 text-text-muted italic"
+                className="text-xs pl-2 border-l-2 border-accent/40 text-text-secondary italic"
               >
                 {snippet}
               </blockquote>

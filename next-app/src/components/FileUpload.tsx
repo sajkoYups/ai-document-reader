@@ -67,7 +67,7 @@ export default function FileUpload({
             ? "border-accent bg-accent-dim scale-[1.01]"
             : "border-border hover:border-text-muted hover:bg-surface-2/50"
         }
-        ${disabled ? "opacity-40 pointer-events-none" : ""}
+        ${disabled ? "opacity-60 pointer-events-none" : ""}
         ${className ?? ""}
       `}
     >
@@ -102,7 +102,7 @@ export default function FileUpload({
           <span className="text-accent font-medium">Add a file</span> or
           drag and drop
         </p>
-        <p className="text-[11px] text-text-muted mt-1">PDF, TXT, or Markdown (up to 50MB)</p>
+        <p className="text-xs text-text-secondary mt-1">PDF, TXT, or Markdown (up to 50MB)</p>
       </div>
     </div>
   );

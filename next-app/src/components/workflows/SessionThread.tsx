@@ -105,7 +105,7 @@ export default function SessionThread({
             <p className="font-display text-2xl text-text-primary tracking-tight">
               {t(language, "workspace.emptyCanvas")}
             </p>
-            <p className="mt-2 text-sm text-text-muted max-w-sm leading-relaxed">
+            <p className="mt-2 text-sm text-text-secondary max-w-sm leading-relaxed">
               {t(language, "workspace.emptyCanvasHint")}
             </p>
           </div>
@@ -190,7 +190,7 @@ export default function SessionThread({
       {showAskComposer ? (
         <div className="p-3 border-t border-border-subtle">
           {composerDisabled && composerDisabledReason ? (
-            <p className="mb-2 text-xs text-text-muted" role="status">
+            <p className="mb-2 text-xs text-text-secondary" role="status">
               {composerDisabledReason}
             </p>
           ) : null}
@@ -212,7 +212,7 @@ export default function SessionThread({
               className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-sm
                 text-text-primary placeholder:text-text-muted
                 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20
-                disabled:opacity-40 transition-colors"
+                disabled:opacity-60 transition-colors"
             />
             <Button
               variant="primary"

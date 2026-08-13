@@ -185,7 +185,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
                 className="w-full px-3 py-2 rounded-lg bg-surface-2 border border-border
                   text-sm text-text-primary placeholder:text-text-muted
                   focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                  disabled:opacity-50 transition-colors"
+                  disabled:opacity-60 transition-colors"
               />
             </div>
             <div className="space-y-1.5">
@@ -207,7 +207,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
                 className="w-full px-3 py-2 rounded-lg bg-surface-2 border border-border
                   text-sm text-text-primary placeholder:text-text-muted
                   focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                  disabled:opacity-50 transition-colors"
+                  disabled:opacity-60 transition-colors"
               />
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
               className="w-full px-3 py-2 rounded-lg bg-surface-2 border border-border
                 text-sm text-text-primary placeholder:text-text-muted
                 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                disabled:opacity-50 transition-colors"
+                disabled:opacity-60 transition-colors"
             />
           </div>
 
@@ -245,7 +245,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
             type="submit"
             disabled={status === "submitting"}
             className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-accent text-white
-              hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {status === "submitting" ? "Submitting…" : "Request access"}
           </button>

@@ -56,16 +56,16 @@ export default function Layout({
             <SiteBrand />
             <Link
               href="/"
-              className="text-sm text-text-muted hover:text-text-secondary transition-colors"
+              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
               Home
             </Link>
             <div className="hidden sm:block h-4 w-px bg-border" />
-            <div className="hidden sm:flex items-center gap-2 text-xs text-text-muted">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-text-secondary">
               <span className={`w-1.5 h-1.5 rounded-full ${status.color}`} />
               {status.text}
               {deviceLabel && (
-                <span className="ml-1 px-1.5 py-0.5 rounded bg-surface-2 border border-border text-[10px] font-mono uppercase">
+                <span className="ml-1 px-1.5 py-0.5 rounded bg-surface-2 border border-border text-xs font-mono uppercase">
                   {deviceLabel}
                 </span>
               )}

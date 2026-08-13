@@ -7,7 +7,7 @@ import Card from "@/components/Card";
 export function EmptyResult({ language }: { language: OutputLanguage }) {
   return (
     <Card className="flex flex-col items-center justify-center py-16 text-center">
-      <p className="text-sm text-text-muted">{t(language, "result.empty")}</p>
+      <p className="text-sm text-text-secondary">{t(language, "result.empty")}</p>
     </Card>
   );
 }

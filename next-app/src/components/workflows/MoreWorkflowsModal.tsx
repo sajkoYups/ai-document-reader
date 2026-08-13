@@ -53,7 +53,7 @@ export default function MoreWorkflowsModal({
         <div className="max-h-[60vh] overflow-y-auto space-y-5 pr-1">
           {query.trim() ? (
             results.length === 0 ? (
-              <p className="text-sm text-text-muted">{t(language, "more.empty")}</p>
+              <p className="text-sm text-text-secondary">{t(language, "more.empty")}</p>
             ) : (
               <WorkflowList
                 language={language}
@@ -108,17 +108,17 @@ function WorkflowList({
             type="button"
             disabled={disabled}
             onClick={() => onSelect(id)}
-            className="w-full text-left rounded-lg px-3 py-2 hover:bg-surface-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-left rounded-lg px-3 py-2 hover:bg-surface-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span className="flex items-baseline justify-between gap-2">
               <span className="text-sm text-text-primary">{t(language, workflow.nameKey)}</span>
               {disabled ? (
-                <span className="text-[10px] uppercase tracking-wide text-text-muted">
+                <span className="text-xs uppercase tracking-wide text-text-muted">
                   {t(language, "comingSoon")}
                 </span>
               ) : null}
             </span>
-            <span className="block text-xs text-text-muted mt-0.5">
+            <span className="block text-xs text-text-secondary mt-0.5">
               {t(language, workflow.shortDescriptionKey)}
             </span>
           </button>

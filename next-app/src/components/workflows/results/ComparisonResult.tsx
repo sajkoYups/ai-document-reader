@@ -54,7 +54,7 @@ export default function ComparisonResultView({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm text-text-primary leading-relaxed">{item.text}</p>
-                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-accent">
+                    <span className="shrink-0 text-xs uppercase tracking-wide text-accent">
                       {sideLabel(language, item.side)}
                     </span>
                   </div>

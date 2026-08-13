@@ -77,10 +77,10 @@ export default function ChatPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-text-secondary">
               Ask anything about this document…
             </p>
-            <p className="text-xs text-text-muted/60 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               e.g., &ldquo;What are the payment terms?&rdquo;
             </p>
           </div>
@@ -130,7 +130,7 @@ export default function ChatPanel({
                     {msg.evidence.map((snippet, j) => (
                       <blockquote
                         key={j}
-                        className="text-xs pl-2 border-l-2 border-accent/40 text-text-muted italic"
+                        className="text-xs pl-2 border-l-2 border-accent/40 text-text-secondary italic"
                       >
                         {snippet}
                       </blockquote>
@@ -153,7 +153,7 @@ export default function ChatPanel({
 
       <div className="p-3 border-t border-border-subtle">
         {disabled && disabledReason && (
-          <p className="mb-2 text-xs text-text-muted" role="status">
+          <p className="mb-2 text-xs text-text-secondary" role="status">
             {disabledReason}
           </p>
         )}
@@ -181,7 +181,7 @@ export default function ChatPanel({
             className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-sm
               text-text-primary placeholder:text-text-muted
               focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20
-              disabled:opacity-40 transition-colors"
+              disabled:opacity-60 transition-colors"
           />
           <Button
             variant="primary"

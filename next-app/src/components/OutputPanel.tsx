@@ -82,7 +82,7 @@ export default function OutputPanel({
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
         </div>
-        <p className="text-sm text-text-muted">Results will appear here</p>
+        <p className="text-sm text-text-secondary">Results will appear here</p>
       </Card>
     );
   }
