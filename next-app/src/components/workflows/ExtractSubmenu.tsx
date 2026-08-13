@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import type { OutputLanguage } from "@/types";
 import { EXTRACT_TYPE_KEYS, type ExtractType } from "@/workflows/types";
 import { t } from "@/workflows/copy";
-import Button from "@/components/Button";
 
 interface ExtractSubmenuProps {
   language: OutputLanguage;
@@ -12,7 +10,6 @@ interface ExtractSubmenuProps {
   customQuery: string;
   onSelect: (type: ExtractType) => void;
   onCustomQueryChange: (value: string) => void;
-  onRunCustom: () => void;
 }
 
 export default function ExtractSubmenu({
@@ -21,13 +18,14 @@ export default function ExtractSubmenu({
   customQuery,
   onSelect,
   onCustomQueryChange,
-  onRunCustom,
 }: ExtractSubmenuProps) {
-  const [showCustom, setShowCustom] = useState(selected === "custom");
   const types = Object.keys(EXTRACT_TYPE_KEYS) as ExtractType[];
 
   return (
-    <div className="space-y-2 pl-1">
+    <div className="ml-2 border-l-2 border-accent/40 pl-3 space-y-1">
+      <p className="text-xs font-medium text-text-muted tracking-wide pt-1">
+        {t(language, "extract.chooseType")}
+      </p>
       {types.map((type) => {
         const keys = EXTRACT_TYPE_KEYS[type];
         const isSelected = selected === type;
@@ -35,12 +33,9 @@ export default function ExtractSubmenu({
           <button
             key={type}
             type="button"
-            onClick={() => {
-              onSelect(type);
-              setShowCustom(type === "custom");
-            }}
+            onClick={() => onSelect(type)}
             className={`
-              w-full text-left rounded-md px-3 py-2 text-sm cursor-pointer transition-colors
+              w-full text-left rounded-md px-2.5 py-1.5 text-sm cursor-pointer transition-colors
               ${
                 isSelected
                   ? "bg-accent-dim text-accent border border-accent-border"
@@ -55,26 +50,16 @@ export default function ExtractSubmenu({
           </button>
         );
       })}
-      {showCustom ? (
-        <div className="flex gap-2 pt-1">
-          <input
-            type="text"
-            value={customQuery}
-            onChange={(e) => onCustomQueryChange(e.target.value)}
-            placeholder={t(language, "extract.custom.placeholder")}
-            className="flex-1 bg-surface-0 border border-border rounded-lg px-3 py-2 text-sm
-              text-text-primary placeholder:text-text-muted
-              focus:outline-none focus:border-accent/40"
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onRunCustom}
-            disabled={!customQuery.trim()}
-          >
-            {t(language, "extract.custom.run")}
-          </Button>
-        </div>
+      {selected === "custom" ? (
+        <input
+          type="text"
+          value={customQuery}
+          onChange={(e) => onCustomQueryChange(e.target.value)}
+          placeholder={t(language, "extract.custom.placeholder")}
+          className="w-full bg-surface-0 border border-border rounded-lg px-3 py-2 text-sm
+            text-text-primary placeholder:text-text-muted
+            focus:outline-none focus:border-accent/40"
+        />
       ) : null}
     </div>
   );

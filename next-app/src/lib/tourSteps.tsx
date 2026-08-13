@@ -124,7 +124,7 @@ export const ONBOARDING_STEPS: StepType[] = [
           Choose a workflow
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Pick Summarize, Review, Extract, Compare, Timeline, or Ask. You can add up to three documents in a session. Change workflows any time without reloading.
+          Select an analysis, then click Run. Extract types sit under Extract — they are options for that workflow, not separate analyses. You can add up to three documents in a session.
         </p>
       </div>
     ),

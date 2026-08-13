@@ -1057,36 +1057,37 @@ function AppContent() {
             className="space-y-4 animate-fade-in self-start lg:sticky lg:top-20 lg:z-10 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
             data-tour-id="task-selector"
           >
+              <p className="text-xs text-text-muted">
+                {t(language, "workflow.chooseThenRun")}
+              </p>
               <WorkflowSelector
                 workflows={listPrimary()}
                 selectedId={selectedWorkflow}
                 language={language}
                 onSelect={handleWorkflowSelect}
                 compact
+                afterSelected={
+                  selectedWorkflow === "extract" ? (
+                    <ExtractSubmenu
+                      language={language}
+                      selected={extractType}
+                      customQuery={customExtractQuery}
+                      onSelect={(type) => {
+                        extractTypeRef.current = type;
+                        setExtractType(type);
+                      }}
+                      onCustomQueryChange={setCustomExtractQuery}
+                    />
+                  ) : selectedWorkflow === "evidence-finder" ? (
+                    <EvidenceFinderQuery
+                      language={language}
+                      value={evidenceQuery}
+                      onChange={setEvidenceQuery}
+                      disabled={workflowRun.isProcessing || !hasDocument}
+                    />
+                  ) : null
+                }
               />
-              {selectedWorkflow === "extract" ? (
-                <ExtractSubmenu
-                  language={language}
-                  selected={extractType}
-                  customQuery={customExtractQuery}
-                  onSelect={(type) => {
-                    extractTypeRef.current = type;
-                    setExtractType(type);
-                    if (type !== "custom") void handleRun();
-                  }}
-                  onCustomQueryChange={setCustomExtractQuery}
-                  onRunCustom={() => void handleRun()}
-                />
-              ) : null}
-              {selectedWorkflow === "evidence-finder" ? (
-                <EvidenceFinderQuery
-                  language={language}
-                  value={evidenceQuery}
-                  onChange={setEvidenceQuery}
-                  onRun={() => void handleRun()}
-                  disabled={workflowRun.isProcessing || !hasDocument}
-                />
-              ) : null}
               <button
                 type="button"
                 onClick={() => setMoreOpen(true)}
@@ -1131,7 +1132,8 @@ function AppContent() {
                           selectedDef?.status !== "ready" ||
                           session.isGenerating ||
                           (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||
-                          (selectedWorkflow === "evidence-finder" && !evidenceQuery.trim())
+                          (selectedWorkflow === "evidence-finder" && !evidenceQuery.trim()) ||
+                          (selectedWorkflow === "extract" && extractType === "custom" && !customExtractQuery.trim())
                         }
                         className="flex-1"
                         data-tour-id="run-button"
