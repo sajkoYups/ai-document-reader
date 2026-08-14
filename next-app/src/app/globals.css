@@ -13,13 +13,17 @@
   --color-border: #2a2a2e;
   --color-border-subtle: #1e1e21;
   --color-text-primary: #ededef;
-  --color-text-secondary: #8a8a8f;
-  --color-text-muted: #555559;
+  --color-text-secondary: #c8c8cc;
+  --color-text-muted: #9c9ca2;
   --color-accent: #2dd4bf;
   --color-accent-dim: rgba(45, 212, 191, 0.08);
   --color-accent-border: rgba(45, 212, 191, 0.2);
   --color-danger: #f87171;
   --color-warning: #fbbf24;
+}
+
+html {
+  color-scheme: dark;
 }
 
 * {
@@ -31,8 +35,6 @@ body {
   font-family: var(--font-body);
   background: var(--color-surface-0);
   color: var(--color-text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 @keyframes fade-in {
@@ -78,6 +80,10 @@ body {
 .grain {
   position: relative;
 }
+.tour-highlight {
+  pointer-events: none;
+}
+
 .grain::before {
   content: "";
   position: absolute;

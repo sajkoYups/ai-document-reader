@@ -7,8 +7,18 @@ import {
 } from "../services/llmService.js";
 import { encrypt, getSession } from "../services/cryptoService.js";
 import { recordUsage } from "../services/usageService.js";
+import {
+  resolveTaskType,
+  type StreamCompletionMeta,
+} from "../types/index.js";
 
 export const analyzeRouter = Router();
+
+function resetStreamMeta(meta: StreamCompletionMeta) {
+  delete meta.finishReason;
+  delete meta.usage;
+  delete meta.sawReasoning;
+}
 
 analyzeRouter.post("/", async (req, res) => {
   const decrypted = decryptRequest(req.body);
@@ -29,7 +39,9 @@ analyzeRouter.post("/", async (req, res) => {
     return;
   }
 
-  const { taskType, documentText, outputLanguage } = parsed.data;
+  const { taskType, documentText, outputLanguage, workflowId, jsonMode, workflowParams } =
+    parsed.data;
+  const resolvedType = resolveTaskType(workflowId, taskType);
   const userId = (req.headers["x-clerk-user-id"] as string | undefined) ?? "";
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -38,19 +50,36 @@ analyzeRouter.post("/", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
 
   let completionChars = 0;
+  const streamMeta: StreamCompletionMeta = {};
+  const inferenceOptions = {
+    jsonMode,
+    extractType: workflowParams?.extractType,
+    customQuery: workflowParams?.customQuery,
+    streamMeta,
+  };
 
   try {
-    for await (const token of streamDeepInference(
-      taskType,
-      documentText,
-      undefined,
-      undefined,
-      outputLanguage,
-    )) {
-      completionChars += token.length;
-      const encrypted = encrypt(session.aesKey, token);
-      res.write(`data: ${JSON.stringify(encrypted)}\n\n`);
+    const consume = async () => {
+      for await (const token of streamDeepInference(
+        resolvedType,
+        documentText,
+        undefined,
+        undefined,
+        outputLanguage,
+        inferenceOptions,
+      )) {
+        completionChars += token.length;
+        const encrypted = encrypt(session.aesKey, token);
+        res.write(`data: ${JSON.stringify(encrypted)}\n\n`);
+      }
+    };
+
+    await consume();
+    if (completionChars === 0) {
+      resetStreamMeta(streamMeta);
+      await consume();
     }
+
     res.write("data: [DONE]\n\n");
     res.end();
 

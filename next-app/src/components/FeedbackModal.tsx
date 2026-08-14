@@ -111,7 +111,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                 type="button"
                 onClick={() => setSentiment("good")}
                 disabled={status === "submitting"}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60
                   ${
                     sentiment === "good"
                       ? "bg-accent/10 border-accent text-accent"
@@ -136,7 +136,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                 type="button"
                 onClick={() => setSentiment("bad")}
                 disabled={status === "submitting"}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60
                   ${
                     sentiment === "bad"
                       ? "bg-danger/10 border-danger text-danger"
@@ -170,7 +170,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                 type="button"
                 onClick={() => setAction("improve")}
                 disabled={status === "submitting"}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60
                   ${
                     action === "improve"
                       ? "bg-accent/10 border-accent text-accent"
@@ -195,7 +195,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
                 type="button"
                 onClick={() => setAction("replace")}
                 disabled={status === "submitting"}
-                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-50
+                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60
                   ${
                     action === "replace"
                       ? "bg-accent/10 border-accent text-accent"
@@ -239,7 +239,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
               className="w-full px-3 py-2 rounded-lg bg-surface-2 border border-border
                 text-sm text-text-primary placeholder:text-text-muted resize-none
                 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                disabled:opacity-50 transition-colors"
+                disabled:opacity-60 transition-colors"
             />
           </div>
 
@@ -253,7 +253,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
             type="submit"
             disabled={status === "submitting" || !sentiment || !action || !message.trim()}
             className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-accent text-white
-              hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {status === "submitting" ? "Sending…" : "Send feedback"}
           </button>

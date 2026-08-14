@@ -10,6 +10,8 @@ const footerLinks = [
   { href: "/mission", label: "Mission" },
   { href: "/vision", label: "Vision" },
   { href: "/trust-center", label: "Trust Center" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/cookies", label: "Cookies" },
 ] as const;
 
 export default function Footer() {

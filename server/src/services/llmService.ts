@@ -1,14 +1,80 @@
-import { config } from "../config.js";
+import { config, isOpenRouterConfigured } from "../config.js";
 import { assertDeepInferenceWithinContext } from "../contextBudget.js";
-import type { OutputLanguage, TaskType } from "../types/index.js";
+import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.js";
 import {
   checkOllamaHealth,
   streamInference as streamOllamaInference,
 } from "./ollamaService.js";
 import {
+  checkOpenrouterHealth,
+  openOpenrouterChatCompletion,
+  streamOpenrouterFromResponse,
+  streamOpenrouterInference,
+} from "./openrouterService.js";
+import {
   checkRunpodHealth,
-  streamRunpodInference,
+  openRunpodChatCompletion,
+  streamRunpodFromResponse,
 } from "./runpodService.js";
+
+async function* streamRunpodWithOpenRouterFallback(
+  taskType: TaskType,
+  documentText: string,
+  userMessage: string | undefined,
+  conversationHistory:
+    | Array<{ role: "user" | "assistant"; content: string }>
+    | undefined,
+  outputLanguage: OutputLanguage,
+  options?: InferenceOptions,
+): AsyncGenerator<string> {
+  const canFallback = isOpenRouterConfigured();
+
+  // Prefer a quick health check; if RunPod is down, skip straight to OpenRouter.
+  if (canFallback) {
+    const runpodOk = await checkRunpodHealth();
+    if (!runpodOk) {
+      console.warn(
+        "Deep Analysis: RunPod unavailable, using OpenRouter fallback",
+      );
+      yield* streamOpenrouterInference(
+        taskType,
+        documentText,
+        userMessage,
+        conversationHistory,
+        outputLanguage,
+        options,
+      );
+      return;
+    }
+  }
+
+  try {
+    const response = await openRunpodChatCompletion(
+      taskType,
+      documentText,
+      userMessage,
+      conversationHistory,
+      outputLanguage,
+      options,
+    );
+    yield* streamRunpodFromResponse(response, options);
+  } catch (error) {
+    if (!canFallback) throw error;
+    console.warn(
+      "Deep Analysis: RunPod request failed before stream, using OpenRouter fallback",
+    );
+    // Open a fresh OpenRouter request (do not reuse any partial RunPod body).
+    const response = await openOpenrouterChatCompletion(
+      taskType,
+      documentText,
+      userMessage,
+      conversationHistory,
+      outputLanguage,
+      options,
+    );
+    yield* streamOpenrouterFromResponse(response, options);
+  }
+}
 
 export async function* streamDeepInference(
   taskType: TaskType,
@@ -16,6 +82,7 @@ export async function* streamDeepInference(
   userMessage?: string,
   conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>,
   outputLanguage: OutputLanguage = "en",
+  options?: InferenceOptions,
 ): AsyncGenerator<string> {
   assertDeepInferenceWithinContext(
     taskType,
@@ -23,15 +90,29 @@ export async function* streamDeepInference(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 
-  if (config.deepAnalysis.provider === "runpod") {
-    yield* streamRunpodInference(
+  if (config.deepAnalysis.provider === "openrouter") {
+    yield* streamOpenrouterInference(
       taskType,
       documentText,
       userMessage,
       conversationHistory,
       outputLanguage,
+      options,
+    );
+    return;
+  }
+
+  if (config.deepAnalysis.provider === "runpod") {
+    yield* streamRunpodWithOpenRouterFallback(
+      taskType,
+      documentText,
+      userMessage,
+      conversationHistory,
+      outputLanguage,
+      options,
     );
     return;
   }
@@ -42,12 +123,21 @@ export async function* streamDeepInference(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
 }
 
 export async function checkDeepProviderHealth(): Promise<boolean> {
+  if (config.deepAnalysis.provider === "openrouter") {
+    return checkOpenrouterHealth();
+  }
   if (config.deepAnalysis.provider === "runpod") {
-    return checkRunpodHealth();
+    const runpodOk = await checkRunpodHealth();
+    if (runpodOk) return true;
+    if (isOpenRouterConfigured()) {
+      return checkOpenrouterHealth();
+    }
+    return false;
   }
   return checkOllamaHealth();
 }

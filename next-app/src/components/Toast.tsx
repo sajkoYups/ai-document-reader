@@ -35,7 +35,10 @@ export default function ToastContainer() {
   const items = useSyncExternalStore(subscribe, getSnapshot);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+    <div
+      className="fixed top-5 left-1/2 z-[100] flex w-[min(28rem,calc(100%-1.5rem))] -translate-x-1/2 flex-col items-stretch gap-2 pointer-events-none"
+      aria-live="polite"
+    >
       {items.map((t) => (
         <ToastMessage key={t.id} toast={t} />
       ))}
@@ -56,26 +59,39 @@ function ToastMessage({ toast }: { toast: ToastItem }) {
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
-    const timer = setTimeout(dismiss, 3000);
+    const timer = setTimeout(dismiss, 5000);
     return () => clearTimeout(timer);
   }, [dismiss]);
 
   const colors = {
-    success: "border-accent/30 text-accent",
-    error: "border-danger/30 text-danger",
-    info: "border-border text-text-secondary",
+    success:
+      "border-accent/50 text-accent shadow-[0_12px_40px_rgba(0,0,0,0.65),0_0_28px_rgba(45,212,191,0.18)]",
+    error:
+      "border-danger/50 text-danger shadow-[0_12px_40px_rgba(0,0,0,0.65),0_0_28px_rgba(248,113,113,0.18)]",
+    info:
+      "border-accent/45 text-text-primary shadow-[0_12px_40px_rgba(0,0,0,0.65),0_0_28px_rgba(45,212,191,0.16)]",
+  };
+
+  const bar = {
+    success: "bg-accent",
+    error: "bg-danger",
+    info: "bg-accent",
   };
 
   return (
     <div
+      role="status"
+      onClick={dismiss}
       className={`
-        pointer-events-auto px-4 py-2.5 rounded-lg
-        bg-surface-1 border text-sm font-medium
+        pointer-events-auto relative overflow-hidden cursor-pointer
+        rounded-lg border bg-surface-2 px-5 py-3.5 pl-6
+        text-sm font-medium leading-snug
         transition-all duration-200
         ${colors[toast.type]}
-        ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}
+        ${visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"}
       `}
     >
+      <span className={`absolute inset-y-0 left-0 w-1 ${bar[toast.type]}`} />
       {toast.message}
     </div>
   );

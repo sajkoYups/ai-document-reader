@@ -20,7 +20,7 @@ export default function ClerkWrapper({ children }: { children: ReactNode }) {
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-0">
-        <span className="text-text-muted text-sm">Loading…</span>
+        <span className="text-text-secondary text-sm">Loading…</span>
       </div>
     );
   }

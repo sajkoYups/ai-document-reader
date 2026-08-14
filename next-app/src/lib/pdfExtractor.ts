@@ -84,19 +84,45 @@ function assemblePageText(items: unknown[]): string {
   return resultParts.join("");
 }
 
-export async function extractTextFromPdf(file: File): Promise<string> {
+export interface PdfPageSpan {
+  pageNumber: number;
+  startChar: number;
+  endChar: number;
+}
+
+export interface PdfExtractionResult {
+  text: string;
+  pageCount: number;
+  pages: PdfPageSpan[];
+}
+
+export async function extractTextFromPdf(file: File): Promise<PdfExtractionResult> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const pages: string[] = [];
+  const parts: string[] = [];
+  const pages: PdfPageSpan[] = [];
+  let cursor = 0;
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    const pageText = assemblePageText(textContent.items);
-    if (pageText.trim()) {
-      pages.push(pageText);
+    const pageText = assemblePageText(textContent.items).trim();
+    if (!pageText) continue;
+
+    const block = `[Page ${i}]\n${pageText}`;
+    if (parts.length > 0) {
+      parts.push("\n\n");
+      cursor += 2;
     }
+    const startChar = cursor;
+    parts.push(block);
+    cursor += block.length;
+    pages.push({ pageNumber: i, startChar, endChar: cursor });
   }
 
-  return pages.join("\n\n---\n\n");
+  return {
+    text: parts.join(""),
+    pageCount: pdf.numPages,
+    pages,
+  };
 }

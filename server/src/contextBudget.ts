@@ -1,6 +1,7 @@
 import { config } from "./config.js";
-import type { OutputLanguage, TaskType } from "./types/index.js";
+import type { InferenceOptions, OutputLanguage, TaskType } from "./types/index.js";
 import { buildInferenceMessages } from "./services/ollamaService.js";
+import { getOpenrouterTaskMaxTokens } from "./services/openrouterService.js";
 import { getRunpodTaskMaxTokens } from "./services/runpodService.js";
 
 /** Rough chars-per-token estimate (aligned with client Qwen-style heuristic). */
@@ -11,14 +12,29 @@ export const MAX_API_CHAT_HISTORY_MESSAGES = 24;
 
 export function getDeepAnalysisContextLimit(): number {
   if (config.deepAnalysis.provider === "runpod") {
-    return config.runpod.contextWindow;
+    // When OpenRouter fallback is possible, use the tighter of the two windows.
+    const runpodLimit = config.runpod.contextWindow;
+    if (config.openrouter.apiKey) {
+      return Math.min(runpodLimit, config.openrouter.contextWindow);
+    }
+    return runpodLimit;
+  }
+  if (config.deepAnalysis.provider === "openrouter") {
+    return config.openrouter.contextWindow;
   }
   return config.ollama.contextWindow;
 }
 
 function completionReserveTokens(taskType: TaskType): number {
   if (config.deepAnalysis.provider === "runpod") {
-    return getRunpodTaskMaxTokens(taskType);
+    const runpodReserve = getRunpodTaskMaxTokens(taskType);
+    if (config.openrouter.apiKey) {
+      return Math.max(runpodReserve, getOpenrouterTaskMaxTokens(taskType));
+    }
+    return runpodReserve;
+  }
+  if (config.deepAnalysis.provider === "openrouter") {
+    return getOpenrouterTaskMaxTokens(taskType);
   }
   return 2048;
 }
@@ -51,6 +67,7 @@ export function assertDeepInferenceWithinContext(
     content: string;
   }> | undefined,
   outputLanguage: OutputLanguage,
+  options?: InferenceOptions,
 ): void {
   const messages = buildInferenceMessages(
     taskType,
@@ -58,6 +75,7 @@ export function assertDeepInferenceWithinContext(
     userMessage,
     conversationHistory,
     outputLanguage,
+    options,
   );
   const inputTokens = estimateInputTokensFromMessages(messages);
   const limit = getDeepAnalysisContextLimit();

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ChatMessage } from "@/types";
+import type { ChatMessage, EvidenceRef } from "@/types";
 
 interface ChatStore {
   messages: ChatMessage[];
@@ -8,7 +8,7 @@ interface ChatStore {
   addUserMessage: (content: string) => void;
   startAssistantMessage: () => void;
   appendToLastAssistant: (token: string) => void;
-  finalizeAssistantMessage: (evidence?: string[]) => void;
+  finalizeAssistantMessage: (evidence?: string[], evidenceRefs?: EvidenceRef[]) => void;
   setAssistantError: (error: string) => void;
   clear: () => void;
 }
@@ -38,12 +38,12 @@ export const useChatStore = create<ChatStore>((set) => ({
       return { messages: msgs };
     }),
 
-  finalizeAssistantMessage: (evidence) =>
+  finalizeAssistantMessage: (evidence, evidenceRefs) =>
     set((state) => {
       const msgs = [...state.messages];
       const last = msgs[msgs.length - 1];
       if (last && last.role === "assistant") {
-        msgs[msgs.length - 1] = { ...last, evidence };
+        msgs[msgs.length - 1] = { ...last, evidence, evidenceRefs };
       }
       return { messages: msgs, isGenerating: false };
     }),

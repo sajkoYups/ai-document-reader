@@ -4,12 +4,14 @@ interface FileUploadProps extends HTMLAttributes<HTMLDivElement> {
   onFile: (file: File) => void;
   accept?: string;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 export default function FileUpload({
   onFile,
   accept = ".pdf,.txt,.md",
   disabled = false,
+  compact = false,
   className,
   ...divProps
 }: FileUploadProps) {
@@ -56,15 +58,16 @@ export default function FileUpload({
       onDrop={handleDrop}
       onClick={() => !disabled && inputRef.current?.click()}
       className={`
-        relative border-2 border-dashed rounded-xl p-8
-        flex flex-col items-center justify-center gap-3
+        relative border-2 border-dashed rounded-xl
+        flex flex-col items-center justify-center
         transition-all duration-200 cursor-pointer
+        ${compact ? "p-4 gap-2" : "p-8 gap-3"}
         ${
           dragging
             ? "border-accent bg-accent-dim scale-[1.01]"
             : "border-border hover:border-text-muted hover:bg-surface-2/50"
         }
-        ${disabled ? "opacity-40 pointer-events-none" : ""}
+        ${disabled ? "opacity-60 pointer-events-none" : ""}
         ${className ?? ""}
       `}
     >
@@ -77,10 +80,10 @@ export default function FileUpload({
         disabled={disabled}
       />
 
-      <div className="w-10 h-10 rounded-lg bg-surface-3 flex items-center justify-center text-text-muted">
+      <div className={`${compact ? "w-8 h-8" : "w-10 h-10"} rounded-lg bg-surface-3 flex items-center justify-center text-text-muted`}>
         <svg
-          width="20"
-          height="20"
+          width={compact ? 16 : 20}
+          height={compact ? 16 : 20}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -95,11 +98,11 @@ export default function FileUpload({
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-text-secondary">
+        <p className={`${compact ? "text-xs" : "text-sm"} text-text-secondary`}>
           <span className="text-accent font-medium">Add a file</span> or
           drag and drop
         </p>
-        <p className="text-xs text-text-muted mt-1">PDF, TXT, or Markdown (up to 50MB)</p>
+        <p className="text-xs text-text-secondary mt-1">PDF, TXT, or Markdown (up to 50MB)</p>
       </div>
     </div>
   );

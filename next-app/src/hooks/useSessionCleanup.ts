@@ -1,9 +1,9 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useDocumentStore } from "@/store/documentStore";
 import { useChatStore } from "@/store/chatStore";
+import { useSessionStore } from "@/store/sessionStore";
 import { useAiStore } from "@/store/aiStore";
 import { useEmbeddingStore } from "@/store/embeddingStore";
-import { destroySessionKey } from "@/lib/cryptoService";
 import { destroyApiSession } from "@/lib/apiClient";
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -20,12 +20,12 @@ export function useSessionCleanup() {
 
     useDocumentStore.getState().clear();
     useChatStore.getState().clear();
+    useSessionStore.getState().clear();
     useEmbeddingStore.getState().clear();
 
     if (aiWorker) aiWorker.terminate();
     if (embeddingWorker) embeddingWorker.terminate();
 
-    destroySessionKey();
     destroyApiSession();
   }, []);
 

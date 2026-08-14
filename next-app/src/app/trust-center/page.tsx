@@ -68,10 +68,12 @@ export default function TrustCenterPage() {
               <strong className="text-text-primary">
                 Minimal data retention
               </strong>
-              . We do not maintain a persistent document database. Session
-              state, including document content and analysis context, is stored
-              in memory in the user&apos;s browser and is discarded when the
-              page is refreshed, the tab is closed, or the session expires.
+              . We do not maintain a persistent document database. While a
+              session is open, document text is held in browser memory
+              (including parsed sections and retrieval chunks) so analysis can
+              run. That working copy is not encrypted at rest in the client. It
+              is discarded when the page is refreshed, the tab is closed, idle
+              timeout fires, or the session expires.
             </li>
             <li>
               <strong className="text-text-primary">
@@ -123,22 +125,30 @@ export default function TrustCenterPage() {
                 Secure communication channels
               </strong>
               . Communication between the browser and backend APIs is performed
-              exclusively over HTTPS with TLS (TLS 1.2+). Security headers such
-              as HSTS and secure cookie flags help defend against downgrade and
-              session theft attacks. API endpoints are authenticated where
-              applicable and are rate-limited to reduce abuse.
+              exclusively over HTTPS with TLS (TLS 1.2+). API endpoints are
+              authenticated where applicable and are rate-limited to reduce
+              abuse. Hosting providers may also apply transport security such as
+              HSTS.
             </li>
             <li>
               <strong className="text-text-primary">AI model interaction</strong>
               . When in-browser models are available, inference occurs locally
               and document content does not leave the user&apos;s device. When
-              hosted AI models (our own or third-party providers) are needed,
-              the platform sends only the minimal necessary text segments for
-              the requested analysis. Requests to AI providers are transmitted
-              over encrypted channels using dedicated API credentials. We
-              configure AI providers, where supported, to disable use of
-              submitted data for training or long-term storage and do not build
-              internal training datasets from customer documents by default.
+              Deep Analysis (hosted AI) is used, the browser encrypts the
+              request to our API; we decrypt it in memory only, forward the
+              minimal necessary text over TLS to a privacy-constrained AI
+              gateway (OpenRouter) or our optional self-hosted pods (RunPod),
+              stream the result back, and discard transient data when the
+              request completes. We do not store documents, prompts, or chat
+              queries in our database. We configure OpenRouter with a provider
+              allowlist and privacy routing flags (including{" "}
+              <code className="text-text-primary">data_collection: deny</code>{" "}
+              and Zero Data Retention where available) and do not build
+              internal training datasets from customer documents. See{" "}
+              <a href="#ai-subprocessors" className="text-accent underline">
+                AI subprocessors
+              </a>{" "}
+              for named providers and their retention policies.
             </li>
             <li>
               <strong className="text-text-primary">
@@ -147,10 +157,11 @@ export default function TrustCenterPage() {
               . Both the web client and backend services are designed to treat
               analysis sessions as short-lived. Document content and derived
               context, such as extracted text or segmented chunks, are stored in
-              browser memory for the current session only. Backend components
-              are stateless with respect to document content; any transient data
-              needed for processing is held in memory or short-lived storage and
-              is automatically discarded after completion of the request.
+              browser memory in plaintext for the current session so run, chat,
+              and retrieval stay synchronous. They are not encrypted in the
+              client store. Backend components are stateless with respect to
+              document content; any transient data needed for processing is held
+              in memory and is discarded after completion of the request.
             </li>
           </ul>
           <p>
@@ -194,12 +205,18 @@ export default function TrustCenterPage() {
             <li>
               <strong>AI interaction.</strong> If local or in-browser models are
               used, the model runs entirely within the browser context and the
-              document content remains on the device. If hosted AI models are
-              used, the browser sends only the relevant text segments or prompts
-              to our backend over TLS, which then forwards the request to the AI
-              model endpoint over TLS and returns the result to the browser. We
-              do not store original document content or prompts in long-term
-              storage as part of this process.
+              document content remains on the device. For Deep Analysis, the
+              browser encrypts payloads to our backend (application-layer
+              session keys); we decrypt in memory, forward the relevant text
+              over TLS to the configured AI provider, and return the streamed
+              result. We do not store original document content, prompts, or
+              chat queries in our database. Inference providers process
+              plaintext for the duration of the request under their published
+              policies (see{" "}
+              <a href="#ai-subprocessors" className="text-accent underline">
+                AI subprocessors
+              </a>
+              ).
             </li>
             <li>
               <strong>Results presented to the user.</strong> The browser
@@ -220,11 +237,15 @@ export default function TrustCenterPage() {
           </h3>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              <strong>Document content.</strong> There is no persistent document
-              database. We do not store uploaded documents or their full
-              contents in long-term application storage as part of normal
-              operation. Any short-lived storage used for processing is designed
-              to be temporary and automatically purged.
+              <strong>Document content and prompts.</strong> There is no
+              persistent document or prompt database. We do not store uploaded
+              documents, analysis prompts, or chat queries in application
+              storage. While you work, the open browser tab holds document text
+              in memory; that copy is discarded on idle timeout, refresh, or
+              close. Usage metering, when enabled, records only aggregate token
+              estimates—not document or prompt text. Backend in-memory data used
+              for a Deep Analysis request is discarded when the request
+              completes.
             </li>
             <li>
               <strong>Application logs and telemetry.</strong> Logs focus on
@@ -265,8 +286,9 @@ export default function TrustCenterPage() {
               <strong>HTTPS / TLS for all traffic.</strong> All communication
               between client and server uses HTTPS with TLS (TLS 1.2+). We use
               certificates from trusted Certificate Authorities and follow
-              modern TLS configurations and cipher suites. HTTP Strict Transport
-              Security (HSTS) and related headers help enforce secure transport.
+              modern TLS configurations and cipher suites. Our cloud host may
+              apply HTTP Strict Transport Security (HSTS); we do not currently
+              set HSTS in application config.
             </li>
             <li>
               <strong>Secure client-server communication.</strong> Authentication
@@ -277,12 +299,16 @@ export default function TrustCenterPage() {
               user roles.
             </li>
             <li>
-              <strong>Encrypted AI requests.</strong> Requests from our backend
-              to hosted AI models are transmitted over TLS-protected channels.
-              Separate credentials are used for AI providers and are stored in
-              dedicated secrets management systems. We avoid sending unnecessary
-              identifiers in AI payloads and keep payloads scoped to the
-              requested task.
+              <strong>Encrypted AI requests.</strong> Requests from the browser
+              to our API use application-layer session encryption (ECDH +
+              AES-256-GCM). This protects payloads from TLS-terminating proxies;
+              PIA servers hold the session key and decrypt in memory. After
+              decrypt, requests to hosted AI models (OpenRouter or optional
+              self-hosted pods) are transmitted as plaintext over TLS-protected
+              channels. Separate credentials are used for AI providers and are
+              stored in dedicated secrets management systems. We avoid sending
+              unnecessary identifiers in AI payloads and keep payloads scoped to
+              the requested task.
             </li>
             <li>
               <strong>Data in transit protection.</strong> Network-level
@@ -461,9 +487,13 @@ export default function TrustCenterPage() {
             <li>
               <strong>Limited and governed third-party sharing.</strong> Sharing
               of data with subprocessors is limited to what is strictly
-              necessary, such as infrastructure hosting or AI APIs. We seek
-              contractual assurances and configuration options that support data
-              protection, such as disabling data retention for training.
+              necessary, such as infrastructure hosting or AI APIs. We publish
+              the AI providers we use below and configure privacy routing
+              (provider allowlist, no training / deny data collection, and Zero
+              Data Retention where the endpoint supports it). Our zero
+              persistence on PIA systems is distinct from short legal or abuse
+              retention that a downstream provider may apply under its own
+              policy.
             </li>
           </ul>
           <p>
@@ -473,10 +503,189 @@ export default function TrustCenterPage() {
           </p>
         </section>
 
-        {/* 8. AI Safety and Responsible AI */}
+        {/* 8. AI Subprocessors */}
+        <section id="ai-subprocessors" className="space-y-4">
+          <h2 className="text-xl font-semibold text-text-primary">
+            8. AI Subprocessors
+          </h2>
+          <p>
+            Deep Analysis may involve the following AI-related parties. PIA does
+            not store your documents or prompts. Downstream providers process
+            request content only to return an inference result; their published
+            retention and training policies apply for the duration (and any
+            short legal hold) described on their sites.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border text-text-primary">
+                  <th className="py-2 pr-4 font-semibold">Party</th>
+                  <th className="py-2 pr-4 font-semibold">Role</th>
+                  <th className="py-2 pr-4 font-semibold">Privacy / retention</th>
+                  <th className="py-2 font-semibold">More info</th>
+                </tr>
+              </thead>
+              <tbody className="align-top">
+                <tr className="border-b border-border/60">
+                  <td className="py-3 pr-4 text-text-primary font-medium">
+                    OpenRouter
+                  </td>
+                  <td className="py-3 pr-4">
+                    LLM gateway and provider routing for Deep Analysis
+                  </td>
+                  <td className="py-3 pr-4">
+                    Per-request privacy routing (provider allowlist,{" "}
+                    <code className="text-text-primary">data_collection: deny</code>
+                    , Zero Data Retention when available). OpenRouter does not
+                    retain prompts unless prompt logging is explicitly opted in
+                    on the account (we keep it disabled).
+                  </td>
+                  <td className="py-3">
+                    <a
+                      href="https://openrouter.ai/docs/guides/features/zdr"
+                      className="text-accent underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      openrouter.ai — ZDR
+                    </a>
+                  </td>
+                </tr>
+                <tr className="border-b border-border/60">
+                  <td className="py-3 pr-4 text-text-primary font-medium">
+                    Microsoft Azure
+                  </td>
+                  <td className="py-3 pr-4">
+                    Inference endpoint reachable via OpenRouter
+                  </td>
+                  <td className="py-3 pr-4">
+                    Azure OpenAI data handling and no-training commitments as
+                    published by Microsoft for the selected deployment.
+                  </td>
+                  <td className="py-3">
+                    <a
+                      href="https://learn.microsoft.com/en-us/azure/ai-foundry/responsible-ai/openai/data-privacy"
+                      className="text-accent underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Azure OpenAI data privacy
+                    </a>
+                  </td>
+                </tr>
+                <tr className="border-b border-border/60">
+                  <td className="py-3 pr-4 text-text-primary font-medium">
+                    Novita AI
+                  </td>
+                  <td className="py-3 pr-4">
+                    Inference endpoint reachable via OpenRouter
+                  </td>
+                  <td className="py-3 pr-4">
+                    Selected for strong privacy posture (no model training on
+                    customer prompts). Novita may retain prompts for a limited
+                    period (on the order of ~30 days) for legal or abuse
+                    compliance, then delete them—this is not long-term product
+                    retention by PIA.
+                  </td>
+                  <td className="py-3">
+                    <a
+                      href="https://novita.ai/"
+                      className="text-accent underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      novita.ai
+                    </a>
+                  </td>
+                </tr>
+                <tr className="border-b border-border/60">
+                  <td className="py-3 pr-4 text-text-primary font-medium">
+                    DeepInfra
+                  </td>
+                  <td className="py-3 pr-4">
+                    Inference endpoint reachable via OpenRouter
+                  </td>
+                  <td className="py-3 pr-4">
+                    Inference under DeepInfra&apos;s published data and privacy
+                    terms; we route only when compatible with our OpenRouter
+                    privacy settings.
+                  </td>
+                  <td className="py-3">
+                    <a
+                      href="https://deepinfra.com/docs/advanced/privacy_and_security"
+                      className="text-accent underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      DeepInfra privacy &amp; security
+                    </a>
+                  </td>
+                </tr>
+                <tr className="border-b border-border/60">
+                  <td className="py-3 pr-4 text-text-primary font-medium">
+                    RunPod (optional)
+                  </td>
+                  <td className="py-3 pr-4">
+                    Self-hosted vLLM pods when enabled as the Deep Analysis
+                    provider
+                  </td>
+                  <td className="py-3 pr-4">
+                    Content is processed on infrastructure we configure; not used
+                    for model training. When pods are unavailable, Deep Analysis
+                    may fall back to OpenRouter under the same privacy routing
+                    rules.
+                  </td>
+                  <td className="py-3">
+                    <a
+                      href="https://www.runpod.io/"
+                      className="text-accent underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      runpod.io
+                    </a>
+                  </td>
+                </tr>
+                <tr className="border-b border-border/60">
+                  <td className="py-3 pr-4 text-text-primary font-medium">
+                    Clerk
+                  </td>
+                  <td className="py-3 pr-4">Authentication and account identity</td>
+                  <td className="py-3 pr-4">
+                    Account identity only—not document or prompt content.
+                  </td>
+                  <td className="py-3">
+                    <a
+                      href="https://clerk.com/legal/privacy"
+                      className="text-accent underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      clerk.com privacy
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Analytics tools, when enabled, are consent-gated via our cookie
+            banner and do not receive document or prompt content. For the latest
+            provider list or a vendor questionnaire, contact{" "}
+            <a
+              href={`mailto:${PRIVACY_EMAIL}`}
+              className="text-accent underline"
+            >
+              {PRIVACY_EMAIL}
+            </a>
+            .
+          </p>
+        </section>
+
+        {/* 9. AI Safety and Responsible AI */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold text-text-primary">
-            8. AI Safety and Responsible AI
+            9. AI Safety and Responsible AI
           </h2>
           <p>
             Applying AI to documents introduces both opportunities and risks.
@@ -504,15 +713,15 @@ export default function TrustCenterPage() {
               <strong>Transparency of AI interactions.</strong> We aim to
               clearly indicate where AI is involved in generating results and,
               at a high level, what types of models are used, such as local or
-              hosted. Customers can request information about AI providers used
-              and relevant data handling practices.
+              hosted. Named AI subprocessors and retention notes are published
+              in this Trust Center.
             </li>
             <li>
               <strong>No reuse of documents for training by default.</strong> We
               do not build internal training datasets from user documents
-              without explicit, informed consent. We do not authorize AI
-              providers to use submitted content for general model training
-              where such controls are available.
+              without explicit, informed consent. We configure OpenRouter
+              privacy routing so providers that may store or train on prompts
+              are denied where those controls are available.
             </li>
             <li>
               <strong>Monitoring and improvement.</strong> The platform is
@@ -525,10 +734,10 @@ export default function TrustCenterPage() {
           </ul>
         </section>
 
-        {/* 9. Compliance Approach */}
+        {/* 10. Compliance Approach */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold text-text-primary">
-            9. Compliance Approach
+            10. Compliance Approach
           </h2>
           <p>
             Although PIA is an early-stage platform and has not yet
@@ -576,10 +785,10 @@ export default function TrustCenterPage() {
           </p>
         </section>
 
-        {/* 10. Compliance Roadmap */}
+        {/* 11. Compliance Roadmap */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold text-text-primary">
-            10. Compliance Roadmap
+            11. Compliance Roadmap
           </h2>
           <p>
             As the platform and customer base grow, we intend to obtain formal
@@ -619,10 +828,10 @@ export default function TrustCenterPage() {
           </ul>
         </section>
 
-        {/* 11. Vulnerability Disclosure */}
+        {/* 12. Vulnerability Disclosure */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold text-text-primary">
-            11. Vulnerability Disclosure
+            12. Vulnerability Disclosure
           </h2>
           <p>
             We operate a responsible vulnerability disclosure program and
@@ -664,10 +873,10 @@ export default function TrustCenterPage() {
           </ul>
         </section>
 
-        {/* 12. Security Contact */}
+        {/* 13. Security Contact */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold text-text-primary">
-            12. Security Contact
+            13. Security Contact
           </h2>
           <p>
             Organizations evaluating or using PIA can contact our

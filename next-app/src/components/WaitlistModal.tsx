@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import Modal from "./Modal";
 
 declare global {
   interface Window {
-    grecaptcha: {
+    grecaptcha?: {
       enterprise: {
         ready: (cb: () => void) => void;
         execute: (siteKey: string, options: { action: string }) => Promise<string>;
@@ -16,6 +17,17 @@ declare global {
 }
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
+
+async function waitForRecaptcha(timeoutMs = 8000): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (typeof window !== "undefined" && window.grecaptcha?.enterprise) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return typeof window !== "undefined" && Boolean(window.grecaptcha?.enterprise);
+}
 
 interface WaitlistModalProps {
   open: boolean;
@@ -48,10 +60,17 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
     setErrorMsg("");
 
     let recaptchaToken = "";
-    if (RECAPTCHA_SITE_KEY && typeof window !== "undefined" && window.grecaptcha?.enterprise) {
+    if (RECAPTCHA_SITE_KEY && typeof window !== "undefined") {
       try {
-        await new Promise<void>((resolve) => window.grecaptcha.enterprise.ready(resolve));
-        recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
+        const ready = await waitForRecaptcha();
+        const enterprise = window.grecaptcha?.enterprise;
+        if (!ready || !enterprise) {
+          setErrorMsg("Bot check failed. Please refresh the page and try again.");
+          setStatus("error");
+          return;
+        }
+        await new Promise<void>((resolve) => enterprise.ready(resolve));
+        recaptchaToken = await enterprise.execute(RECAPTCHA_SITE_KEY, {
           action: "WAITLIST",
         });
       } catch {
@@ -84,6 +103,13 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
   };
 
   return (
+    <>
+      {open && RECAPTCHA_SITE_KEY ? (
+        <Script
+          src={`https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`}
+          strategy="afterInteractive"
+        />
+      ) : null}
     <Modal open={open} onClose={handleClose}>
       {status === "success" ? (
         <div className="text-center py-4 space-y-3">
@@ -159,7 +185,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
                 className="w-full px-3 py-2 rounded-lg bg-surface-2 border border-border
                   text-sm text-text-primary placeholder:text-text-muted
                   focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                  disabled:opacity-50 transition-colors"
+                  disabled:opacity-60 transition-colors"
               />
             </div>
             <div className="space-y-1.5">
@@ -181,7 +207,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
                 className="w-full px-3 py-2 rounded-lg bg-surface-2 border border-border
                   text-sm text-text-primary placeholder:text-text-muted
                   focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                  disabled:opacity-50 transition-colors"
+                  disabled:opacity-60 transition-colors"
               />
             </div>
           </div>
@@ -205,7 +231,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
               className="w-full px-3 py-2 rounded-lg bg-surface-2 border border-border
                 text-sm text-text-primary placeholder:text-text-muted
                 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                disabled:opacity-50 transition-colors"
+                disabled:opacity-60 transition-colors"
             />
           </div>
 
@@ -219,7 +245,7 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
             type="submit"
             disabled={status === "submitting"}
             className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-accent text-white
-              hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {status === "submitting" ? "Submitting…" : "Request access"}
           </button>
@@ -231,5 +257,6 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
         </form>
       )}
     </Modal>
+    </>
   );
 }

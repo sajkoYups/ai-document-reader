@@ -4,7 +4,7 @@ import type { StepType } from "@reactour/tour";
 
 export const ONBOARDING_STEPS: StepType[] = [
   {
-    selector: "body",
+    selector: '[data-tour-id="output-section"]',
     position: "center",
     content: (
       <div className="space-y-2">
@@ -12,56 +12,56 @@ export const ONBOARDING_STEPS: StepType[] = [
           Welcome to PIA
         </h3>
         <p className="text-base text-text-secondary leading-relaxed">
-          This short tour will show you how to add a document, pick what you want the AI to do, and read the results.
+          This workspace has three panes: Workflows on the left, analysis in the center, and Sources on the right. This short tour walks through each.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="header-privacy"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
           Privacy & where your data lives
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          This indicator shows whether your document is kept on-device (Standard) or sent as encrypted data for Deep Analysis. Click it any time to see a detailed explanation of how we handle your privacy.
+          This indicator shows whether your document stays on-device (Standard) or is encrypted to our API for Deep Analysis, then processed by named privacy-constrained providers. Click it any time for details.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="header-mode-toggle"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
           Standard vs Deep Analysis
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Use these modes to choose between fast on-device analysis (Standard) and stronger, encrypted server-side analysis (Deep Analysis). We&apos;ll disable options automatically if they aren&apos;t available on your device.
+          Use these modes to choose between fast on-device analysis (Standard) and stronger Deep Analysis. Deep Analysis encrypts the request to our API; privacy-constrained providers then process the text. Review, Extract, Compare, and most advanced workflows need Deep Analysis; Summarize, Ask, and Document map work on-device.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="header-language"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
           Output language
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Choose the language you want the AI to answer in. This affects summaries, explanations, and Deep Analysis responses, not your original document.
+          Choose the language you want the AI to answer in. This affects summaries, reviews, extractions, and Ask answers — not your original document.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="header-account"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
@@ -74,92 +74,64 @@ export const ONBOARDING_STEPS: StepType[] = [
     ),
   },
   {
-    selector: '[data-tour-id="header-tour-button"]',
-    position: "bottom",
+    selector: '[data-tour-id="sources-panel"]',
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
-          Replay this tour
+          Sources
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Use this button any time to re-open the product tour and quickly remind yourself how the app is structured.
-        </p>
-      </div>
-    ),
-  },
-  {
-    selector: '[data-tour-id="file-upload"]',
-    position: "bottom",
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-display text-base text-text-primary">
-          Add your document
-        </h3>
-        <p className="text-sm text-text-secondary leading-relaxed">
-          Start by uploading a PDF, TXT, or Markdown file, or drag and drop it here. We only use it in your current session.
-        </p>
-      </div>
-    ),
-  },
-  {
-    selector: '[data-tour-id="text-input"]',
-    position: "top",
-    content: (
-      <div className="space-y-2">
-        <h3 className="font-display text-base text-text-primary">
-          Or paste text directly
-        </h3>
-        <p className="text-sm text-text-secondary leading-relaxed">
-          You can also paste any text here instead of uploading a file. PIA will work from whatever is in this box.
+          Add documents here — upload a PDF, TXT, or Markdown file, or paste text. You can keep up to three in a session. Analysis always uses the sources in this pane.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="task-selector"]',
-    position: "top",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
-          Choose what you want the AI to do
+          Workflows
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Pick a task such as Summarize, Explain, or Chat. You can change this at any time without reloading your document.
+          Pick an analysis in the left sidebar. Extract types sit under Extract. More workflows opens the full catalog.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="run-button"]',
-    position: "top",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
           Run the analysis
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          When you&apos;re ready, click Run. For longer documents you may see a quick preparation step before results appear.
+          When a source is ready, click Run here. Structured results stream into the center pane. Ask uses the composer in the center instead of Run.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="output-section"]',
-    position: "top",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
-          Read results and chat
+          Read results and follow up
         </h3>
         <p className="text-sm text-text-secondary leading-relaxed">
-          Your summaries, explanations, or chat answers appear here. Switch to Chat to ask follow-up questions grounded in your document.
+          Summaries, findings, and tables appear in this center canvas with clickable evidence. Use Ask or the follow-up bar to dig into anything that needs attention.
         </p>
       </div>
     ),
   },
   {
     selector: '[data-tour-id="header-feedback"]',
-    position: "bottom",
+    position: "center",
     content: (
       <div className="space-y-2">
         <h3 className="font-display text-base text-text-primary">
@@ -172,3 +144,15 @@ export const ONBOARDING_STEPS: StepType[] = [
     ),
   },
 ];
+
+export function mobilePaneForTourStep(
+  stepIndex: number,
+): "workflows" | "sources" | null {
+  const selector = ONBOARDING_STEPS[stepIndex]?.selector;
+  if (typeof selector !== "string") return null;
+  if (selector.includes("sources-panel")) return "sources";
+  if (selector.includes("task-selector") || selector.includes("run-button")) {
+    return "workflows";
+  }
+  return null;
+}

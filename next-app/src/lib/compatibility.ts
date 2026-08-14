@@ -30,7 +30,7 @@ export function checkBrowserCompatibility(): CompatibilityCheck {
   }
   if (!webCrypto) {
     warnings.push(
-      "Web Crypto API (crypto.subtle) is not available. Secure in-memory document encryption requires a modern browser over HTTPS.",
+      "Web Crypto API (crypto.subtle) is not available. Deep Analysis encryption requires a modern browser over HTTPS.",
     );
   }
 

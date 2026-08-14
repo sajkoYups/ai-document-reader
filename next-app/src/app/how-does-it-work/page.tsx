@@ -12,7 +12,7 @@ const fullUrl = `${
 export const metadata: Metadata = {
   title: "How does it work",
   description:
-    "Add your document, choose summarize, explain, or chat, and get private AI results without storing your data.",
+    "Add your document, choose Summarize, Review, Extract, or Ask, and get private AI results without storing your data.",
   alternates: {
     canonical: fullUrl,
   },
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "How PIA Works | Private AI in Your Browser",
     description:
-      "Understand how PIA keeps your documents private while using AI to summarize, explain, and chat.",
+      "Understand how PIA keeps your documents private while using AI workflows like Summarize, Review, Extract, and Ask.",
   },
 };
 
@@ -38,20 +38,24 @@ export default function HowDoesItWorkPage() {
         <p>
           You add your document by pasting text or uploading a file. We support
           PDF, plain text, and Markdown. Once the document is in the app, it is
-          processed locally in your browser so we can find the right parts to
-          send to the AI — or, with Deep analysis (coming soon), we encrypt it
-          and run the analysis on our side. Either way, you stay in control.
+          processed locally in your browser so we can find the right parts —
+          or, with Deep Analysis, we encrypt the request to our API and run
+          a stronger model via privacy-constrained providers. Either way, you
+          stay in control.
         </p>
         <p>
-          You then choose what you want:{" "}
-          <strong className="text-text-primary">Summarize</strong> gives you a
-          short overview and key points;{" "}
-          <strong className="text-text-primary">Explain</strong> rewrites the
-          text in plain language so anyone can follow it;{" "}
-          <strong className="text-text-primary">Chat</strong> lets you ask
-          questions and get answers grounded in your document. The result
-          appears in the app next to your doc. No account is required for the
-          standard, in-browser version.
+          You then choose a workflow:{" "}
+          <strong className="text-text-primary">Summarize</strong> gives a
+          structured overview and key points;{" "}
+          <strong className="text-text-primary">Review</strong> surfaces items
+          that may need attention with evidence;{" "}
+          <strong className="text-text-primary">Extract</strong> pulls dates,
+          amounts, obligations, and more into tables;{" "}
+          <strong className="text-text-primary">Ask</strong> lets you question
+          the document with grounded answers. You can also
+          <strong className="text-text-primary">Compare</strong> two documents or build a
+          <strong className="text-text-primary">Timeline</strong> across up to three files in a session. Results appear next to your doc.
+          No account is required for the standard, in-browser version.
         </p>
         <p>
           In standard mode, the AI runs entirely in your browser. Your document
@@ -61,12 +65,16 @@ export default function HowDoesItWorkPage() {
           or training on it.
         </p>
         <p>
-          If you use an API or the future Deep analysis feature, we send your
-          document (or an encrypted form of it) to a server to get a faster or
-          more capable response. In those cases we still do not store or retain
-          your document. We process it and return the answer; we don’t keep
-          copies or use it for training. When you’re done, refreshing the page
-          clears everything from the app.
+          If you use Deep Analysis, we encrypt your request to our API, decrypt
+          it in memory, and send the needed text over TLS to privacy-constrained AI
+          providers listed in our{" "}
+          <a href="/trust-center#ai-subprocessors" className="text-accent underline">
+            Trust Center
+          </a>
+          . We do not store your document or prompts. Providers process content
+          for the request under their published policies; we do not use it for
+          training. When you’re done, refreshing the page clears everything from
+          the app.
         </p>
         <p>
           The app also builds a lightweight search index over your document so

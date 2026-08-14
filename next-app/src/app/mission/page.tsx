@@ -52,7 +52,7 @@ export default function MissionPage() {
           that way. Our goal is for everyone who wants to use AI privately to be
           able to. That means no paywall for the basics: paste a doc, get a
           summary or a plain-language explanation, or chat with it, all in your
-          browser. No account required, no data stored.
+          browser. No account required; PIA does not store your document.
         </p>
         <p>
           For organizations, we help design and deploy private AI so that

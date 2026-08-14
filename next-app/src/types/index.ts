@@ -1,12 +1,26 @@
-export type TaskType = "summarize" | "explain" | "extract" | "draft" | "chat";
+export type TaskType =
+  | "summarize"
+  | "explain"
+  | "extract"
+  | "draft"
+  | "chat"
+  | "review"
+  | "compare"
+  | "timeline"
+  | "contradictions"
+  | "missing-information"
+  | "evidence-finder"
+  | "action-items"
+  | "document-map";
 
-export type OutputLanguage = "en" | "de" | "fr" | "cs";
+export type OutputLanguage = "en" | "de" | "fr" | "cs" | "mk";
 
 export const OUTPUT_LANGUAGE_LABELS: Record<OutputLanguage, string> = {
   en: "English",
   de: "German",
   fr: "French",
   cs: "Czech",
+  mk: "Macedonian",
 };
 
 export type ModelStatus =
@@ -32,6 +46,12 @@ export interface DocumentSection {
   endChar?: number;
 }
 
+export interface PageSpan {
+  pageNumber: number;
+  startChar: number;
+  endChar: number;
+}
+
 export interface DocumentState {
   rawText: string;
   sections: DocumentSection[];
@@ -39,8 +59,17 @@ export interface DocumentState {
   fileType: string | null;
 }
 
+export interface EvidenceRef {
+  documentId: string;
+  documentName: string;
+  page?: number;
+  section?: string;
+  excerpt?: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   evidence?: string[];
+  evidenceRefs?: EvidenceRef[];
 }

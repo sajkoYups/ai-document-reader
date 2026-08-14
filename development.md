@@ -4,7 +4,7 @@
 
 Build a privacy‑first AI assistant that analyzes and generates documents entirely on the user’s device (browser). No accounts, no cloud processing, no file storage. The product should behave like a trustworthy private assistant for sensitive work.
 
-**Core principle:** User data never leaves the device for the free tier. The premium tier sends data to a private backend with end‑to‑end encryption — the server processes in memory only and stores nothing.
+**Core principle:** User data never leaves the device for Standard (free) mode. Deep Analysis sends document text to a PIA backend using application-layer encryption (ECDH + AES-256-GCM). The server decrypts in memory, forwards plaintext over TLS to the configured LLM provider, and does not persist documents or prompts.
 
 ---
 
@@ -13,11 +13,10 @@ Build a privacy‑first AI assistant that analyzes and generates documents entir
 ### Functional Goals
 
 * Analyze documents locally (paste text or upload file)
-* Generate new documents from prompts
-* Explain complex text in plain language
-* Summarize long content
-* Extract key points, obligations, risks, dates
-* Q&A over the provided text
+* Workflow-driven analysis: Summarize, Review, Extract, Ask
+* Structured, evidence-backed results (not plain prose dumps)
+* Extract key points, obligations, amounts, dates, contacts
+* Q&A over the provided text with clickable evidence
 
 ### Non‑Functional Goals
 
@@ -40,20 +39,20 @@ Build a privacy‑first AI assistant that analyzes and generates documents entir
 * Closing the page clears the session data
 * Only static assets are served from hosting
 
-### Privacy Guarantees — Deep Analysis Mode (Premium, Account‑Gated Later)
+### Privacy Guarantees — Deep Analysis Mode (Premium, Account‑Gated)
 
-* Document text is encrypted client‑side with AES‑256‑GCM before transmission
-* End‑to‑end encryption via ECDH (P‑256) key exchange — even a compromised TLS proxy cannot read payloads
-* Server processes in memory only — zero persistence (no database, no file writes, no Redis)
-* Server logging never includes request/response bodies
+* Document text is encrypted client‑side with AES‑256‑GCM before transmission to the PIA API
+* Application-layer encryption via ECDH (P‑256) — a compromised TLS proxy cannot read payloads; PIA servers hold the session key and decrypt
+* After decrypt, plaintext is sent over TLS to the configured provider (OpenRouter, RunPod, or Ollama)
+* Server processes in memory only — no document/prompt database (usage metering is aggregate counts only)
+* Server logging is metadata only (no request/response bodies or document previews)
 * Session keys are ephemeral and auto‑expire after 30 minutes
 * Server‑side AES keys are overwritten with zeros on session expiry
 
-### Client‑Side Encryption at Rest
+### Client‑Side Session Memory
 
-* A per‑session AES‑256‑GCM key is generated on page load (non‑extractable via WebCrypto)
-* All document text stored in Zustand is encrypted in memory
-* Encrypted buffers are overwritten with random data before releasing on session clear
+* Document text is held in browser memory (Zustand `rawText`, parsed sections, RAG chunks) for the open session so run/chat/retrieval stay synchronous
+* This is not client-side encryption at rest; the control is wipe-on-idle / wipe-on-close
 * Web Workers are terminated (not just cleared) on session end
 * 15‑minute idle timeout with auto‑clear of all session data
 
@@ -78,13 +77,12 @@ Primary early adopters:
 
 ## 5. Core Use Cases
 
-1. "Explain this document to me"
-2. "Summarize this report"
-3. "What are the risks or obligations here?"
-4. "Rewrite this in simpler language"
-5. "Draft a document based on this description"
-6. "Answer questions about this text"
-7. **Chat with document:** Ask natural-language questions about the uploaded/pasted document (e.g., “Is termination covered?”, “Where is payment defined?”, “Does it mention a refund policy?”) and get grounded answers with references to the relevant sections.
+1. "Summarize this report"
+2. "Review this contract for items needing attention"
+3. "Extract obligations, dates, and amounts"
+4. "Ask: Is termination covered? Where is payment defined?"
+5. Follow up on a finding or table row after a workflow run
+6. Run Deep Analysis for Review/Extract when Standard/local is not enough
 
 ---
 
@@ -98,7 +96,7 @@ Two processing modes:
 User → Static Web App → Local AI Model (0.5B, in‑browser) → Result
 
 **Deep Analysis mode (premium):**
-User → Static Web App → E2E Encrypt → Node.js Backend → Ollama (larger model) → Encrypt Response → User
+User → Web App → Application-layer encrypt → Node.js Backend → OpenRouter / RunPod / Ollama → Encrypt Response → User
 
 ---
 
@@ -170,7 +168,11 @@ server/
       session.ts          — POST /api/session/init (ECDH key exchange)
       health.ts           — GET /api/health
     services/
+      llmService.ts       — Deep Analysis facade (ollama | runpod | openrouter + RunPod→OpenRouter fallback)
       ollamaService.ts    — Ollama HTTP client with streaming
+      runpodService.ts    — RunPod OpenAI-compatible vLLM streaming
+      openrouterService.ts — OpenRouter gateway with privacy provider routing
+      openaiCompatibleStream.ts — Shared SSE helpers
       cryptoService.ts    — Server‑side ECDH + AES‑256‑GCM
     middleware/
       encryption.ts       — Decrypt request / encrypt response
@@ -180,15 +182,22 @@ server/
       index.ts
 ```
 
+Deep Analysis provider (`DEEP_ANALYSIS_LLM_PROVIDER`):
+
+* `openrouter` — OpenRouter API (recommended default; allowlist `azure,novita,deepinfra`, `data_collection=deny`, ZDR when available)
+* `runpod` — Self-hosted vLLM; falls back to OpenRouter if pods are down and `OPENROUTER_API_KEY` is set
+* `ollama` — Local/dev
+
 Zero‑persistence guarantees:
-* No database, no file writes, no Redis
+* No document/prompt database writes (usage metering is aggregate counts only)
 * Request bodies never logged
 * Session keys held in memory with TTL (default 30 min)
 * Expired keys overwritten with zeros before deletion
+* AI provider keys server-side only (never `NEXT_PUBLIC_*`)
 
 ---
 
-### 6.7 End‑to‑End Encryption Protocol
+### 6.7 Application-Layer Encryption Protocol (browser ↔ PIA API)
 
 1. Client generates ephemeral ECDH key pair (P‑256)
 2. Client sends public key to `POST /api/session/init`
@@ -196,7 +205,7 @@ Zero‑persistence guarantees:
 4. Both derive the same shared secret via ECDH
 5. Shared secret → HKDF (SHA‑256) → AES‑256‑GCM key
 6. All request payloads encrypted with AES‑256‑GCM + random IV per message
-7. Server decrypts, processes via Ollama, encrypts response tokens
+7. Server decrypts, processes via the configured Deep Analysis provider (Ollama / RunPod / OpenRouter), encrypts response tokens
 8. Response streamed back as encrypted SSE events
 9. Client decrypts each chunk and renders tokens
 
@@ -252,17 +261,17 @@ Provide a simple explanation modal:
 
 Main components:
 
-1. Input area (paste or upload)
-2. Task selector (summarize, explain, draft, etc.)
-3. Run analysis button
-4. Output panel
-5. Privacy badge
-6. **Chat with document panel**
+1. Empty state / compact document bar (paste or upload)
+2. Workflow selector (Summarize, Review, Extract, Ask; Compare/Timeline coming soon)
+3. Run analysis button (structured workflows)
+4. Workflow result pane (Summary / FindingCards / ExtractionTable)
+5. Privacy badge + capability gate for Deep-only workflows
+6. **Ask panel + follow-up bar**
 
-   * Chat input + message history
+   * Ask input + message history
    * Answers grounded in the provided document only
-   * Show “evidence” by quoting short snippets and/or indicating section headings / page references (when available)
-   * Allow follow-up questions that keep context within the current session
+   * Clickable evidence (page / section) when page map exists
+   * Follow-ups after every structured result, session-only
 
 ---
 
@@ -322,13 +331,11 @@ Use privacy‑focused analytics tools.
 
 ### Client‑Side
 
-* Per‑session AES‑256‑GCM encryption of document data in memory
+* Document text lives in browser memory for the open session; wiped on idle, refresh, or tab close
 * `autocomplete="off"` and `spellcheck="false"` on all document inputs
 * Web Workers terminated on session end
-* Encrypted buffers overwritten with random data before release
 * 15‑minute idle timeout with auto‑clear
-* No third‑party scripts that can access user input
-* Prevent XSS vulnerabilities
+* Analytics scripts load only after cookie consent; reCAPTCHA loads on waitlist only
 
 ### Server‑Side (Deep Analysis)
 
@@ -364,36 +371,46 @@ No costs for:
 
 ---
 
-## 12. Future Roadmap (Post‑Beta)
+## 12. Workflow System & Roadmap
 
-### Phase 0.5 — Premium Deep Analysis (Current)
+### Product model
 
-* Backend API with Ollama model serving
-* End‑to‑end encrypted API calls (ECDH + AES‑256‑GCM)
-* Account gating for premium features
-* Larger models for higher quality analysis of long documents (200+ pages)
+Workflows are product objects (registry on the client), not prompt buttons.
+The frontend owns UI metadata, Zod schemas, result renderers, and evidence mapping.
+The server looks up prompts by `workflowId`, optionally enables JSON mode, and stays a memory-only inference layer.
+Documents, workflow outputs, and chat are never persisted — refresh / idle timeout still clears the session.
 
-### Phase 1 — Local Persistence
+```
+Document → Action (workflow) → Structured Result → Follow-up (Ask)
+```
 
-* Encrypted save on device
-* IndexedDB storage
+### Phase 1 — Workflow System (shipped)
 
-### Phase 2 — Cloud Sync (Optional)
+* Core workflows: **Summarize**, **Review**, **Extract**, **Ask**
+* Evidence-backed structured streaming (partial JSON → UI; never show broken JSON)
+* Review & Extract require Deep Analysis; Summarize & Ask work in Standard/local
+* Heuristic document classification + recommended workflows (no extra LLM call)
+* Capability gate with explicit “Continue with Deep Analysis” (no silent mode switch)
 
-* End‑to‑end encrypted uploads
-* Multi‑device access
+### Phase 2 — Multi-document & deeper analysis (current)
 
-### Phase 3 — Collaboration
+* Session of up to **3 documents** (still no persistence)
+* **Compare** (Doc A/B) and **Timeline** (1–3 docs)
+* Advanced: Evidence Finder, contradictions, missing information, action items, document map
+* Multi-pass Deep Analysis retrieval for Compare, Review, and contradictions
+* Legal packs remain coming soon (Phase 3)
 
-* Secure sharing
-* Team features
-* Access control
+### Phase 3 — Packs, library, builder
 
-### Phase 4 — Advanced Assistant
+* Legal / compliance / research / finance / HR packs
+* Persistent library (still privacy-preserving), workflow builder, analytics
+* Full UI i18n framework; PDF page jump inside a rendered viewer
 
-* Cross‑document reasoning
-* Personal knowledge base
-* Email and workflow integrations
+### Earlier premium foundation (shipped)
+
+* Backend API with Ollama / RunPod / OpenRouter
+* End-to-end encrypted API calls (ECDH + AES-256-GCM)
+* Account gating for Deep Analysis
 
 ---
 
@@ -436,7 +453,7 @@ When generating code or features:
 1. Prefer client‑side solutions for the free tier
 2. Maintain privacy‑first constraints at all times
 3. Never persist document data on the server — memory‑only processing
-4. All API payloads must be end‑to‑end encrypted
+4. All Deep Analysis API payloads must use application-layer encryption (browser ↔ PIA). After decrypt, providers see plaintext.
 5. Optimize for performance and bundle size
 6. Use well‑maintained libraries
 7. Ensure frontend compatibility with static hosting
@@ -462,7 +479,7 @@ npm run dev
 
 The beta product is a privacy‑first AI web application with two tiers:
 
-* **Free tier:** Document intelligence entirely on the user’s device with near‑zero operational cost.
-* **Premium tier (Deep Analysis):** End‑to‑end encrypted backend API using a larger model via Ollama for higher quality analysis of long documents.
+* **Free tier:** Document intelligence on the user’s device.
+* **Premium tier (Deep Analysis):** Application-layer encrypted API; larger model via OpenRouter, RunPod, or Ollama. PIA does not persist documents.
 
-Both tiers guarantee that documents are never persisted — processed in memory only, cleared on session end. The focus is validation of value, trust, and usability — not scale or feature completeness.
+Both tiers keep documents out of PIA storage — processed in memory, cleared on session end. Deep Analysis providers process plaintext for the request under their policies. The focus is validation of value, trust, and usability — not scale or feature completeness.

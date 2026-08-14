@@ -12,7 +12,7 @@ import {
 } from "react";
 import { useTour } from "@reactour/tour";
 
-const STORAGE_KEY = "doc-analyzer-onboarding-v1-completed";
+const STORAGE_KEY = "doc-analyzer-onboarding-v2-completed";
 
 interface OnboardingContextValue {
   startTour: () => void;
