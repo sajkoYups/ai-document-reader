@@ -1,35 +1,7 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/seo";
 import SimplePageLayout from "@/components/SimplePageLayout";
 
-const path = "/vision";
-const fullUrl = `${
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com").replace(
-    /\/+$/,
-    "",
-  )
-}${path}`;
-
-export const metadata: Metadata = {
-  title: "Vision",
-  description:
-    "We envision a world where people can use AI on their most sensitive work without sending data to third parties.",
-  alternates: {
-    canonical: fullUrl,
-  },
-  openGraph: {
-    url: fullUrl,
-    title: "Our Vision | Privacy-First AI for Everyone",
-    description:
-      "See our vision for a world where AI respects privacy by default.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Our Vision | Privacy-First AI for Everyone",
-    description:
-      "Understand the long-term vision behind PIA and privacy-first AI.",
-  },
-};
+export const metadata = pageMetadata("/vision");
 
 export default function VisionPage() {
   return (
@@ -38,7 +10,7 @@ export default function VisionPage() {
         <p>
           We envision a world where people can use AI on their most sensitive
           work without sending data to third parties. Privacy and capability
-          should go together — you shouldn’t have to give up one to get the
+          should go together: you shouldn’t have to give up one to get the
           other.
         </p>
         <p>
@@ -49,15 +21,7 @@ export default function VisionPage() {
           stays with you”; sending it away is the exception, not the rule.
         </p>
         <p>
-          We want private AI to be normal — not a premium or a niche. Free,
-          in-browser tools like PIA for everyday use; private servers
-          and encrypted pipelines for organizations that need more. The
-          technology exists; our job is to make it accessible, understandable,
-          and practical so that more people and teams can benefit without
-          compromising.
-        </p>
-        <p>
-          We want private AI to be normal — not a premium or a niche. Free,
+          We want private AI to be normal, not a premium or a niche. Free,
           in-browser tools like PIA for everyday use; private servers
           and encrypted pipelines for organizations that need more. The
           technology exists; our job is to make it accessible, understandable,
@@ -72,10 +36,9 @@ export default function VisionPage() {
         </p>
         <p>
           That’s the world we’re working toward: a little more clarity, a little
-          more control, and a little more better — for everyone who wants it.
+          more control, and a little more better, for everyone who wants it.
         </p>
       </div>
     </SimplePageLayout>
   );
 }
-

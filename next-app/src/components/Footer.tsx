@@ -6,6 +6,7 @@ const footerLinks = [
   { href: "/about", label: "About us" },
   { href: "/who-is-this-for", label: "Who is this for" },
   { href: "/how-does-it-work", label: "How does it work" },
+  { href: "/private-ai-vs-chatgpt", label: "Private AI vs ChatGPT" },
   { href: "/what-else-do-we-do", label: "What else do we do" },
   { href: "/mission", label: "Mission" },
   { href: "/vision", label: "Vision" },
@@ -36,4 +37,3 @@ export default function Footer() {
     </footer>
   );
 }
-

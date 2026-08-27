@@ -1,24 +1,9 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import SimplePageLayout from "@/components/SimplePageLayout";
 import { PRIVACY_EMAIL } from "@/lib/securityContacts";
+import { pageMetadata } from "@/seo";
 
-const path = "/cookies";
-const fullUrl = `${
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com").replace(
-    /\/+$/,
-    "",
-  )
-}${path}`;
-
-export const metadata: Metadata = {
-  title: "Cookie Policy",
-  description:
-    "Cookies and similar technologies PIA uses: necessary session and auth cookies, optional analytics, and waitlist reCAPTCHA.",
-  alternates: {
-    canonical: fullUrl,
-  },
-};
+export const metadata = pageMetadata("/cookies");
 
 export default function CookiesPage() {
   return (

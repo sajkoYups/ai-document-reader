@@ -1,30 +1,17 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com";
+import { pageUrl, SITEMAP_ROUTES } from "@/seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = siteUrl.replace(/\/+$/, "");
-
-  const routes = [
-    "/",
-    "/pricing",
-    "/about",
-    "/who-is-this-for",
-    "/how-does-it-work",
-    "/what-else-do-we-do",
-    "/mission",
-    "/vision",
-    "/app",
-  ];
-
-  const now = new Date();
-
-  return routes.map((path) => ({
-    url: `${base}${path === "/" ? "" : path}`,
-    lastModified: now,
+  return SITEMAP_ROUTES.map((path) => ({
+    url: pageUrl(path),
     changeFrequency: "monthly",
-    priority: path === "/" ? 1 : path === "/app" ? 0.6 : path === "/pricing" ? 0.9 : 0.8,
+    priority:
+      path === "/"
+        ? 1
+        : path === "/pricing"
+          ? 0.9
+          : path === "/trust-center"
+            ? 0.85
+            : 0.8,
   }));
 }
-

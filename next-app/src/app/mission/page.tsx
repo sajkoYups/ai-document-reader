@@ -1,35 +1,7 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/seo";
 import SimplePageLayout from "@/components/SimplePageLayout";
 
-const path = "/mission";
-const fullUrl = `${
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com").replace(
-    /\/+$/,
-    "",
-  )
-}${path}`;
-
-export const metadata: Metadata = {
-  title: "Mission",
-  description:
-    "Our mission is to make private AI accessible to everyone who works with sensitive documents.",
-  alternates: {
-    canonical: fullUrl,
-  },
-  openGraph: {
-    url: fullUrl,
-    title: "Our Mission | Making Private AI Accessible",
-    description:
-      "Read about our mission to bring private AI to anyone working with sensitive documents.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Our Mission | Making Private AI Accessible",
-    description:
-      "Learn why we’re focused on making private AI the default for document analysis.",
-  },
-};
+export const metadata = pageMetadata("/mission");
 
 export default function MissionPage() {
   return (
@@ -72,4 +44,3 @@ export default function MissionPage() {
     </SimplePageLayout>
   );
 }
-

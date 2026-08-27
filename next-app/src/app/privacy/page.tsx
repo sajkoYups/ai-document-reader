@@ -1,24 +1,9 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import SimplePageLayout from "@/components/SimplePageLayout";
 import { PRIVACY_EMAIL } from "@/lib/securityContacts";
+import { pageMetadata } from "@/seo";
 
-const path = "/privacy";
-const fullUrl = `${
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com").replace(
-    /\/+$/,
-    "",
-  )
-}${path}`;
-
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description:
-    "How PIA handles documents, accounts, analytics, and subprocessors in Standard and Deep Analysis modes.",
-  alternates: {
-    canonical: fullUrl,
-  },
-};
+export const metadata = pageMetadata("/privacy");
 
 export default function PrivacyPage() {
   return (
