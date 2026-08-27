@@ -4,9 +4,9 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { type ReactNode, useState, useEffect } from "react";
 
 /**
- * Wraps children with ClerkProvider only on the client after mount.
- * During static build/SSR we skip ClerkProvider so no publishableKey is required.
- * At runtime (client), ClerkProvider runs and keyless mode can supply keys when env is unset.
+ * Clerk for /app only. Marketing pages must SSR their HTML for crawlers.
+ * Provider mounts on the client so static build does not require a publishable key;
+ * keyless mode can supply keys at runtime when env is unset.
  */
 export default function ClerkWrapper({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);

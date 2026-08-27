@@ -1,0 +1,20 @@
+# PIA (Private AI Doc Analyzer)
+
+PIA is a privacy-first document analysis product by Yups. Paste or upload a document, pick a workflow (Summarize, Review, Extract, Compare, Timeline, or Ask), and get structured results.
+
+PIA does not store documents or prompts. Refreshing the page clears the working copy from the app.
+
+## Standard vs Deep Analysis
+
+- **Standard (Private Mode):** The model runs in your browser. No account required. Documents stay on your device. Free forever.
+- **Deep Analysis:** Optional paid mode. The request is encrypted to the PIA API and processed by named privacy-constrained providers. PIA does not store documents or prompts. Plans start at €9/month.
+
+## Pages
+
+- Home: /
+- How it works: /how-does-it-work
+- Pricing: /pricing
+- Pricing (Markdown): /pricing.md
+- Trust Center: /trust-center
+- Who this is for: /who-is-this-for
+- Private AI vs ChatGPT: /private-ai-vs-chatgpt

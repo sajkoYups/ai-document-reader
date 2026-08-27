@@ -1,36 +1,8 @@
-import type { Metadata } from "next";
 import SimplePageLayout from "@/components/SimplePageLayout";
 import { PRIVACY_EMAIL, SECURITY_EMAIL } from "@/lib/securityContacts";
+import { pageMetadata } from "@/seo";
 
-const path = "/trust-center";
-const fullUrl = `${
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com").replace(
-    /\/+$/,
-    "",
-  )
-}${path}`;
-
-export const metadata: Metadata = {
-  title: "Trust Center",
-  description:
-    "Learn how PIA protects your documents with privacy-first architecture, minimal data retention, and modern security practices.",
-  alternates: {
-    canonical: fullUrl,
-  },
-  openGraph: {
-    url: fullUrl,
-    title: "Trust Center | PIA – Security & Privacy Overview",
-    description:
-      "Understand PIA’s security architecture, privacy principles, data protection measures, and compliance roadmap.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Trust Center | PIA – Security & Privacy Overview",
-    description:
-      "See how PIA applies privacy-first design, encryption, and modern infrastructure security to protect your documents.",
-  },
-};
+export const metadata = pageMetadata("/trust-center");
 
 export default function TrustCenterPage() {
   return (

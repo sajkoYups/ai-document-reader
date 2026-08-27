@@ -1,33 +1,10 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import SiteBrand from "@/components/SiteBrand";
+import MarketingHeader from "@/components/MarketingHeader";
+import WaitlistCta from "@/components/WaitlistCta";
+import { faqJsonLd, pageMetadata, PRICING_FAQS } from "@/seo";
 
-const siteUrl = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com"
-).replace(/\/+$/, "");
-
-export const metadata: Metadata = {
-  title: "Pricing",
-  description:
-    "Private Mode is free forever. Deep Analysis paid plans start at €9/month for AI-powered document analysis.",
-  alternates: {
-    canonical: `${siteUrl}/pricing`,
-  },
-  openGraph: {
-    url: `${siteUrl}/pricing`,
-    title: "Pricing | PIA – Private AI for Your Documents",
-    description:
-      "Private Mode is free forever. Deep Analysis plans start at €9/month.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pricing | PIA – Private AI for Your Documents",
-    description:
-      "Private Mode is free forever. Deep Analysis plans start at €9/month.",
-  },
-};
+export const metadata = pageMetadata("/pricing");
 
 const deepAnalysisTiers = [
   {
@@ -60,34 +37,28 @@ const deepAnalysisTiers = [
   },
 ] as const;
 
+const faqLd = faqJsonLd(PRICING_FAQS);
+
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-surface-0 grain flex flex-col">
-      <header className="sticky top-0 z-50 border-b border-border bg-surface-0/80 backdrop-blur-xl">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <SiteBrand />
-          <Link
-            href="/app"
-            className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-accent text-surface-0 hover:opacity-90 transition-opacity"
-          >
-            Open app
-          </Link>
-        </div>
-      </header>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+      />
+      <MarketingHeader containerClassName="max-w-5xl" />
 
       <main className="max-w-5xl mx-auto px-6 py-12 md:py-20 flex-1 w-full">
-        {/* Hero */}
-        <section className="animate-fade-in text-center mb-16 md:mb-20">
+        <section className="text-center mb-16 md:mb-20">
           <h1 className="font-display text-4xl md:text-5xl text-text-primary tracking-tight mb-4">
-            Simple, transparent pricing
+            Private AI document analysis pricing
           </h1>
           <p className="text-lg text-text-secondary max-w-xl mx-auto">
-            Private Mode is free — and always will be. Deep Analysis is a paid
+            Private Mode is free, and always will be. Deep Analysis is a paid
             feature built for higher-volume and team use.
           </p>
         </section>
 
-        {/* Standard / Private mode */}
         <section
           className="animate-fade-in mb-16 md:mb-20"
           style={{ animationDelay: "0.08s" }}
@@ -104,8 +75,12 @@ export default function PricingPage() {
               </div>
               <p className="text-text-secondary max-w-lg">
                 The AI runs entirely in your browser. Your document never leaves
-                your device — nothing is sent to our servers. No account
-                required to get started.
+                your device: nothing is sent to our servers. No account
+                required to get started.{" "}
+                <Link href="/how-does-it-work" className="text-accent underline">
+                  How in-browser private analysis works
+                </Link>
+                .
               </p>
               <ul className="space-y-1.5 text-sm text-text-secondary">
                 {[
@@ -149,7 +124,6 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* Deep Analysis tiers */}
         <section
           className="animate-fade-in"
           style={{ animationDelay: "0.15s" }}
@@ -160,16 +134,16 @@ export default function PricingPage() {
                 Deep Analysis
               </h2>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-3 text-text-secondary border border-border">
-                Waitlist — coming soon
+                Waitlist (coming soon)
               </span>
             </div>
             <p className="text-text-secondary max-w-2xl">
               A stronger, server-side AI model for deeper document analysis.
               We encrypt your document to our API and do not store it on PIA
               systems; providers are listed in our{" "}
-              <a href="/trust-center#ai-subprocessors" className="text-accent underline">
+              <Link href="/trust-center#ai-subprocessors" className="text-accent underline">
                 Trust Center
-              </a>
+              </Link>
               . Choose the plan that fits your volume.
             </p>
           </div>
@@ -184,11 +158,11 @@ export default function PricingPage() {
                     : "border-border bg-surface-1"
                 }`}
               >
-                {tier.highlight && (
+                {tier.highlight ? (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent text-surface-0">
                     Most popular
                   </span>
-                )}
+                ) : null}
 
                 <div>
                   <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-1">
@@ -212,8 +186,7 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mt-auto pt-2">
-                  <Link
-                    href="/app"
+                  <WaitlistCta
                     className={`inline-flex items-center justify-center w-full px-4 py-2 rounded-lg text-sm font-medium transition-opacity ${
                       tier.highlight
                         ? "bg-accent text-surface-0 hover:opacity-90"
@@ -221,15 +194,14 @@ export default function PricingPage() {
                     }`}
                   >
                     Join the waitlist
-                  </Link>
+                  </WaitlistCta>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Token footnote */}
           <p className="text-xs text-text-muted text-center border-t border-border pt-6">
-            Analyses are counted by token usage internally — very long documents
+            Analyses are counted by token usage internally: very long documents
             may count as more than one analysis.{" "}
             <span className="text-text-secondary">
               Your exact usage is always visible in your account dashboard.
@@ -237,7 +209,27 @@ export default function PricingPage() {
           </p>
         </section>
 
-        {/* FAQ-style callout */}
+        <section
+          className="animate-fade-in mt-16 md:mt-20"
+          style={{ animationDelay: "0.2s" }}
+        >
+          <h2 className="font-display text-2xl text-text-primary tracking-tight mb-6">
+            Pricing FAQ
+          </h2>
+          <dl className="space-y-6">
+            {PRICING_FAQS.map((faq) => (
+              <div key={faq.question} className="border-b border-border pb-6 last:border-b-0">
+                <dt className="font-medium text-text-primary mb-2">
+                  {faq.question}
+                </dt>
+                <dd className="text-sm text-text-secondary leading-relaxed">
+                  {faq.answer}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
         <section
           className="animate-fade-in mt-16 md:mt-20 rounded-xl bg-surface-1 border border-border p-8 text-center"
           style={{ animationDelay: "0.22s" }}
@@ -253,7 +245,7 @@ export default function PricingPage() {
             href="/app"
             className="inline-flex items-center px-6 py-2.5 rounded-lg text-sm font-medium bg-accent text-surface-0 hover:opacity-90 transition-opacity"
           >
-            Try for free — no sign-up needed
+            Try for free (no sign-up needed)
           </Link>
         </section>
       </main>

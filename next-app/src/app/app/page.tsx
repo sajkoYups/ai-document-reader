@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
 import App from "@/App";
+import { pageUrl } from "@/seo";
 
-const path = "/app";
-const fullUrl = `${
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com").replace(
-    /\/+$/,
-    "",
-  )
-}${path}`;
+const fullUrl = pageUrl("/app");
 
 export const dynamic = "force-dynamic";
 
@@ -18,29 +13,12 @@ export const metadata: Metadata = {
   alternates: {
     canonical: fullUrl,
   },
-  openGraph: {
-    url: fullUrl,
-    title: "PIA — Private AI document analysis",
-    description:
-      "Open PIA to use private AI on your documents directly in the browser.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "PIA — Private AI document analysis",
-    description:
-      "Analyze your documents privately with the PIA web app.",
-  },
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
   },
 };
 
 export default function AppPage() {
   return <App />;
 }
-
-
-
-

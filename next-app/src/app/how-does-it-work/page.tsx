@@ -1,95 +1,144 @@
-import type { Metadata } from "next";
+import Link from "next/link";
 import SimplePageLayout from "@/components/SimplePageLayout";
+import { howToJsonLd, pageMetadata } from "@/seo";
 
-const path = "/how-does-it-work";
-const fullUrl = `${
-  (process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com").replace(
-    /\/+$/,
-    "",
-  )
-}${path}`;
+export const metadata = pageMetadata("/how-does-it-work");
 
-export const metadata: Metadata = {
-  title: "How does it work",
-  description:
-    "Add your document, choose Summarize, Review, Extract, or Ask, and get private AI results without storing your data.",
-  alternates: {
-    canonical: fullUrl,
-  },
-  openGraph: {
-    url: fullUrl,
-    title: "How PIA Works | Private AI in Your Browser",
-    description:
-      "See how PIA processes your documents privately in-browser or via a privacy-conscious API.",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "How PIA Works | Private AI in Your Browser",
-    description:
-      "Understand how PIA keeps your documents private while using AI workflows like Summarize, Review, Extract, and Ask.",
-  },
-};
+const howToLd = howToJsonLd();
 
 export default function HowDoesItWorkPage() {
   return (
-    <SimplePageLayout title="How does it work">
-      <div className="text-text-secondary space-y-4">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToLd) }}
+      />
+      <SimplePageLayout title="How private in-browser document AI works">
+      <div className="text-text-secondary space-y-8">
         <p>
-          You add your document by pasting text or uploading a file. We support
-          PDF, plain text, and Markdown. Once the document is in the app, it is
-          processed locally in your browser so we can find the right parts —
-          or, with Deep Analysis, we encrypt the request to our API and run
-          a stronger model via privacy-constrained providers. Either way, you
-          stay in control.
+          You add a document, pick a workflow, and get structured results.
+          Standard mode runs in your browser: the file is not uploaded. Deep
+          Analysis is optional when you want a stronger server-side model. No
+          account is required for the free version. See{" "}
+          <Link href="/pricing" className="text-accent underline">
+            private AI document analysis pricing
+          </Link>{" "}
+          if you need Deep Analysis volume.
         </p>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Add your document
+          </h2>
+          <p>
+            Paste text or upload a PDF, plain text, or Markdown file. Once the
+            document is in the app, Standard mode processes it locally so we can
+            find the right passages. With Deep Analysis we encrypt the request
+            to our API and run a stronger model via privacy-constrained
+            providers listed in the{" "}
+            <Link href="/trust-center#ai-subprocessors" className="text-accent underline">
+              Trust Center
+            </Link>
+            .
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Summarize
+          </h2>
+          <p>
+            Get a structured overview and key points instead of a generic
+            paragraph. Use this when you need to understand a long contract,
+            policy, or report quickly without reading every page first.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Review
+          </h2>
+          <p>
+            Surfaces items that may need attention, with evidence from the
+            document. Use this when you want potential issues, obligations, or
+            unusual clauses called out rather than a high-level summary.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Extract
+          </h2>
+          <p>
+            Pulls dates, amounts, parties, obligations, and other fields into
+            tables. Use this when you need structured data from a document
+            rather than prose.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Compare
+          </h2>
+          <p>
+            Place two documents side by side and highlight what changed. Useful
+            for contract versions, policy revisions, or redlines you do not want
+            to send to a public chatbot.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Timeline
+          </h2>
+          <p>
+            Build a chronology across up to three files in a session. Use this
+            for matters, projects, or reports where dates and sequence matter.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Ask
+          </h2>
+          <p>
+            Question the document and get grounded answers that point back to
+            the source. For longer texts, PIA builds a lightweight search index
+            so the model sees the most relevant passages instead of the whole
+            file. In Standard mode that indexing happens in your browser too.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="font-display text-xl text-text-primary tracking-tight">
+            Standard vs Deep Analysis
+          </h2>
+          <p>
+            In Standard mode the AI runs entirely in your browser. Your document
+            never leaves your device. We use open models that load and run
+            locally, so even the content sent to the model stays on your
+            machine. There is no server logging your text or training on it.
+          </p>
+          <p>
+            If you use Deep Analysis, we encrypt your request to our API,
+            decrypt it in memory, and send the needed text over TLS to
+            privacy-constrained AI providers. We do not store your document or
+            prompts. Providers process content for the request under their
+            published policies; we do not use it for training. Refreshing the
+            page clears everything from the app.
+          </p>
+        </section>
+
         <p>
-          You then choose a workflow:{" "}
-          <strong className="text-text-primary">Summarize</strong> gives a
-          structured overview and key points;{" "}
-          <strong className="text-text-primary">Review</strong> surfaces items
-          that may need attention with evidence;{" "}
-          <strong className="text-text-primary">Extract</strong> pulls dates,
-          amounts, obligations, and more into tables;{" "}
-          <strong className="text-text-primary">Ask</strong> lets you question
-          the document with grounded answers. You can also
-          <strong className="text-text-primary">Compare</strong> two documents or build a
-          <strong className="text-text-primary">Timeline</strong> across up to three files in a session. Results appear next to your doc.
-          No account is required for the standard, in-browser version.
-        </p>
-        <p>
-          In standard mode, the AI runs entirely in your browser. Your document
-          never leaves your device. We use open models that load and run
-          locally, so even the content we send to the model stays on your
-          machine. That’s why it’s private: there’s no server logging your text
-          or training on it.
-        </p>
-        <p>
-          If you use Deep Analysis, we encrypt your request to our API, decrypt
-          it in memory, and send the needed text over TLS to privacy-constrained AI
-          providers listed in our{" "}
-          <a href="/trust-center#ai-subprocessors" className="text-accent underline">
-            Trust Center
-          </a>
-          . We do not store your document or prompts. Providers process content
-          for the request under their published policies; we do not use it for
-          training. When you’re done, refreshing the page clears everything from
-          the app.
-        </p>
-        <p>
-          The app also builds a lightweight search index over your document so
-          that for longer texts we can pull the most relevant passages into the
-          AI’s context instead of sending the whole thing. That keeps responses
-          focused and accurate without changing the privacy story: in standard
-          mode that indexing happens in your browser too.
-        </p>
-        <p>
-          In short: add a doc, pick summarize or explain or chat, get your
-          result. Your data stays private, and when you close or refresh, it’s
-          gone.
+          In short: add a doc, pick a workflow, get a result. Your data stays
+          private, and when you close or refresh, it’s gone.{" "}
+          <Link href="/who-is-this-for" className="text-accent underline">
+            See who this is for
+          </Link>{" "}
+          if you work with contracts, reports, or unpublished drafts.
         </p>
       </div>
     </SimplePageLayout>
+    </>
   );
 }
-

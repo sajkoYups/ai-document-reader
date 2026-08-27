@@ -1,10 +1,24 @@
 import type { Metadata } from "next";
-import ClerkWrapper from "@/components/ClerkWrapper";
+import { DM_Mono, DM_Sans } from "next/font/google";
 import CookieBanner from "@/components/CookieBanner";
+import { getSiteUrl, OG_IMAGE, SEO_CONFIG, siteJsonLd } from "@/seo";
 import "./globals.css";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://doc-analyzer.example.com";
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-dm-sans",
+});
+
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-dm-mono",
+});
+
+const siteUrl = getSiteUrl();
+const home = SEO_CONFIG["/"];
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -18,46 +32,30 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   title: {
-    default: "Private AI Document Analysis | PIA",
+    default: home.title,
     template: "%s | PIA",
   },
-  description:
-    "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis. No account for Standard mode; PIA does not store documents.",
+  description: home.description,
+  alternates: {
+    canonical: siteUrl,
+  },
   openGraph: {
     type: "website",
     url: siteUrl,
-    title: "Private AI Document Analysis | PIA",
-    description:
-      "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis.",
+    title: home.title,
+    description: home.description,
     siteName: "PIA",
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Private AI Document Analysis | PIA",
-    description:
-      "Analyze documents with AI privately. Summarize, Review, Extract, or Ask — structured results in your browser or via Deep Analysis.",
+    title: home.title,
+    description: home.description,
+    images: [OG_IMAGE.url],
   },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": `${siteUrl}#website`,
-      url: siteUrl,
-      name: "PIA",
-      description:
-        "Analyze documents with AI privately in your browser or via a privacy-conscious API.",
-    },
-    {
-      "@type": "Organization",
-      "@id": `${siteUrl}#organization`,
-      name: "Yups",
-      url: siteUrl,
-    },
-  ],
-};
+const jsonLd = siteJsonLd();
 
 export default function RootLayout({
   children,
@@ -65,21 +63,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${dmSans.variable} ${dmMono.variable}`}>
       <body className="bg-surface-0 text-text-primary">
-        <ClerkWrapper>
-          <script
-            type="application/ld+json"
-            // eslint-disable-next-line react/no-danger
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            suppressHydrationWarning
-          />
-          <CookieBanner />
-          {children}
-        </ClerkWrapper>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <CookieBanner />
+        {children}
       </body>
     </html>
   );
 }
-
-
