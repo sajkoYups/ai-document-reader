@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import MarketingHeader from "@/components/MarketingHeader";
+import WaitlistCta from "@/components/WaitlistCta";
 import { pageMetadata } from "@/seo";
 
 export const metadata = pageMetadata("/");
@@ -153,12 +154,9 @@ export default function HomePage() {
             >
               See pricing →
             </Link>
-            <Link
-              href="/app"
-              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
-            >
+            <WaitlistCta className="text-sm text-text-secondary hover:text-text-primary transition-colors">
               Join the waitlist
-            </Link>
+            </WaitlistCta>
           </div>
         </section>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import MarketingHeader from "@/components/MarketingHeader";
+import WaitlistCta from "@/components/WaitlistCta";
 import { faqJsonLd, pageMetadata, PRICING_FAQS } from "@/seo";
 
 export const metadata = pageMetadata("/pricing");
@@ -185,8 +186,7 @@ export default function PricingPage() {
                 </div>
 
                 <div className="mt-auto pt-2">
-                  <Link
-                    href="/app"
+                  <WaitlistCta
                     className={`inline-flex items-center justify-center w-full px-4 py-2 rounded-lg text-sm font-medium transition-opacity ${
                       tier.highlight
                         ? "bg-accent text-surface-0 hover:opacity-90"
@@ -194,7 +194,7 @@ export default function PricingPage() {
                     }`}
                   >
                     Join the waitlist
-                  </Link>
+                  </WaitlistCta>
                 </div>
               </div>
             ))}
