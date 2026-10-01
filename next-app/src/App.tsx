@@ -53,6 +53,7 @@ import DebugPanel, {
 import { TourProvider, useTour } from "@reactour/tour";
 import { ONBOARDING_STEPS, mobilePaneForTourStep } from "@/lib/tourSteps";
 import { AppOnboardingProvider, useAppOnboarding } from "./components/AppOnboarding";
+import HostedWaitlistPrompt from "./components/HostedWaitlistPrompt";
 import WorkflowSelector from "./components/workflows/WorkflowSelector";
 import SourcesPanel from "./components/workflows/SourcesPanel";
 import ExtractSubmenu from "./components/workflows/ExtractSubmenu";
@@ -1368,6 +1369,8 @@ function AppContent() {
           </div>
         </div>
       )}
+
+      <HostedWaitlistPrompt />
     </Layout>
   );
 }

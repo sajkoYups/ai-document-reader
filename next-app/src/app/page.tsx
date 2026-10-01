@@ -143,7 +143,8 @@ export default function HomePage() {
                   Trust Center
                 </Link>
                 . Plans start at{" "}
-                <strong className="text-text-primary">€9/month</strong>.
+                <strong className="text-text-primary">€9/month</strong>. The €9
+                plan is free until 31 October 2026.
               </p>
             </div>
           </div>

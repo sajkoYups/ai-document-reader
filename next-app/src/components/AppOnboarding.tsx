@@ -45,9 +45,11 @@ export function AppOnboardingProvider({ children }: AppOnboardingProviderProps) 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const completed = window.localStorage.getItem(STORAGE_KEY) === "true";
-    if (!completed) {
-      setIsOpen(true);
+    if (completed) {
+      setHasCompleted(true);
+      return;
     }
+    setIsOpen(true);
   }, [setIsOpen]);
 
   useEffect(() => {
@@ -55,6 +57,7 @@ export function AppOnboardingProvider({ children }: AppOnboardingProviderProps) 
     prevOpenRef.current = isOpen;
     if (wasOpen && !isOpen && typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, "true");
+      setHasCompleted(true);
     }
   }, [isOpen]);
 

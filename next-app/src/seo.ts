@@ -266,7 +266,7 @@ export const PRICING_FAQS: PricingFaq[] = [
   {
     question: "Can I start for free?",
     answer:
-      "Yes. Private Mode is free forever, with no usage limits and no sign-up. Join the Deep Analysis waitlist when you need a stronger server-side model.",
+      "Yes. Private Mode is free forever, with no usage limits and no sign-up. Join the Deep Analysis waitlist when you need a stronger server-side model. The €9 Lite plan is free during the testing period, through 31 October 2026.",
   },
 ];
 
