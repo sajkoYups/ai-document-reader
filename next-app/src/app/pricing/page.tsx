@@ -12,14 +12,17 @@ const deepAnalysisTiers = [
     price: "€9",
     volume: "10 analyses / month",
     bestFor: "Best for entry users exploring AI document analysis",
-    highlight: false,
+    highlight: true,
+    promo: "Free until 31 Oct",
+    promoNote:
+      "The €9 Lite plan is free during the testing period, through 31 October 2026.",
   },
   {
     name: "Starter",
     price: "€29",
     volume: "75 analyses / month",
     bestFor: "Best for regular users with ongoing document workflows",
-    highlight: true,
+    highlight: false,
   },
   {
     name: "Pro",
@@ -158,9 +161,9 @@ export default function PricingPage() {
                     : "border-border bg-surface-1"
                 }`}
               >
-                {tier.highlight ? (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent text-surface-0">
-                    Most popular
+                {"promo" in tier ? (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent text-surface-0 whitespace-nowrap">
+                    {tier.promo}
                   </span>
                 ) : null}
 
@@ -183,6 +186,11 @@ export default function PricingPage() {
                   <p className="text-xs text-text-secondary leading-relaxed">
                     {tier.bestFor}
                   </p>
+                  {"promoNote" in tier ? (
+                    <p className="text-xs text-accent leading-relaxed pt-1">
+                      {tier.promoNote}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="mt-auto pt-2">

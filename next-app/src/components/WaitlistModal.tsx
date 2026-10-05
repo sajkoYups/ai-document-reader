@@ -153,7 +153,8 @@ export default function WaitlistModal({ open, onClose }: WaitlistModalProps) {
               you when a spot opens.
             </p>
             <p className="text-xs text-text-muted">
-              Deep Analysis is a paid feature — plans start at{" "}
+              The €9 Lite plan is free to try through 31 October 2026. After
+              that, plans start at{" "}
               <strong className="text-text-secondary">€9/month</strong>.{" "}
               <Link
                 href="/pricing"

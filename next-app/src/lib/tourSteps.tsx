@@ -1,8 +1,29 @@
 "use client";
 
 import type { StepType } from "@reactour/tour";
+import WaitlistCta from "@/components/WaitlistCta";
 
 export const ONBOARDING_STEPS: StepType[] = [
+  {
+    selector: '[data-tour-id="output-section"]',
+    position: "center",
+    content: (
+      <div className="space-y-3">
+        <h3 className="font-display text-xl text-text-primary">
+          You&apos;re on the on-device model
+        </h3>
+        <p className="text-base text-text-secondary leading-relaxed">
+          Analysis runs locally in this browser. Your document stays on this
+          device. The hosted model is far more capable on long documents and
+          fine detail. Join the waitlist for a free testing period through 31
+          October 2026.
+        </p>
+        <WaitlistCta className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-accent text-white hover:opacity-90 transition-opacity">
+          Join the waitlist
+        </WaitlistCta>
+      </div>
+    ),
+  },
   {
     selector: '[data-tour-id="output-section"]',
     position: "center",
