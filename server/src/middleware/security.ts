@@ -33,6 +33,7 @@ export function applySecurity(app: Express): void {
 
   app.use("/api/analyze", limiter);
   app.use("/api/chat", limiter);
+  app.use("/api/ocr", limiter);
 
   app.use((_req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");

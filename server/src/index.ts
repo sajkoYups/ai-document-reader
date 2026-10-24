@@ -7,6 +7,7 @@ import { analyzeRouter } from "./routes/analyze.js";
 import { chatRouter } from "./routes/chat.js";
 import { sessionRouter } from "./routes/session.js";
 import { healthRouter } from "./routes/health.js";
+import { ocrRouter } from "./routes/ocr.js";
 import { startSessionCleanup } from "./services/cryptoService.js";
 
 const app = express();
@@ -34,6 +35,7 @@ app.use("/api/health", healthRouter);
 app.use("/api/session", sessionRouter);
 app.use("/api/analyze", analyzeRouter);
 app.use("/api/chat", chatRouter);
+app.use("/api/ocr", ocrRouter);
 
 startSessionCleanup();
 

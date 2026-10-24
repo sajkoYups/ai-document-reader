@@ -9,6 +9,7 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import WaitlistModal from "./components/WaitlistModal";
+import ImagePdfUpgradeModal from "./components/ImagePdfUpgradeModal";
 import FeedbackModal from "./components/FeedbackModal";
 import UsagePanel from "./components/UsagePanel";
 import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage } from "@/types";
@@ -23,7 +24,7 @@ import { useSessionCleanup } from "@/hooks/useSessionCleanup";
 import { checkBrowserCompatibility } from "@/lib/compatibility";
 import { isLikelyMobileDevice } from "@/lib/deviceUtils";
 import { validateFileSize, getSupportedFileType } from "@/lib/documentParser";
-import { extractTextFromPdf } from "@/lib/pdfExtractor";
+import { extractTextFromPdf, MAX_OCR_PAGES, renderPdfPagesAsJpeg } from "@/lib/pdfExtractor";
 import {
   buildChatHistory,
   assembleContext,
@@ -39,7 +40,7 @@ import {
   truncateDocumentForApiChat,
 } from "@/lib/contextBudget";
 import { estimateTokenCount, MAX_ON_DEVICE_TOKENS } from "@/lib/tokenEstimate";
-import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
+import { checkApiHealth, chatViaApi, ocrViaApi } from "@/lib/apiClient";
 import Layout from "./components/Layout";
 import PrivacyBadge from "./components/PrivacyBadge";
 import ModeToggle from "./components/ModeToggle";
@@ -101,6 +102,9 @@ function AppContent() {
     extractType?: ExtractType;
   } | null>(null);
   const [mobilePane, setMobilePane] = useState<"workflows" | "sources" | null>(null);
+  const [imagePdfOpen, setImagePdfOpen] = useState(false);
+  const [imagePdfWaitlistOpen, setImagePdfWaitlistOpen] = useState(false);
+  const [imageReadNotice, setImageReadNotice] = useState<string | null>(null);
   const tourPane = tourOpen ? mobilePaneForTourStep(currentStep) : null;
   const openPane = tourOpen ? tourPane : mobilePane;
   const lastIndexedText = useRef<string>("");
@@ -226,68 +230,7 @@ function AppContent() {
     );
   }, [hasDocument, doc.rawText, doc.fileName, language]);
 
-  const handleFile = useCallback(
-    async (file: File) => {
-      const sizeError = validateFileSize(file);
-      if (sizeError) {
-        doc.setError(sizeError);
-        showToast(sizeError, "error");
-        return;
-      }
-
-      const fileType = getSupportedFileType(file);
-      if (!fileType) {
-        const msg =
-          "Unsupported file type. Please upload a PDF, TXT, or Markdown file.";
-        doc.setError(msg);
-        showToast(msg, "error");
-        return;
-      }
-
-      try {
-        let text: string;
-        let pageCount: number | undefined;
-        let pages: { pageNumber: number; startChar: number; endChar: number }[] | undefined;
-        if (fileType === "pdf") {
-          const extracted = await extractTextFromPdf(file);
-          text = extracted.text;
-          pageCount = extracted.pageCount;
-          pages = extracted.pages;
-        } else {
-          text = await file.text();
-        }
-
-        if (!text.trim()) {
-          doc.setError("Could not extract text from this file.");
-          return;
-        }
-
-        if (useDocumentStore.getState().documents.length === 0) {
-          doc.setFromFile(text, file.name, fileType, { pageCount, pages });
-          useSessionStore.getState().clear();
-          useChatStore.getState().clear();
-          workflowRun.reset();
-          setEvidenceById({});
-          setDebugInfo(null);
-          setActiveRun(null);
-        } else {
-          const result = doc.addFromFile(text, file.name, fileType, { pageCount, pages });
-          if (!result.ok) {
-            showToast(result.error, "error");
-            return;
-          }
-        }
-        setClassification(null);
-        showToast(`Loaded ${file.name}`, "success");
-      } catch {
-        doc.setError("Failed to read file. It may be corrupted or encrypted.");
-        showToast("Failed to read file", "error");
-      }
-    },
-    [doc, workflowRun],
-  );
-
-  const loadFileText = async (file: File) => {
+  const loadFileText = useCallback(async (file: File) => {
     const sizeError = validateFileSize(file);
     if (sizeError) {
       doc.setError(sizeError);
@@ -310,20 +253,87 @@ function AppContent() {
         text = extracted.text;
         pageCount = extracted.pageCount;
         pages = extracted.pages;
+        if (!text.trim()) {
+          const canOcr = processingMode === "api" && isSignedIn === true;
+          if (!canOcr) {
+            doc.setError(null);
+            setImagePdfOpen(true);
+            return null;
+          }
+          if (extracted.pageCount > MAX_OCR_PAGES) {
+            const msg = `This scanned PDF has ${extracted.pageCount} pages. Deep Analysis can read up to ${MAX_OCR_PAGES}.`;
+            doc.setError(msg);
+            showToast(msg, "error");
+            return null;
+          }
+          try {
+            setImageReadNotice("Reading page images…");
+            const images = await renderPdfPagesAsJpeg(file, (done, total) => {
+              setImageReadNotice(`Preparing page images… ${done}/${total}`);
+            });
+            setImageReadNotice("Reading page images on the server…");
+            const ocr = await ocrViaApi(images, language);
+            text = ocr.text;
+            pageCount = ocr.pageCount;
+            pages = ocr.pages;
+          } catch {
+            doc.setError("Could not read this scanned PDF. Try again.");
+            showToast("Could not read this scanned PDF", "error");
+            return null;
+          }
+          if (!text.trim()) {
+            doc.setError("Could not extract text from this file.");
+            return null;
+          }
+        }
       } else {
         text = await file.text();
-      }
-      if (!text.trim()) {
-        doc.setError("Could not extract text from this file.");
-        return null;
+        if (!text.trim()) {
+          doc.setError("Could not extract text from this file.");
+          return null;
+        }
       }
       return { text, fileType, pageCount, pages };
     } catch {
       doc.setError("Failed to read file. It may be corrupted or encrypted.");
       showToast("Failed to read file", "error");
       return null;
+    } finally {
+      setImageReadNotice(null);
     }
-  };
+  }, [doc, isSignedIn, language, processingMode]);
+
+  const handleFile = useCallback(
+    async (file: File) => {
+      const loaded = await loadFileText(file);
+      if (!loaded) return;
+
+      if (useDocumentStore.getState().documents.length === 0) {
+        doc.setFromFile(loaded.text, file.name, loaded.fileType, {
+          pageCount: loaded.pageCount,
+          pages: loaded.pages,
+        });
+        useSessionStore.getState().clear();
+        useChatStore.getState().clear();
+        workflowRun.reset();
+        setEvidenceById({});
+        setDebugInfo(null);
+        setActiveRun(null);
+      } else {
+        const result = doc.addFromFile(loaded.text, file.name, loaded.fileType, {
+          pageCount: loaded.pageCount,
+          pages: loaded.pages,
+        });
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+      }
+      setClassification(null);
+      showToast(`Loaded ${file.name}`, "success");
+    },
+    [doc, loadFileText, workflowRun],
+  );
 
   const handleAddFile = useCallback(async (file: File) => {
     if (useDocumentStore.getState().documents.length >= MAX_SESSION_DOCUMENTS) {
@@ -341,7 +351,7 @@ function AppContent() {
       return;
     }
     showToast(`Added ${file.name}`, "success");
-  }, [doc, language]);
+  }, [doc, language, loadFileText]);
 
   const handleReplaceFile = useCallback(async (id: string, file: File) => {
     const loaded = await loadFileText(file);
@@ -356,7 +366,7 @@ function AppContent() {
       documentName: file.name,
     });
     showToast(`Replaced with ${file.name}`, "success");
-  }, [doc, embedding]);
+  }, [doc, embedding, loadFileText]);
 
   const MAX_DIRECT_CHARS = 10000;
 
@@ -1279,6 +1289,7 @@ function AppContent() {
               compareRoles={doc.compareRoles}
               pasteValue={doc.rawText}
               error={doc.error}
+              notice={imageReadNotice}
               onSelect={(id) => {
                 doc.setActive(id);
                 embedding.setActiveDocument(id);
@@ -1371,6 +1382,24 @@ function AppContent() {
       )}
 
       <HostedWaitlistPrompt />
+      <ImagePdfUpgradeModal
+        open={imagePdfOpen}
+        signedIn={isSignedIn === true}
+        onClose={() => setImagePdfOpen(false)}
+        onJoinWaitlist={() => {
+          setImagePdfOpen(false);
+          setImagePdfWaitlistOpen(true);
+        }}
+        onSwitchToDeep={() => {
+          setProcessingMode("api");
+          setImagePdfOpen(false);
+          showToast("Deep Analysis is on. Upload the PDF again.", "info");
+        }}
+      />
+      <WaitlistModal
+        open={imagePdfWaitlistOpen}
+        onClose={() => setImagePdfWaitlistOpen(false)}
+      />
     </Layout>
   );
 }

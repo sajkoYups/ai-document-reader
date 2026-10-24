@@ -18,6 +18,7 @@ interface SourcesPanelProps {
   compareRoles?: CompareRoles;
   pasteValue: string;
   error: string | null;
+  notice?: string | null;
   onSelect: (id: string) => void;
   onFile: (file: File) => void;
   onAdd: (file: File) => void;
@@ -50,6 +51,7 @@ export default function SourcesPanel({
   compareRoles,
   pasteValue,
   error,
+  notice,
   onSelect,
   onFile,
   onAdd,
@@ -109,6 +111,11 @@ export default function SourcesPanel({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
+        {notice ? (
+          <div className="px-3 py-2 bg-accent-dim border border-accent-border rounded-lg text-xs text-text-secondary">
+            {notice}
+          </div>
+        ) : null}
         {empty ? (
           <>
             <FileUpload onFile={onFile} compact data-tour-id="file-upload" />

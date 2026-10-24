@@ -96,33 +96,107 @@ export interface PdfExtractionResult {
   pages: PdfPageSpan[];
 }
 
+export const MAX_OCR_PAGES = 20;
+
+export interface PdfPageImage {
+  pageNumber: number;
+  jpegBase64: string;
+}
+
 export async function extractTextFromPdf(file: File): Promise<PdfExtractionResult> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const parts: string[] = [];
-  const pages: PdfPageSpan[] = [];
-  let cursor = 0;
+  try {
+    const parts: string[] = [];
+    const pages: PdfPageSpan[] = [];
+    let cursor = 0;
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = assemblePageText(textContent.items).trim();
-    if (!pageText) continue;
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = assemblePageText(textContent.items).trim();
+      page.cleanup();
+      if (!pageText) continue;
 
-    const block = `[Page ${i}]\n${pageText}`;
-    if (parts.length > 0) {
-      parts.push("\n\n");
-      cursor += 2;
+      const block = `[Page ${i}]\n${pageText}`;
+      if (parts.length > 0) {
+        parts.push("\n\n");
+        cursor += 2;
+      }
+      const startChar = cursor;
+      parts.push(block);
+      cursor += block.length;
+      pages.push({ pageNumber: i, startChar, endChar: cursor });
     }
-    const startChar = cursor;
-    parts.push(block);
-    cursor += block.length;
-    pages.push({ pageNumber: i, startChar, endChar: cursor });
-  }
 
-  return {
-    text: parts.join(""),
-    pageCount: pdf.numPages,
-    pages,
-  };
+    return {
+      text: parts.join(""),
+      pageCount: pdf.numPages,
+      pages,
+    };
+  } finally {
+    await pdf.destroy();
+  }
+}
+
+function canvasToJpegBase64(canvas: HTMLCanvasElement): Promise<string> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Could not encode page image"));
+          return;
+        }
+        void blob.arrayBuffer().then((buffer) => {
+          const bytes = new Uint8Array(buffer);
+          let binary = "";
+          const chunkSize = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+          }
+          resolve(btoa(binary));
+        }, reject);
+      },
+      "image/jpeg",
+      0.7,
+    );
+  });
+}
+
+export async function renderPdfPagesAsJpeg(
+  file: File,
+  onProgress?: (done: number, total: number) => void,
+): Promise<PdfPageImage[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const total = Math.min(pdf.numPages, MAX_OCR_PAGES);
+  const images: PdfPageImage[] = [];
+
+  try {
+    for (let i = 1; i <= total; i++) {
+      const page = await pdf.getPage(i);
+      const base = page.getViewport({ scale: 1 });
+      const scale = Math.min(2, 1600 / Math.max(base.width, base.height));
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const canvasContext = canvas.getContext("2d");
+      if (!canvasContext) {
+        throw new Error("Could not prepare a page image");
+      }
+      await page.render({ canvas, canvasContext, viewport, background: "white" }).promise;
+      images.push({
+        pageNumber: i,
+        jpegBase64: await canvasToJpegBase64(canvas),
+      });
+      page.cleanup();
+      canvas.width = 0;
+      canvas.height = 0;
+      onProgress?.(i, total);
+    }
+    return images;
+  } finally {
+    await pdf.destroy();
+  }
 }

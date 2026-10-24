@@ -79,6 +79,29 @@ export function validateAnalyzeRequest(
   return { success: true, data: result.data };
 }
 
+const ocrRequestSchema = z.object({
+  outputLanguage: outputLanguageEnum.optional().default("en"),
+  pages: z
+    .array(
+      z.object({
+        pageNumber: z.number().int().min(1).max(500),
+        jpegBase64: z.string().min(1).max(1_800_000),
+      }),
+    )
+    .min(1)
+    .max(20),
+});
+
+export function validateOcrRequest(
+  body: unknown,
+): ValidationResult<z.infer<typeof ocrRequestSchema>> {
+  const result = ocrRequestSchema.safeParse(body);
+  if (!result.success) {
+    return { success: false, error: result.error.message };
+  }
+  return { success: true, data: result.data };
+}
+
 export function validateChatRequest(
   body: unknown,
 ): ValidationResult<z.infer<typeof chatRequestSchema>> {
