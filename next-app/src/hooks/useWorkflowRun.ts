@@ -227,7 +227,12 @@ export function useWorkflowRun() {
   };
 
   const streamOnce = useCallback(
-    async (args: RunArgs, repairOf?: string) => {
+    async (
+      args: RunArgs,
+      options?: { repairOf?: string; metered?: boolean },
+    ) => {
+      const repairOf = options?.repairOf;
+      const metered = options?.metered ?? !repairOf;
       const taskType = workflowToTaskType(args.workflowId);
       const documentText = repairOf
         ? `${args.documentText}\n\n${repairOf}`
@@ -242,6 +247,7 @@ export function useWorkflowRun() {
           {
             workflowId: args.workflowId,
             jsonMode: true,
+            metered,
             workflowParams: {
               extractType: args.extractType,
               customQuery: args.customQuery,
@@ -288,7 +294,7 @@ export function useWorkflowRun() {
           documentChars: args.documentText.length,
           extractType: args.extractType ?? null,
         });
-        const full = await streamOnce(args);
+        const full = await streamOnce(args, { metered: true });
         if (cancelled.current) return;
         logWorkflow("run:stream-done", {
           attempt: "first",
@@ -324,7 +330,7 @@ export function useWorkflowRun() {
           first.error,
           full,
         );
-        const repaired = await streamOnce(args, repair);
+        const repaired = await streamOnce(args, { repairOf: repair, metered: false });
         if (cancelled.current) return;
         logWorkflow("run:stream-done", {
           attempt: "repair",
@@ -371,7 +377,7 @@ export function useWorkflowRun() {
       setRaw("");
       try {
         const prompt = getRefinePrompt(JSON.stringify(draft), extraContext);
-        const full = await streamOnce(args, prompt);
+        const full = await streamOnce(args, { repairOf: prompt, metered: false });
         if (cancelled.current) return;
         const finished = finishWith(full, args.schema, args.workflowId, "repair");
         if (finished.ok) return { ok: true as const, data: finished.data };

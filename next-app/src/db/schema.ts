@@ -12,6 +12,6 @@ export const tokenUsage = pgTable("token_usage", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: text("user_id").notNull(),
   estimatedTokens: integer("estimated_tokens").notNull(),
-  callType: text("call_type").notNull(), // 'analyze' | 'chat'
+  callType: text("call_type").notNull(), // 'analyze' | 'analyze_assist' | 'chat'
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

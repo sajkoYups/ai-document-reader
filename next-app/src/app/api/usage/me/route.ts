@@ -2,7 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tokenUsage } from "@/db/schema";
-import { eq, sum, count, sql } from "drizzle-orm";
+import { quotaFromCount } from "@/lib/analysisQuota";
+import { and, eq, sum, count, sql } from "drizzle-orm";
 
 export async function GET(): Promise<Response> {
   const { userId } = await auth();
@@ -10,36 +11,48 @@ export async function GET(): Promise<Response> {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [totals] = await db
-    .select({
-      totalTokens: sum(tokenUsage.estimatedTokens),
-      totalCalls: count(tokenUsage.id),
-    })
-    .from(tokenUsage)
-    .where(eq(tokenUsage.userId, userId));
+  const [totalsRows, breakdown, activity, monthlyRows] = await Promise.all([
+    db
+      .select({
+        totalTokens: sum(tokenUsage.estimatedTokens),
+        totalCalls: count(tokenUsage.id),
+      })
+      .from(tokenUsage)
+      .where(eq(tokenUsage.userId, userId)),
+    db
+      .select({
+        callType: tokenUsage.callType,
+        tokens: sum(tokenUsage.estimatedTokens),
+        calls: count(tokenUsage.id),
+      })
+      .from(tokenUsage)
+      .where(eq(tokenUsage.userId, userId))
+      .groupBy(tokenUsage.callType),
+    db
+      .select({
+        day: sql<string>`DATE(created_at)`,
+        tokens: sum(tokenUsage.estimatedTokens),
+      })
+      .from(tokenUsage)
+      .where(
+        sql`user_id = ${userId} AND created_at >= NOW() - INTERVAL '30 days'`,
+      )
+      .groupBy(sql`DATE(created_at)`)
+      .orderBy(sql`DATE(created_at)`),
+    db
+      .select({ analyses: count(tokenUsage.id) })
+      .from(tokenUsage)
+      .where(
+        and(
+          eq(tokenUsage.userId, userId),
+          eq(tokenUsage.callType, "analyze"),
+          sql`${tokenUsage.createdAt} >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
+        ),
+      ),
+  ]);
 
-  const breakdown = await db
-    .select({
-      callType: tokenUsage.callType,
-      tokens: sum(tokenUsage.estimatedTokens),
-      calls: count(tokenUsage.id),
-    })
-    .from(tokenUsage)
-    .where(eq(tokenUsage.userId, userId))
-    .groupBy(tokenUsage.callType);
-
-  // Last 30 days activity (daily buckets)
-  const activity = await db
-    .select({
-      day: sql<string>`DATE(created_at)`,
-      tokens: sum(tokenUsage.estimatedTokens),
-    })
-    .from(tokenUsage)
-    .where(
-      sql`user_id = ${userId} AND created_at >= NOW() - INTERVAL '30 days'`,
-    )
-    .groupBy(sql`DATE(created_at)`)
-    .orderBy(sql`DATE(created_at)`);
+  const totals = totalsRows[0];
+  const monthly = monthlyRows[0];
 
   return NextResponse.json({
     totalTokens: Number(totals?.totalTokens ?? 0),
@@ -53,5 +66,6 @@ export async function GET(): Promise<Response> {
       day: a.day,
       tokens: Number(a.tokens ?? 0),
     })),
+    quota: quotaFromCount(Number(monthly?.analyses ?? 0)),
   });
 }

@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  quotaNotice,
+  type AnalysisQuota,
+} from "@/lib/analysisQuota";
 
 interface UsageData {
   totalTokens: number;
   totalCalls: number;
   breakdown: Array<{ callType: string; tokens: number; calls: number }>;
   activity: Array<{ day: string; tokens: number }>;
+  quota?: AnalysisQuota;
 }
 
 type Status = "loading" | "loaded" | "error";
@@ -22,14 +27,14 @@ function StatCard({
 }) {
   return (
     <div className="rounded-xl border border-[--clerk-border] bg-[--clerk-bg-surface-2] px-4 py-3 space-y-0.5">
-      <p className="text-xs text-text-muted font-medium uppercase tracking-wide">
+      <p className="text-xs text-black font-medium uppercase tracking-wide">
         {label}
       </p>
-      <p className="text-2xl font-semibold text-text-primary leading-tight">
+      <p className="text-2xl font-semibold text-black leading-tight">
         {value}
       </p>
       {sub && (
-        <p className="text-xs text-text-secondary">{sub}</p>
+        <p className="text-xs text-black">{sub}</p>
       )}
     </div>
   );
@@ -65,7 +70,7 @@ export default function UsagePanel() {
 
   if (status === "loading") {
     return (
-      <div className="py-8 text-center text-sm text-text-secondary">
+      <div className="py-8 text-center text-sm text-black">
         Loading usage data…
       </div>
     );
@@ -73,7 +78,7 @@ export default function UsagePanel() {
 
   if (status === "error" || !data) {
     return (
-      <div className="py-8 text-center text-sm text-text-secondary">
+      <div className="py-8 text-center text-sm text-black">
         Could not load usage data. Please try again later.
       </div>
     );
@@ -81,19 +86,42 @@ export default function UsagePanel() {
 
   const analyzeBreakdown = data.breakdown.find((b) => b.callType === "analyze");
   const chatBreakdown = data.breakdown.find((b) => b.callType === "chat");
+  const quota = data.quota;
+  const notice = quota ? quotaNotice(quota) : null;
+  const includedLeft = quota
+    ? Math.max(0, quota.included - quota.monthlyAnalyses)
+    : 0;
 
   return (
     <div className="space-y-6 py-2">
       <div>
-        <h2 className="text-base font-semibold text-text-primary mb-1">
+        <h2 className="text-base font-semibold text-black mb-1">
           Deep Analysis usage
         </h2>
-        <p className="text-sm text-text-secondary">
-          Token counts are estimates based on document and response length.
-          Only Deep Analysis (server-side) calls are tracked — local on-device
-          processing is never sent to our servers.
+        <p className="text-sm text-black">
+          One Deep Analysis run counts as one analysis. Follow-up questions do
+          not count. Private Mode is not limited. Token counts below are
+          estimates and are not the monthly allowance.
         </p>
       </div>
+
+      {quota ? (
+        <div className="rounded-xl border border-[--clerk-border] bg-[--clerk-bg-surface-2] px-4 py-3 space-y-1">
+          <p className="text-xs text-black font-medium uppercase tracking-wide">
+            Analyses this month
+          </p>
+          <p className="text-2xl font-semibold text-black leading-tight">
+            {quota.monthlyAnalyses} of {quota.included}
+          </p>
+          <p className="text-xs text-black">
+            {notice
+              ? notice
+              : includedLeft === 1
+                ? "1 included analysis left this month."
+                : `${includedLeft} included analyses left this month.`}
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3">
         <StatCard
@@ -110,7 +138,7 @@ export default function UsagePanel() {
 
       {data.breakdown.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+          <p className="text-xs font-medium uppercase tracking-wide text-black">
             Breakdown by type
           </p>
           <div className="rounded-xl border border-[--clerk-border] overflow-hidden">
@@ -136,11 +164,11 @@ export default function UsagePanel() {
                       : ""
                   }`}
                 >
-                  <span className="flex items-center gap-2 text-text-secondary">
+                  <span className="flex items-center gap-2 text-black">
                     <span>{row.icon}</span>
                     {row.label}
                   </span>
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-black">
                     {formatTokens(row.data!.tokens)} tokens &middot;{" "}
                     {row.data!.calls} calls
                   </span>
@@ -152,7 +180,7 @@ export default function UsagePanel() {
 
       {data.activity.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+          <p className="text-xs font-medium uppercase tracking-wide text-black">
             Last 30 days
           </p>
           <MiniChart activity={data.activity} />
@@ -161,14 +189,14 @@ export default function UsagePanel() {
 
       {data.totalCalls === 0 && (
         <div className="rounded-xl border border-[--clerk-border] px-4 py-6 text-center">
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-black">
             No Deep Analysis calls yet. Switch to Deep Analysis mode in the app
             and run your first analysis to see usage here.
           </p>
         </div>
       )}
 
-      <p className="text-xs text-text-muted">
+      <p className="text-xs text-black">
         PIA does not store your documents or prompts. Only aggregate token counts
         are recorded for billing.
       </p>
@@ -198,7 +226,7 @@ function MiniChart({
           );
         })}
       </div>
-      <p className="text-xs text-text-muted mt-2 text-center">
+      <p className="text-xs text-black mt-2 text-center">
         Daily token usage (last 30 days)
       </p>
     </div>

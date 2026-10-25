@@ -10,6 +10,8 @@ import type { OutputLanguage, PageSpan, TaskType } from "@/types";
 export interface AnalyzeApiOptions {
   workflowId?: string;
   jsonMode?: boolean;
+  /** False for automatic repair/refine. Omitted calls count toward the monthly cap. */
+  metered?: boolean;
   workflowParams?: {
     extractType?: string;
     customQuery?: string;
@@ -132,6 +134,7 @@ export async function analyzeViaApi(
     workflowId: options?.workflowId,
     jsonMode: options?.jsonMode,
     workflowParams: options?.workflowParams,
+    ...(options?.metered === undefined ? {} : { metered: options.metered }),
   });
 
   const response = await fetch(`${API_BASE_URL}/api/analyze`, {
@@ -141,8 +144,17 @@ export async function analyzeViaApi(
   });
 
   if (!response.ok) {
-    const error = await response.text().catch(() => "Request failed");
-    throw new Error(`Analysis failed (${response.status}): ${error}`);
+    const raw = await response.text().catch(() => "Request failed");
+    let message = raw.trim() || "Request failed";
+    try {
+      const parsed = JSON.parse(raw) as { error?: unknown };
+      if (typeof parsed.error === "string" && parsed.error.trim()) {
+        message = parsed.error.trim();
+      }
+    } catch {
+      // Plain-text error body.
+    }
+    throw new Error(message);
   }
 
   return processSSEStream(response, onToken);

@@ -251,7 +251,7 @@ export const PRICING_FAQS: PricingFaq[] = [
   {
     question: "What counts as an analysis?",
     answer:
-      "Plans include a monthly number of analyses. Very long documents may count as more than one analysis because usage is measured by token volume internally. Your exact usage is visible in your account dashboard.",
+      "One Deep Analysis workflow run counts as one analysis. Follow-up questions do not count. Your usage this month is visible in your account Usage page.",
   },
   {
     question: "Do I need an account to use PIA?",

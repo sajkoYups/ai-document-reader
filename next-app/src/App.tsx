@@ -40,6 +40,8 @@ import {
   truncateDocumentForApiChat,
 } from "@/lib/contextBudget";
 import { estimateTokenCount, MAX_ON_DEVICE_TOKENS } from "@/lib/tokenEstimate";
+import { quotaNotice, type AnalysisQuota } from "@/lib/analysisQuota";
+import RequestMoreAnalysesButton from "./components/RequestMoreAnalysesButton";
 import { checkApiHealth, chatViaApi, ocrViaApi } from "@/lib/apiClient";
 import Layout from "./components/Layout";
 import PrivacyBadge from "./components/PrivacyBadge";
@@ -105,6 +107,7 @@ function AppContent() {
   const [imagePdfOpen, setImagePdfOpen] = useState(false);
   const [imagePdfWaitlistOpen, setImagePdfWaitlistOpen] = useState(false);
   const [imageReadNotice, setImageReadNotice] = useState<string | null>(null);
+  const [analysisQuota, setAnalysisQuota] = useState<AnalysisQuota | null>(null);
   const tourPane = tourOpen ? mobilePaneForTourStep(currentStep) : null;
   const openPane = tourOpen ? tourPane : mobilePane;
   const lastIndexedText = useRef<string>("");
@@ -135,6 +138,26 @@ function AppContent() {
   useEffect(() => {
     if (!tourOpen) setMobilePane(null);
   }, [tourOpen]);
+
+  const refreshAnalysisQuota = useCallback(() => {
+    if (!isSignedIn) {
+      setAnalysisQuota(null);
+      return;
+    }
+    void fetch("/api/usage/me")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((json: { quota?: AnalysisQuota } | null) => {
+        setAnalysisQuota(json?.quota ?? null);
+      })
+      .catch(() => {
+        // Keep the last known quota. The server still enforces the cap.
+      });
+  }, [isSignedIn]);
+
+  useEffect(() => {
+    if (!isSignedIn || processingMode !== "api") return;
+    refreshAnalysisQuota();
+  }, [isSignedIn, processingMode, refreshAnalysisQuota]);
 
   useEffect(() => {
     const isMobile = isLikelyMobileDevice();
@@ -405,6 +428,11 @@ function AppContent() {
       showToast("Sign in to use Deep Analysis", "error");
       return;
     }
+    if (ai.processingMode === "api" && analysisQuota?.status === "blocked") {
+      const message = quotaNotice(analysisQuota);
+      if (message) showToast(message, "error");
+      return;
+    }
     if (isOverOnDeviceLimit) {
       showToast(
         "Document is too long for on-device analysis. Use Deep Analysis or shorten the document.",
@@ -571,6 +599,7 @@ function AppContent() {
       extractType: workflowId === "extract" ? runExtractType : undefined,
       customQuery,
     });
+    if (ai.processingMode === "api") refreshAnalysisQuota();
     if (!outcome) {
       setActiveRun(null);
       return;
@@ -640,6 +669,8 @@ function AppContent() {
     embedding,
     ai.processingMode,
     isSignedIn,
+    analysisQuota,
+    refreshAnalysisQuota,
   ]);
 
   const autoRunArmedRef = useRef(false);
@@ -961,6 +992,11 @@ function AppContent() {
 
   const [waitlistBannerOpen, setWaitlistBannerOpen] = useState(false);
 
+  const analysisQuotaNotice =
+    processingMode === "api" && analysisQuota ? quotaNotice(analysisQuota) : null;
+  const deepAnalysisBlocked =
+    processingMode === "api" && analysisQuota?.status === "blocked";
+
   if (!compat.allPassed) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center p-8">
@@ -1040,6 +1076,19 @@ function AppContent() {
             aria-live="polite"
           >
             On mobile, use Deep Analysis (API). Standard/local model is desktop-only.
+          </div>
+        ) : null}
+
+        {analysisQuotaNotice && openPane !== "workflows" ? (
+          <div
+            role="status"
+            className="shrink-0 mx-4 mt-3 px-4 py-2.5 rounded-lg bg-surface-2 border border-border text-sm text-text-secondary animate-fade-in"
+            aria-live="polite"
+          >
+            {analysisQuotaNotice}
+            {deepAnalysisBlocked ? (
+              <RequestMoreAnalysesButton className="mt-2 lg:hidden" />
+            ) : null}
           </div>
         ) : null}
 
@@ -1159,6 +1208,16 @@ function AppContent() {
                       {isOverOnDeviceLimit ? " · Too long for on-device · Use Deep Analysis." : null}
                     </p>
                   ) : null}
+                  {analysisQuotaNotice ? (
+                    <div className="space-y-2" role="status">
+                      <p className="text-xs text-text-secondary leading-snug">
+                        {analysisQuotaNotice}
+                      </p>
+                      {deepAnalysisBlocked ? (
+                        <RequestMoreAnalysesButton align="start" />
+                      ) : null}
+                    </div>
+                  ) : null}
                   {workflowRun.isProcessing ? (
                     <Button variant="secondary" size="lg" onClick={workflowRun.stop} className="w-full">
                       {t(language, "run.stop")}
@@ -1177,6 +1236,7 @@ function AppContent() {
                         !canUseDeepAnalysis ||
                         isIndexing ||
                         isOverOnDeviceLimit ||
+                        deepAnalysisBlocked ||
                         selectedDef?.status !== "ready" ||
                         session.isGenerating ||
                         (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||

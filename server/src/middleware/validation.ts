@@ -39,6 +39,8 @@ const analyzeRequestSchema = z.object({
       customQuery: z.string().max(2000).optional(),
     })
     .optional(),
+  /** Absent means the call counts toward the monthly analysis cap. */
+  metered: z.boolean().optional(),
 });
 
 const chatRequestSchema = z.object({

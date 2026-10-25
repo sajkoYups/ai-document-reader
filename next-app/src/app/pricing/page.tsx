@@ -209,10 +209,10 @@ export default function PricingPage() {
           </div>
 
           <p className="text-xs text-text-muted text-center border-t border-border pt-6">
-            Analyses are counted by token usage internally: very long documents
-            may count as more than one analysis.{" "}
+            One Deep Analysis run counts as one analysis. Follow-up questions
+            do not count toward the monthly amount.{" "}
             <span className="text-text-secondary">
-              Your exact usage is always visible in your account dashboard.
+              Your usage this month is visible in your account Usage page.
             </span>
           </p>
         </section>
