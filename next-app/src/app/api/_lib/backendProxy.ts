@@ -42,12 +42,13 @@ export async function proxyJsonPost(
   request: NextRequest,
   path: string,
 ): Promise<Response> {
+  const { userId } = await auth();
   const body = await request.text();
   const contentType = request.headers.get("content-type") ?? "application/json";
 
   const upstream = await fetch(makeBackendUrl(path), {
     method: "POST",
-    headers: buildProxyHeaders(contentType),
+    headers: buildProxyHeaders(contentType, userId ?? undefined),
     body,
     cache: "no-store",
   });

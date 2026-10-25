@@ -11,3 +11,6 @@ out
 .next
 .vercel
 .cursor
+
+# Tesseract language data, downloaded on first OCR run
+*.traineddata

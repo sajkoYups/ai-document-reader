@@ -22,7 +22,7 @@ A stronger server-side model. PIA encrypts the request to its API and does not s
 | Pro | €79 / month | 200 analyses / month |
 | Business | €299 / month | 500+ analyses / month |
 
-Analyses are counted by token usage internally. Very long documents may count as more than one analysis. Exact usage is visible in the account dashboard.
+One Deep Analysis run counts as one analysis. Follow-up questions do not count toward the monthly amount. Usage this month is visible in the account Usage page.
 
 See the live page: /pricing
 See how it works: /how-does-it-work

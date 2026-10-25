@@ -30,7 +30,19 @@ export default function HomePage() {
             <Link href="/private-ai-vs-chatgpt" className="text-accent underline">
               how private AI compares to ChatGPT
             </Link>{" "}
-            if you would not paste those files into a public chatbot.
+            if you would not paste those files into a public chatbot. For other
+            local tools, read{" "}
+            <Link href="/private-chatgpt-alternatives" className="text-accent underline">
+              private ChatGPT alternatives
+            </Link>
+            . For the PDF steps, see{" "}
+            <Link
+              href="/ai-pdf-analyzer-without-uploading"
+              className="text-accent underline"
+            >
+              how to analyze a PDF without uploading it
+            </Link>
+            .
           </p>
         </section>
 

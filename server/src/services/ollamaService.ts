@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { wrapUntrusted } from "./untrustedContent.js";
 import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.js";
 import { taskUsesJsonMode } from "../types/index.js";
 import {
@@ -618,12 +619,14 @@ export function buildInferenceMessages(
   const systemPrompt = getSystemPrompt(taskType, outputLanguage, options);
   const userCue = getLanguageUserCue(outputLanguage);
 
+  const request = options?.customQuery?.trim()
+    ? `${wrapUntrusted("Request", options.customQuery)}\n\n`
+    : "";
+
   if (taskType === "chat") {
     const messages: InferenceMessage[] = [
-      {
-        role: "system",
-        content: `${systemPrompt}\n\n--- DOCUMENT ---\n${documentText}\n--- END DOCUMENT ---`,
-      },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: `${request}${wrapUntrusted("Document", documentText)}` },
     ];
 
     if (conversationHistory) {
@@ -640,7 +643,8 @@ export function buildInferenceMessages(
     return messages;
   }
 
-  const documentWithCue = userCue ? `${userCue}\n\n${documentText}` : documentText;
+  const document = wrapUntrusted("Document", documentText);
+  const documentWithCue = userCue ? `${userCue}\n\n${request}${document}` : `${request}${document}`;
   return [
     { role: "system", content: systemPrompt },
     { role: "user", content: documentWithCue },

@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { assertRunpodBaseUrl } from "../providerPolicy.js";
 import type { InferenceOptions, OutputLanguage, TaskType } from "../types/index.js";
 import { taskUsesJsonMode } from "../types/index.js";
 import { buildInferenceMessages } from "./ollamaService.js";
@@ -23,6 +24,7 @@ export async function openRunpodChatCompletion(
   outputLanguage: OutputLanguage = "en",
   options?: InferenceOptions,
 ): Promise<Response> {
+  assertRunpodBaseUrl(config.runpod.baseUrl);
   const messages = buildInferenceMessages(
     taskType,
     documentText,
@@ -101,6 +103,7 @@ export async function* streamRunpodFromResponse(
 
 export async function checkRunpodHealth(): Promise<boolean> {
   try {
+    assertRunpodBaseUrl(config.runpod.baseUrl);
     const response = await fetch(`${config.runpod.baseUrl}/v1/models`, {
       signal: AbortSignal.timeout(5000),
     });

@@ -5,6 +5,7 @@ import type {
   ModelConfig,
 } from "@/lib/modelManager";
 import { getSystemPrompt, getLanguageUserCue } from "@/lib/prompts";
+import { assembleLocalMessages } from "@/lib/localMessages";
 import type { OutputLanguage } from "@/types";
 
 // Single pipeline instance reused for all runs. @huggingface/transformers does not
@@ -248,35 +249,27 @@ function buildMessages(
 ): Array<{ role: string; content: string }> {
   const system = getSystemPrompt(taskType, outputLanguage);
   const userCue = getLanguageUserCue(outputLanguage);
-  const userContent = userCue ? `${userCue}\n\n${text}` : text;
+  const history =
+    taskType === "chat" && conversationHistory && userCue && conversationHistory.length > 0
+      ? (() => {
+          const last = conversationHistory[conversationHistory.length - 1];
+          if (last && last.role === "user") {
+            return [
+              ...conversationHistory.slice(0, -1),
+              { ...last, content: `${userCue}\n\n${last.content}` },
+            ];
+          }
+          return conversationHistory;
+        })()
+      : conversationHistory;
 
-  if (taskType === "chat" && conversationHistory) {
-    const historyWithCue =
-      userCue && conversationHistory.length > 0
-        ? (() => {
-            const last = conversationHistory[conversationHistory.length - 1];
-            if (last.role === "user") {
-              return [
-                ...conversationHistory.slice(0, -1),
-                { ...last, content: `${userCue}\n\n${last.content}` },
-              ];
-            }
-            return conversationHistory;
-          })()
-        : conversationHistory;
-    return [
-      {
-        role: "system",
-        content: `${system}\n\n--- DOCUMENT ---\n${text}\n--- END DOCUMENT ---`,
-      },
-      ...historyWithCue,
-    ];
-  }
-
-  return [
-    { role: "system", content: system },
-    { role: "user", content: userContent },
-  ];
+  return assembleLocalMessages({
+    system,
+    taskType,
+    text,
+    userCue: taskType === "chat" ? undefined : userCue,
+    conversationHistory: history,
+  });
 }
 
 self.addEventListener("message", (e: MessageEvent<WorkerMessageToWorker>) => {

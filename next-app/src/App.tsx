@@ -9,6 +9,7 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import WaitlistModal from "./components/WaitlistModal";
+import ImagePdfUpgradeModal from "./components/ImagePdfUpgradeModal";
 import FeedbackModal from "./components/FeedbackModal";
 import UsagePanel from "./components/UsagePanel";
 import { OUTPUT_LANGUAGE_LABELS, type OutputLanguage } from "@/types";
@@ -23,7 +24,7 @@ import { useSessionCleanup } from "@/hooks/useSessionCleanup";
 import { checkBrowserCompatibility } from "@/lib/compatibility";
 import { isLikelyMobileDevice } from "@/lib/deviceUtils";
 import { validateFileSize, getSupportedFileType } from "@/lib/documentParser";
-import { extractTextFromPdf } from "@/lib/pdfExtractor";
+import { extractTextFromPdf, MAX_OCR_PAGES, renderPdfPagesAsJpeg } from "@/lib/pdfExtractor";
 import {
   buildChatHistory,
   assembleContext,
@@ -39,7 +40,9 @@ import {
   truncateDocumentForApiChat,
 } from "@/lib/contextBudget";
 import { estimateTokenCount, MAX_ON_DEVICE_TOKENS } from "@/lib/tokenEstimate";
-import { checkApiHealth, chatViaApi } from "@/lib/apiClient";
+import { quotaNotice, type AnalysisQuota } from "@/lib/analysisQuota";
+import RequestMoreAnalysesButton from "./components/RequestMoreAnalysesButton";
+import { checkApiHealth, chatViaApi, ocrViaApi } from "@/lib/apiClient";
 import Layout from "./components/Layout";
 import PrivacyBadge from "./components/PrivacyBadge";
 import ModeToggle from "./components/ModeToggle";
@@ -101,6 +104,10 @@ function AppContent() {
     extractType?: ExtractType;
   } | null>(null);
   const [mobilePane, setMobilePane] = useState<"workflows" | "sources" | null>(null);
+  const [imagePdfOpen, setImagePdfOpen] = useState(false);
+  const [imagePdfWaitlistOpen, setImagePdfWaitlistOpen] = useState(false);
+  const [imageReadNotice, setImageReadNotice] = useState<string | null>(null);
+  const [analysisQuota, setAnalysisQuota] = useState<AnalysisQuota | null>(null);
   const tourPane = tourOpen ? mobilePaneForTourStep(currentStep) : null;
   const openPane = tourOpen ? tourPane : mobilePane;
   const lastIndexedText = useRef<string>("");
@@ -131,6 +138,26 @@ function AppContent() {
   useEffect(() => {
     if (!tourOpen) setMobilePane(null);
   }, [tourOpen]);
+
+  const refreshAnalysisQuota = useCallback(() => {
+    if (!isSignedIn) {
+      setAnalysisQuota(null);
+      return;
+    }
+    void fetch("/api/usage/me")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((json: { quota?: AnalysisQuota } | null) => {
+        setAnalysisQuota(json?.quota ?? null);
+      })
+      .catch(() => {
+        // Keep the last known quota. The server still enforces the cap.
+      });
+  }, [isSignedIn]);
+
+  useEffect(() => {
+    if (!isSignedIn || processingMode !== "api") return;
+    refreshAnalysisQuota();
+  }, [isSignedIn, processingMode, refreshAnalysisQuota]);
 
   useEffect(() => {
     const isMobile = isLikelyMobileDevice();
@@ -226,68 +253,7 @@ function AppContent() {
     );
   }, [hasDocument, doc.rawText, doc.fileName, language]);
 
-  const handleFile = useCallback(
-    async (file: File) => {
-      const sizeError = validateFileSize(file);
-      if (sizeError) {
-        doc.setError(sizeError);
-        showToast(sizeError, "error");
-        return;
-      }
-
-      const fileType = getSupportedFileType(file);
-      if (!fileType) {
-        const msg =
-          "Unsupported file type. Please upload a PDF, TXT, or Markdown file.";
-        doc.setError(msg);
-        showToast(msg, "error");
-        return;
-      }
-
-      try {
-        let text: string;
-        let pageCount: number | undefined;
-        let pages: { pageNumber: number; startChar: number; endChar: number }[] | undefined;
-        if (fileType === "pdf") {
-          const extracted = await extractTextFromPdf(file);
-          text = extracted.text;
-          pageCount = extracted.pageCount;
-          pages = extracted.pages;
-        } else {
-          text = await file.text();
-        }
-
-        if (!text.trim()) {
-          doc.setError("Could not extract text from this file.");
-          return;
-        }
-
-        if (useDocumentStore.getState().documents.length === 0) {
-          doc.setFromFile(text, file.name, fileType, { pageCount, pages });
-          useSessionStore.getState().clear();
-          useChatStore.getState().clear();
-          workflowRun.reset();
-          setEvidenceById({});
-          setDebugInfo(null);
-          setActiveRun(null);
-        } else {
-          const result = doc.addFromFile(text, file.name, fileType, { pageCount, pages });
-          if (!result.ok) {
-            showToast(result.error, "error");
-            return;
-          }
-        }
-        setClassification(null);
-        showToast(`Loaded ${file.name}`, "success");
-      } catch {
-        doc.setError("Failed to read file. It may be corrupted or encrypted.");
-        showToast("Failed to read file", "error");
-      }
-    },
-    [doc, workflowRun],
-  );
-
-  const loadFileText = async (file: File) => {
+  const loadFileText = useCallback(async (file: File) => {
     const sizeError = validateFileSize(file);
     if (sizeError) {
       doc.setError(sizeError);
@@ -310,20 +276,87 @@ function AppContent() {
         text = extracted.text;
         pageCount = extracted.pageCount;
         pages = extracted.pages;
+        if (!text.trim()) {
+          const canOcr = processingMode === "api" && isSignedIn === true;
+          if (!canOcr) {
+            doc.setError(null);
+            setImagePdfOpen(true);
+            return null;
+          }
+          if (extracted.pageCount > MAX_OCR_PAGES) {
+            const msg = `This scanned PDF has ${extracted.pageCount} pages. Deep Analysis can read up to ${MAX_OCR_PAGES}.`;
+            doc.setError(msg);
+            showToast(msg, "error");
+            return null;
+          }
+          try {
+            setImageReadNotice("Reading page images…");
+            const images = await renderPdfPagesAsJpeg(file, (done, total) => {
+              setImageReadNotice(`Preparing page images… ${done}/${total}`);
+            });
+            setImageReadNotice("Reading page images on the server…");
+            const ocr = await ocrViaApi(images, language);
+            text = ocr.text;
+            pageCount = ocr.pageCount;
+            pages = ocr.pages;
+          } catch {
+            doc.setError("Could not read this scanned PDF. Try again.");
+            showToast("Could not read this scanned PDF", "error");
+            return null;
+          }
+          if (!text.trim()) {
+            doc.setError("Could not extract text from this file.");
+            return null;
+          }
+        }
       } else {
         text = await file.text();
-      }
-      if (!text.trim()) {
-        doc.setError("Could not extract text from this file.");
-        return null;
+        if (!text.trim()) {
+          doc.setError("Could not extract text from this file.");
+          return null;
+        }
       }
       return { text, fileType, pageCount, pages };
     } catch {
       doc.setError("Failed to read file. It may be corrupted or encrypted.");
       showToast("Failed to read file", "error");
       return null;
+    } finally {
+      setImageReadNotice(null);
     }
-  };
+  }, [doc, isSignedIn, language, processingMode]);
+
+  const handleFile = useCallback(
+    async (file: File) => {
+      const loaded = await loadFileText(file);
+      if (!loaded) return;
+
+      if (useDocumentStore.getState().documents.length === 0) {
+        doc.setFromFile(loaded.text, file.name, loaded.fileType, {
+          pageCount: loaded.pageCount,
+          pages: loaded.pages,
+        });
+        useSessionStore.getState().clear();
+        useChatStore.getState().clear();
+        workflowRun.reset();
+        setEvidenceById({});
+        setDebugInfo(null);
+        setActiveRun(null);
+      } else {
+        const result = doc.addFromFile(loaded.text, file.name, loaded.fileType, {
+          pageCount: loaded.pageCount,
+          pages: loaded.pages,
+        });
+        if (!result.ok) {
+          showToast(result.error, "error");
+          return;
+        }
+      }
+      setClassification(null);
+      showToast(`Loaded ${file.name}`, "success");
+    },
+    [doc, loadFileText, workflowRun],
+  );
 
   const handleAddFile = useCallback(async (file: File) => {
     if (useDocumentStore.getState().documents.length >= MAX_SESSION_DOCUMENTS) {
@@ -341,7 +374,7 @@ function AppContent() {
       return;
     }
     showToast(`Added ${file.name}`, "success");
-  }, [doc, language]);
+  }, [doc, language, loadFileText]);
 
   const handleReplaceFile = useCallback(async (id: string, file: File) => {
     const loaded = await loadFileText(file);
@@ -356,7 +389,7 @@ function AppContent() {
       documentName: file.name,
     });
     showToast(`Replaced with ${file.name}`, "success");
-  }, [doc, embedding]);
+  }, [doc, embedding, loadFileText]);
 
   const MAX_DIRECT_CHARS = 10000;
 
@@ -393,6 +426,11 @@ function AppContent() {
     }
     if (ai.processingMode === "api" && !isSignedIn) {
       showToast("Sign in to use Deep Analysis", "error");
+      return;
+    }
+    if (ai.processingMode === "api" && analysisQuota?.status === "blocked") {
+      const message = quotaNotice(analysisQuota);
+      if (message) showToast(message, "error");
       return;
     }
     if (isOverOnDeviceLimit) {
@@ -561,6 +599,7 @@ function AppContent() {
       extractType: workflowId === "extract" ? runExtractType : undefined,
       customQuery,
     });
+    if (ai.processingMode === "api") refreshAnalysisQuota();
     if (!outcome) {
       setActiveRun(null);
       return;
@@ -630,6 +669,8 @@ function AppContent() {
     embedding,
     ai.processingMode,
     isSignedIn,
+    analysisQuota,
+    refreshAnalysisQuota,
   ]);
 
   const autoRunArmedRef = useRef(false);
@@ -951,6 +992,11 @@ function AppContent() {
 
   const [waitlistBannerOpen, setWaitlistBannerOpen] = useState(false);
 
+  const analysisQuotaNotice =
+    processingMode === "api" && analysisQuota ? quotaNotice(analysisQuota) : null;
+  const deepAnalysisBlocked =
+    processingMode === "api" && analysisQuota?.status === "blocked";
+
   if (!compat.allPassed) {
     return (
       <div className="min-h-screen bg-surface-0 flex items-center justify-center p-8">
@@ -1030,6 +1076,19 @@ function AppContent() {
             aria-live="polite"
           >
             On mobile, use Deep Analysis (API). Standard/local model is desktop-only.
+          </div>
+        ) : null}
+
+        {analysisQuotaNotice && openPane !== "workflows" ? (
+          <div
+            role="status"
+            className="shrink-0 mx-4 mt-3 px-4 py-2.5 rounded-lg bg-surface-2 border border-border text-sm text-text-secondary animate-fade-in"
+            aria-live="polite"
+          >
+            {analysisQuotaNotice}
+            {deepAnalysisBlocked ? (
+              <RequestMoreAnalysesButton className="mt-2 lg:hidden" />
+            ) : null}
           </div>
         ) : null}
 
@@ -1149,6 +1208,16 @@ function AppContent() {
                       {isOverOnDeviceLimit ? " · Too long for on-device · Use Deep Analysis." : null}
                     </p>
                   ) : null}
+                  {analysisQuotaNotice ? (
+                    <div className="space-y-2" role="status">
+                      <p className="text-xs text-text-secondary leading-snug">
+                        {analysisQuotaNotice}
+                      </p>
+                      {deepAnalysisBlocked ? (
+                        <RequestMoreAnalysesButton align="start" />
+                      ) : null}
+                    </div>
+                  ) : null}
                   {workflowRun.isProcessing ? (
                     <Button variant="secondary" size="lg" onClick={workflowRun.stop} className="w-full">
                       {t(language, "run.stop")}
@@ -1167,6 +1236,7 @@ function AppContent() {
                         !canUseDeepAnalysis ||
                         isIndexing ||
                         isOverOnDeviceLimit ||
+                        deepAnalysisBlocked ||
                         selectedDef?.status !== "ready" ||
                         session.isGenerating ||
                         (selectedDef != null && selectedDef.minDocuments > doc.documents.length) ||
@@ -1279,6 +1349,7 @@ function AppContent() {
               compareRoles={doc.compareRoles}
               pasteValue={doc.rawText}
               error={doc.error}
+              notice={imageReadNotice}
               onSelect={(id) => {
                 doc.setActive(id);
                 embedding.setActiveDocument(id);
@@ -1371,6 +1442,24 @@ function AppContent() {
       )}
 
       <HostedWaitlistPrompt />
+      <ImagePdfUpgradeModal
+        open={imagePdfOpen}
+        signedIn={isSignedIn === true}
+        onClose={() => setImagePdfOpen(false)}
+        onJoinWaitlist={() => {
+          setImagePdfOpen(false);
+          setImagePdfWaitlistOpen(true);
+        }}
+        onSwitchToDeep={() => {
+          setProcessingMode("api");
+          setImagePdfOpen(false);
+          showToast("Deep Analysis is on. Upload the PDF again.", "info");
+        }}
+      />
+      <WaitlistModal
+        open={imagePdfWaitlistOpen}
+        onClose={() => setImagePdfWaitlistOpen(false)}
+      />
     </Layout>
   );
 }

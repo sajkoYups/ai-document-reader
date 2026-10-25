@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { KNOWN_WORKFLOW_IDS } from "../usage/workflows.js";
 
 const taskTypes = [
   "summarize",
@@ -31,7 +32,7 @@ const analyzeRequestSchema = z.object({
   taskType: z.enum(taskTypes),
   documentText: z.string().min(1).max(5_000_000),
   outputLanguage: outputLanguageEnum.optional().default("en"),
-  workflowId: z.string().max(64).optional(),
+  workflowId: z.enum(KNOWN_WORKFLOW_IDS).optional(),
   jsonMode: z.boolean().optional(),
   workflowParams: z
     .object({
@@ -39,6 +40,13 @@ const analyzeRequestSchema = z.object({
       customQuery: z.string().max(2000).optional(),
     })
     .optional(),
+  /** Absent means the call counts toward the monthly analysis cap when enforcement is off. */
+  metered: z.boolean().optional(),
+  operation: z.enum(["analysis", "repair", "refine", "chat"]).optional(),
+  idempotencyKey: z.string().min(8).max(80).optional(),
+  parentIdempotencyKey: z.string().min(8).max(80).optional(),
+  /** Ignored. Allowances come from the server entitlement. */
+  plan: z.string().max(32).optional(),
 });
 
 const chatRequestSchema = z.object({
@@ -53,6 +61,9 @@ const chatRequestSchema = z.object({
     .max(24)
     .default([]),
   outputLanguage: outputLanguageEnum.optional().default("en"),
+  operation: z.enum(["analysis", "repair", "refine", "chat"]).optional(),
+  idempotencyKey: z.string().min(8).max(80).optional(),
+  plan: z.string().max(32).optional(),
 });
 
 type ValidationResult<T> =
@@ -73,6 +84,29 @@ export function validateAnalyzeRequest(
   body: unknown,
 ): ValidationResult<z.infer<typeof analyzeRequestSchema>> {
   const result = analyzeRequestSchema.safeParse(body);
+  if (!result.success) {
+    return { success: false, error: result.error.message };
+  }
+  return { success: true, data: result.data };
+}
+
+const ocrRequestSchema = z.object({
+  outputLanguage: outputLanguageEnum.optional().default("en"),
+  pages: z
+    .array(
+      z.object({
+        pageNumber: z.number().int().min(1).max(500),
+        jpegBase64: z.string().min(1).max(1_800_000),
+      }),
+    )
+    .min(1)
+    .max(20),
+});
+
+export function validateOcrRequest(
+  body: unknown,
+): ValidationResult<z.infer<typeof ocrRequestSchema>> {
+  const result = ocrRequestSchema.safeParse(body);
   if (!result.success) {
     return { success: false, error: result.error.message };
   }

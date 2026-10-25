@@ -5,15 +5,20 @@ import {
   isSessionActive,
   destroyE2ESession,
 } from "./e2eEncryption";
-import type { OutputLanguage, TaskType } from "@/types";
+import type { OutputLanguage, PageSpan, TaskType } from "@/types";
 
 export interface AnalyzeApiOptions {
   workflowId?: string;
   jsonMode?: boolean;
+  /** False for automatic repair/refine. Omitted calls count toward the monthly cap. */
+  metered?: boolean;
   workflowParams?: {
     extractType?: string;
     customQuery?: string;
   };
+  operation?: "analysis" | "repair" | "refine" | "chat";
+  idempotencyKey?: string;
+  parentIdempotencyKey?: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
@@ -132,6 +137,12 @@ export async function analyzeViaApi(
     workflowId: options?.workflowId,
     jsonMode: options?.jsonMode,
     workflowParams: options?.workflowParams,
+    ...(options?.metered === undefined ? {} : { metered: options.metered }),
+    ...(options?.operation ? { operation: options.operation } : {}),
+    ...(options?.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {}),
+    ...(options?.parentIdempotencyKey
+      ? { parentIdempotencyKey: options.parentIdempotencyKey }
+      : {}),
   });
 
   const response = await fetch(`${API_BASE_URL}/api/analyze`, {
@@ -141,8 +152,17 @@ export async function analyzeViaApi(
   });
 
   if (!response.ok) {
-    const error = await response.text().catch(() => "Request failed");
-    throw new Error(`Analysis failed (${response.status}): ${error}`);
+    const raw = await response.text().catch(() => "Request failed");
+    let message = raw.trim() || "Request failed";
+    try {
+      const parsed = JSON.parse(raw) as { error?: unknown };
+      if (typeof parsed.error === "string" && parsed.error.trim()) {
+        message = parsed.error.trim();
+      }
+    } catch {
+      // Plain-text error body.
+    }
+    throw new Error(message);
   }
 
   return processSSEStream(response, onToken);
@@ -162,6 +182,8 @@ export async function chatViaApi(
     message,
     conversationHistory,
     outputLanguage: outputLanguage ?? "en",
+    operation: "chat",
+    idempotencyKey: crypto.randomUUID(),
   });
 
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
@@ -176,6 +198,38 @@ export async function chatViaApi(
   }
 
   return processSSEStream(response, onToken);
+}
+
+export async function ocrViaApi(
+  pages: Array<{ pageNumber: number; jpegBase64: string }>,
+  outputLanguage: OutputLanguage,
+): Promise<{ text: string; pageCount: number; pages: PageSpan[] }> {
+  await ensureSession();
+
+  const encrypted = await encryptPayload({
+    outputLanguage: outputLanguage ?? "en",
+    pages,
+  });
+
+  const response = await fetch(`${API_BASE_URL}/api/ocr`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(encrypted),
+    signal: AbortSignal.timeout(180000),
+  });
+
+  if (!response.ok) {
+    const error = await response.text().catch(() => "Request failed");
+    throw new Error(`OCR failed (${response.status}): ${error}`);
+  }
+
+  const body = (await response.json()) as { iv?: string; ciphertext?: string; error?: string };
+  if (typeof body.iv !== "string" || typeof body.ciphertext !== "string") {
+    throw new Error(body.error ?? "OCR failed");
+  }
+
+  const decrypted = await decryptPayload(body.iv, body.ciphertext);
+  return JSON.parse(decrypted) as { text: string; pageCount: number; pages: PageSpan[] };
 }
 
 export async function checkApiHealth(): Promise<boolean> {

@@ -21,6 +21,8 @@ export interface StreamCompletionMeta {
   finishReason?: string | null;
   usage?: Record<string, unknown> | null;
   sawReasoning?: boolean;
+  generationId?: string | null;
+  model?: string | null;
 }
 
 export interface InferenceOptions {
@@ -67,6 +69,7 @@ export interface SessionInitResponse {
 export interface SessionEntry {
   aesKey: Buffer;
   createdAt: number;
+  userId: string;
 }
 
 export function resolveTaskType(
