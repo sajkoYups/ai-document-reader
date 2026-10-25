@@ -1,12 +1,17 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { isSameSiteRequest } from "@/lib/publicEndpointGuards";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-export async function POST(): Promise<Response> {
+export async function POST(request: NextRequest): Promise<Response> {
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (!isSameSiteRequest(request.headers.get("origin"), host)) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 403 });
+  }
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Sign in to request more analyses." }, { status: 401 });

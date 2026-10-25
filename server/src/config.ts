@@ -1,9 +1,7 @@
-import type { LlmProvider } from "./types/index.js";
+import { hostedQuotaEnabled } from "./providerPolicy.js";
 
-function parseProvider(value: string | undefined): LlmProvider {
-  if (value === "runpod") return "runpod";
-  if (value === "openrouter") return "openrouter";
-  return "ollama";
+function parseProvider(value: string | undefined): "openrouter" | "closed" {
+  return value === "openrouter" ? "openrouter" : "closed";
 }
 
 function parseProviderOnly(value: string | undefined): string[] {
@@ -41,10 +39,7 @@ export const config = {
   },
 
   runpod: {
-    baseUrl:
-      process.env.RUNPOD_BASE_URL ??
-      process.env.RUNPOD_VLLM_BASE_URL ??
-      "https://x7k139f7thbivr-8000.proxy.runpod.net",
+    baseUrl: process.env.RUNPOD_BASE_URL ?? process.env.RUNPOD_VLLM_BASE_URL ?? "",
     model:
       process.env.RUNPOD_MODEL ??
       process.env.RUNPOD_VLLM_MODEL ??
@@ -107,6 +102,8 @@ export const config = {
   session: {
     ttlMs: parseInt(process.env.SESSION_TTL_MS ?? "1800000", 10),
   },
+
+  hostedQuotaEnforcement: hostedQuotaEnabled(process.env.HOSTED_QUOTA_ENFORCEMENT),
 } as const;
 
 /** True when OpenRouter can be used as primary or RunPod fallback. */

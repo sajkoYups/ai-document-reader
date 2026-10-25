@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { config } from "../config.js";
+import { readClerkUserId } from "../middleware/auth.js";
 import { decryptRequest } from "../middleware/encryption.js";
 import { validateChatRequest } from "../middleware/validation.js";
 import { capConversationHistoryForDeepChat } from "../contextBudget.js";
@@ -8,11 +10,13 @@ import {
 } from "../services/llmService.js";
 import { encrypt, getSession } from "../services/cryptoService.js";
 import { recordUsage } from "../services/usageService.js";
+import { runEnforcedStream } from "./enforcedInference.js";
 
 export const chatRouter = Router();
 
 chatRouter.post("/", async (req, res) => {
-  const decrypted = decryptRequest(req.body);
+  const userId = readClerkUserId(req.headers["x-clerk-user-id"]);
+  const decrypted = decryptRequest(req.body, userId);
   if (!decrypted.success) {
     res.status(400).json({ error: decrypted.error });
     return;
@@ -20,11 +24,11 @@ chatRouter.post("/", async (req, res) => {
 
   const parsed = validateChatRequest(decrypted.data);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request", details: parsed.error });
+    res.status(400).json({ error: "Invalid request" });
     return;
   }
 
-  const session = getSession(req.body.sessionId);
+  const session = getSession(req.body.sessionId, userId);
   if (!session) {
     res.status(401).json({ error: "Invalid or expired session" });
     return;
@@ -34,7 +38,25 @@ chatRouter.post("/", async (req, res) => {
   const conversationHistory = capConversationHistoryForDeepChat(
     parsed.data.conversationHistory,
   );
-  const userId = (req.headers["x-clerk-user-id"] as string | undefined) ?? "";
+
+  if (config.hostedQuotaEnforcement) {
+    await runEnforcedStream({
+      taskType: "chat",
+      documentText,
+      userMessage: message,
+      conversationHistory,
+      outputLanguage,
+      operation: "chat",
+      idempotencyKey: parsed.data.idempotencyKey,
+      route: "chat",
+      clientPlan: parsed.data.plan,
+      aesKey: session.aesKey,
+      res,
+      retryEmpty: false,
+      userId,
+    });
+    return;
+  }
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");

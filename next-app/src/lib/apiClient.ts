@@ -16,6 +16,9 @@ export interface AnalyzeApiOptions {
     extractType?: string;
     customQuery?: string;
   };
+  operation?: "analysis" | "repair" | "refine" | "chat";
+  idempotencyKey?: string;
+  parentIdempotencyKey?: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
@@ -135,6 +138,11 @@ export async function analyzeViaApi(
     jsonMode: options?.jsonMode,
     workflowParams: options?.workflowParams,
     ...(options?.metered === undefined ? {} : { metered: options.metered }),
+    ...(options?.operation ? { operation: options.operation } : {}),
+    ...(options?.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {}),
+    ...(options?.parentIdempotencyKey
+      ? { parentIdempotencyKey: options.parentIdempotencyKey }
+      : {}),
   });
 
   const response = await fetch(`${API_BASE_URL}/api/analyze`, {
@@ -174,6 +182,8 @@ export async function chatViaApi(
     message,
     conversationHistory,
     outputLanguage: outputLanguage ?? "en",
+    operation: "chat",
+    idempotencyKey: crypto.randomUUID(),
   });
 
   const response = await fetch(`${API_BASE_URL}/api/chat`, {

@@ -103,6 +103,7 @@ export function useWorkflowRun() {
   const lastDataRef = useRef<unknown | null>(null);
   const cancelled = useRef(false);
   const rawRef = useRef("");
+  const analysisKeyRef = useRef<string | null>(null);
 
   const runTask = useAiStore((s) => s.runTask);
   const cancelTask = useAiStore((s) => s.cancelTask);
@@ -229,10 +230,17 @@ export function useWorkflowRun() {
   const streamOnce = useCallback(
     async (
       args: RunArgs,
-      options?: { repairOf?: string; metered?: boolean },
+      options?: {
+        repairOf?: string;
+        metered?: boolean;
+        operation?: "analysis" | "repair" | "refine";
+      },
     ) => {
       const repairOf = options?.repairOf;
       const metered = options?.metered ?? !repairOf;
+      const operation = options?.operation ?? (repairOf ? "repair" : "analysis");
+      const idempotencyKey = crypto.randomUUID();
+      if (operation === "analysis") analysisKeyRef.current = idempotencyKey;
       const taskType = workflowToTaskType(args.workflowId);
       const documentText = repairOf
         ? `${args.documentText}\n\n${repairOf}`
@@ -252,6 +260,11 @@ export function useWorkflowRun() {
               extractType: args.extractType,
               customQuery: args.customQuery,
             },
+            operation,
+            idempotencyKey,
+            ...(operation === "analysis" || !analysisKeyRef.current
+              ? {}
+              : { parentIdempotencyKey: analysisKeyRef.current }),
           },
         );
         return full;
@@ -377,7 +390,11 @@ export function useWorkflowRun() {
       setRaw("");
       try {
         const prompt = getRefinePrompt(JSON.stringify(draft), extraContext);
-        const full = await streamOnce(args, { repairOf: prompt, metered: false });
+        const full = await streamOnce(args, {
+          repairOf: prompt,
+          metered: false,
+          operation: "refine",
+        });
         if (cancelled.current) return;
         const finished = finishWith(full, args.schema, args.workflowId, "repair");
         if (finished.ok) return { ok: true as const, data: finished.data };

@@ -2,7 +2,6 @@ import { config } from "./config.js";
 import type { InferenceOptions, OutputLanguage, TaskType } from "./types/index.js";
 import { buildInferenceMessages } from "./services/ollamaService.js";
 import { getOpenrouterTaskMaxTokens } from "./services/openrouterService.js";
-import { getRunpodTaskMaxTokens } from "./services/runpodService.js";
 
 /** Rough chars-per-token estimate (aligned with client Qwen-style heuristic). */
 const ESTIMATED_CHARS_PER_TOKEN = 4;
@@ -11,32 +10,11 @@ const ESTIMATED_CHARS_PER_TOKEN = 4;
 export const MAX_API_CHAT_HISTORY_MESSAGES = 24;
 
 export function getDeepAnalysisContextLimit(): number {
-  if (config.deepAnalysis.provider === "runpod") {
-    // When OpenRouter fallback is possible, use the tighter of the two windows.
-    const runpodLimit = config.runpod.contextWindow;
-    if (config.openrouter.apiKey) {
-      return Math.min(runpodLimit, config.openrouter.contextWindow);
-    }
-    return runpodLimit;
-  }
-  if (config.deepAnalysis.provider === "openrouter") {
-    return config.openrouter.contextWindow;
-  }
-  return config.ollama.contextWindow;
+  return config.openrouter.contextWindow;
 }
 
 function completionReserveTokens(taskType: TaskType): number {
-  if (config.deepAnalysis.provider === "runpod") {
-    const runpodReserve = getRunpodTaskMaxTokens(taskType);
-    if (config.openrouter.apiKey) {
-      return Math.max(runpodReserve, getOpenrouterTaskMaxTokens(taskType));
-    }
-    return runpodReserve;
-  }
-  if (config.deepAnalysis.provider === "openrouter") {
-    return getOpenrouterTaskMaxTokens(taskType);
-  }
-  return 2048;
+  return getOpenrouterTaskMaxTokens(taskType);
 }
 
 export function capConversationHistoryForDeepChat(

@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tokenUsage } from "@/db/schema";
+import { aiReservations, entitlements, tokenUsage, usagePeriods } from "@/db/schema";
 import { quotaFromCount } from "@/lib/analysisQuota";
 import { and, eq, sum, count, sql } from "drizzle-orm";
 
@@ -10,6 +10,33 @@ export async function GET(): Promise<Response> {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const hostedQuota = process.env.HOSTED_QUOTA_ENFORCEMENT === "true";
+  const monthlyQuery = hostedQuota
+    ? db
+        .select({ analyses: count(aiReservations.id) })
+        .from(aiReservations)
+        .innerJoin(entitlements, eq(aiReservations.entitlementId, entitlements.id))
+        .innerJoin(usagePeriods, eq(aiReservations.periodId, usagePeriods.id))
+        .where(
+          and(
+            eq(entitlements.clerkUserId, userId),
+            eq(aiReservations.operation, "analysis"),
+            sql`${aiReservations.settledCompletionTokens} > 0`,
+            sql`${aiReservations.status} in ('completed', 'partial')`,
+            sql`${usagePeriods.periodStart} >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
+          ),
+        )
+    : db
+        .select({ analyses: count(tokenUsage.id) })
+        .from(tokenUsage)
+        .where(
+          and(
+            eq(tokenUsage.userId, userId),
+            eq(tokenUsage.callType, "analyze"),
+            sql`${tokenUsage.createdAt} >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
+          ),
+        );
 
   const [totalsRows, breakdown, activity, monthlyRows] = await Promise.all([
     db
@@ -39,16 +66,7 @@ export async function GET(): Promise<Response> {
       )
       .groupBy(sql`DATE(created_at)`)
       .orderBy(sql`DATE(created_at)`),
-    db
-      .select({ analyses: count(tokenUsage.id) })
-      .from(tokenUsage)
-      .where(
-        and(
-          eq(tokenUsage.userId, userId),
-          eq(tokenUsage.callType, "analyze"),
-          sql`${tokenUsage.createdAt} >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
-        ),
-      ),
+    monthlyQuery,
   ]);
 
   const totals = totalsRows[0];

@@ -40,3 +40,11 @@ export function requireTrustedProxy(
 
   res.status(401).json({ error: "Unauthorized" });
 }
+
+export function readClerkUserId(header: string | string[] | undefined): string {
+  const raw = Array.isArray(header) ? header[0] : header;
+  if (typeof raw !== "string") return "";
+  const trimmed = raw.trim();
+  if (trimmed.length === 0 || trimmed.length > 128) return "";
+  return trimmed;
+}

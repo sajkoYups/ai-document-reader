@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { config } from "../config.js";
+import { readClerkUserId } from "../middleware/auth.js";
 import { decryptRequest } from "../middleware/encryption.js";
 import { validateAnalyzeRequest } from "../middleware/validation.js";
 import {
@@ -16,6 +18,7 @@ import {
   resolveTaskType,
   type StreamCompletionMeta,
 } from "../types/index.js";
+import { runEnforcedStream } from "./enforcedInference.js";
 
 export const analyzeRouter = Router();
 
@@ -26,7 +29,8 @@ function resetStreamMeta(meta: StreamCompletionMeta) {
 }
 
 analyzeRouter.post("/", async (req, res) => {
-  const decrypted = decryptRequest(req.body);
+  const userId = readClerkUserId(req.headers["x-clerk-user-id"]);
+  const decrypted = decryptRequest(req.body, userId);
   if (!decrypted.success) {
     res.status(400).json({ error: decrypted.error });
     return;
@@ -34,11 +38,11 @@ analyzeRouter.post("/", async (req, res) => {
 
   const parsed = validateAnalyzeRequest(decrypted.data);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request", details: parsed.error });
+    res.status(400).json({ error: "Invalid request" });
     return;
   }
 
-  const session = getSession(req.body.sessionId);
+  const session = getSession(req.body.sessionId, userId);
   if (!session) {
     res.status(401).json({ error: "Invalid or expired session" });
     return;
@@ -48,7 +52,29 @@ analyzeRouter.post("/", async (req, res) => {
     parsed.data;
   const resolvedType = resolveTaskType(workflowId, taskType);
   const metered = parsed.data.metered !== false;
-  const userId = (req.headers["x-clerk-user-id"] as string | undefined) ?? "";
+
+  if (config.hostedQuotaEnforcement) {
+    await runEnforcedStream({
+      taskType: resolvedType,
+      documentText,
+      outputLanguage,
+      workflowId,
+      operation: parsed.data.operation,
+      idempotencyKey: parsed.data.idempotencyKey,
+      parentIdempotencyKey: parsed.data.parentIdempotencyKey,
+      route: "analyze",
+      clientPlan: parsed.data.plan,
+      metered,
+      jsonMode,
+      customQuery: workflowParams?.customQuery,
+      extractType: workflowParams?.extractType,
+      aesKey: session.aesKey,
+      res,
+      retryEmpty: true,
+      userId,
+    });
+    return;
+  }
 
   if (metered) {
     if (!userId) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { waitlist } from "@/db/schema";
 import { encrypt } from "@/lib/encryption";
+import { recaptchaMaySkip } from "@/lib/publicEndpointGuards";
 import { Resend } from "resend";
 
 const resend = process.env.RESEND_API_KEY
@@ -14,9 +15,14 @@ const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
 const RECAPTCHA_MIN_SCORE = 0.5;
 
 async function verifyRecaptcha(token: string): Promise<{ ok: boolean; reason?: string }> {
-  if (!RECAPTCHA_PROJECT_ID || !RECAPTCHA_API_KEY || !RECAPTCHA_SITE_KEY) {
-    console.warn("[recaptcha] Missing env vars — skipping verification");
-    return { ok: true };
+  const configured = Boolean(RECAPTCHA_PROJECT_ID && RECAPTCHA_API_KEY && RECAPTCHA_SITE_KEY);
+  if (!configured) {
+    if (recaptchaMaySkip(process.env.NODE_ENV, false)) {
+      console.warn("[recaptcha] Missing env vars — skipping verification outside production");
+      return { ok: true };
+    }
+    console.error("[recaptcha] Missing env vars");
+    return { ok: false, reason: "recaptcha_not_configured" };
   }
 
   const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${RECAPTCHA_PROJECT_ID}/assessments?key=${RECAPTCHA_API_KEY}`;
@@ -87,13 +93,13 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  if (!isNonEmptyString(body.firstName)) {
+  if (!isNonEmptyString(body.firstName) || body.firstName.trim().length > 80) {
     return NextResponse.json(
       { error: "First name is required" },
       { status: 400 },
     );
   }
-  if (!isNonEmptyString(body.lastName)) {
+  if (!isNonEmptyString(body.lastName) || body.lastName.trim().length > 80) {
     return NextResponse.json(
       { error: "Last name is required" },
       { status: 400 },
@@ -127,28 +133,14 @@ export async function POST(request: NextRequest) {
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
   if (!resend) {
     console.error("[waitlist] Email skipped: RESEND_API_KEY is not configured");
-    return NextResponse.json(
-      {
-        success: true,
-        emailSent: false,
-        emailError: "resend_not_configured",
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true }, { status: 201 });
   }
 
   if (!adminEmail || adminEmail.trim().length === 0) {
     console.error(
       "[waitlist] Email skipped: ADMIN_NOTIFICATION_EMAIL is not configured",
     );
-    return NextResponse.json(
-      {
-        success: true,
-        emailSent: false,
-        emailError: "admin_notification_email_not_configured",
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true }, { status: 201 });
   }
 
   try {
@@ -160,17 +152,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("[waitlist] Email notification failed:", err);
-    return NextResponse.json(
-      {
-        success: true,
-        emailSent: false,
-        emailError: "email_send_failed",
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true }, { status: 201 });
   }
 
-  return NextResponse.json({ success: true, emailSent: true }, { status: 201 });
+  return NextResponse.json({ success: true }, { status: 201 });
 }
 
 export async function GET() {

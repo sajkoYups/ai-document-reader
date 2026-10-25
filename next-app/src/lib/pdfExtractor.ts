@@ -97,6 +97,7 @@ export interface PdfExtractionResult {
 }
 
 export const MAX_OCR_PAGES = 20;
+export const MAX_TEXT_PDF_PAGES = 300;
 
 export interface PdfPageImage {
   pageNumber: number;
@@ -105,8 +106,13 @@ export interface PdfPageImage {
 
 export async function extractTextFromPdf(file: File): Promise<PdfExtractionResult> {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
   try {
+    if (pdf.numPages > MAX_TEXT_PDF_PAGES) {
+      throw new Error(
+        `This PDF has too many pages to read here (${pdf.numPages}). The maximum is ${MAX_TEXT_PDF_PAGES}.`,
+      );
+    }
     const parts: string[] = [];
     const pages: PdfPageSpan[] = [];
     let cursor = 0;
@@ -168,7 +174,7 @@ export async function renderPdfPagesAsJpeg(
   onProgress?: (done: number, total: number) => void,
 ): Promise<PdfPageImage[]> {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
   const total = Math.min(pdf.numPages, MAX_OCR_PAGES);
   const images: PdfPageImage[] = [];
 

@@ -9,7 +9,7 @@ type DecryptResult =
  * Decrypts an incoming encrypted request payload.
  * Expects { sessionId, iv, ciphertext } in the request body.
  */
-export function decryptRequest(body: unknown): DecryptResult {
+export function decryptRequest(body: unknown, userId: string): DecryptResult {
   if (
     !body ||
     typeof body !== "object" ||
@@ -30,7 +30,7 @@ export function decryptRequest(body: unknown): DecryptResult {
     return { success: false, error: "Invalid encrypted payload types" };
   }
 
-  const session = getSession(sessionId);
+  const session = getSession(sessionId, userId);
   if (!session) {
     return { success: false, error: "Invalid or expired session" };
   }

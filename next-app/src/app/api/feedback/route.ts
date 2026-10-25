@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { SlidingLimiter, boundedFeedback } from "@/lib/publicEndpointGuards";
+
+const feedbackLimiter = new SlidingLimiter(5, 10 * 60_000);
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -47,16 +50,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!isNonEmptyString(body.message)) {
+  const bounded = isNonEmptyString(body.message) ? boundedFeedback(body.message) : { ok: false as const };
+  if (!bounded.ok) {
     return NextResponse.json(
       { error: "A feedback message is required" },
       { status: 400 },
     );
   }
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!feedbackLimiter.allow(forwarded)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
   const sentimentLabel = SENTIMENT_LABELS[body.sentiment];
   const actionLabel = ACTION_LABELS[body.action];
-  const message = body.message.trim();
+  const message = bounded.message;
 
   const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
   if (resend && adminEmail) {
@@ -74,14 +82,10 @@ export async function POST(request: NextRequest) {
         ].join("\n"),
       })
       .catch((err) =>
-        console.error("[feedback] Email notification failed:", err),
+        console.error("[feedback] Email notification failed:", err instanceof Error ? err.name : "error"),
       );
   } else {
-    console.log("[feedback] Resend not configured, skipping email:", {
-      sentiment: sentimentLabel,
-      action: actionLabel,
-      message,
-    });
+    console.error("[feedback] Email skipped: notification is not configured");
   }
 
   return NextResponse.json({ success: true }, { status: 200 });

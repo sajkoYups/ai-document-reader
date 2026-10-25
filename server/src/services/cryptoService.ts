@@ -4,6 +4,19 @@ import type { SessionEntry } from "../types/index.js";
 
 const sessions = new Map<string, SessionEntry>();
 
+export const sessionLimits = { global: 500, perUser: 5 };
+
+export class SessionLimitError extends Error {
+  constructor() {
+    super("Too many sessions");
+    this.name = "SessionLimitError";
+  }
+}
+
+export function resetSessionsForTests(): void {
+  for (const [id] of sessions) deleteSession(id);
+}
+
 const HKDF_SALT = Buffer.alloc(32, 0);
 const HKDF_INFO = Buffer.from("e2e-doc-analyzer");
 
@@ -37,10 +50,30 @@ function jwkToUncompressedPoint(jwk: JsonWebKey): Buffer {
  * computes the shared secret from the client's public key,
  * derives an AES-256-GCM key, and stores it in the session map.
  */
-export async function initSession(clientPublicKeyJwk: JsonWebKey): Promise<{
+function evictExpired(now: number): void {
+  for (const [id, entry] of sessions) {
+    if (now - entry.createdAt > config.session.ttlMs) deleteSession(id);
+  }
+}
+
+export async function initSession(
+  clientPublicKeyJwk: JsonWebKey,
+  userId: string,
+): Promise<{
   sessionId: string;
   serverPublicKey: JsonWebKey;
 }> {
+  if (!userId) throw new Error("missing-user");
+  evictExpired(Date.now());
+  const mine = [...sessions.entries()]
+    .filter(([, entry]) => entry.userId === userId)
+    .sort((a, b) => a[1].createdAt - b[1].createdAt);
+  while (mine.length >= sessionLimits.perUser) {
+    const oldest = mine.shift();
+    if (oldest) deleteSession(oldest[0]);
+  }
+  if (sessions.size >= sessionLimits.global) throw new SessionLimitError();
+
   const ecdh = createECDH("prime256v1");
   ecdh.generateKeys();
 
@@ -61,13 +94,19 @@ export async function initSession(clientPublicKeyJwk: JsonWebKey): Promise<{
     y,
   };
 
-  sessions.set(sessionId, { aesKey, createdAt: Date.now() });
+  sessions.set(sessionId, { aesKey, createdAt: Date.now(), userId });
 
   return { sessionId, serverPublicKey };
 }
 
-export function getSession(sessionId: string): SessionEntry | undefined {
-  return sessions.get(sessionId);
+export function getSession(sessionId: string, userId: string): SessionEntry | undefined {
+  const entry = sessions.get(sessionId);
+  if (!entry || !userId || entry.userId !== userId) return undefined;
+  if (Date.now() - entry.createdAt > config.session.ttlMs) {
+    deleteSession(sessionId);
+    return undefined;
+  }
+  return entry;
 }
 
 export function deleteSession(sessionId: string): void {

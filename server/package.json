@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "tsx --test src/providerPolicy.test.ts src/security/prompts.test.ts src/security/sessions.test.ts src/security/ocr.test.ts src/usage/reservation.test.ts && node --experimental-strip-types --test test/publicEndpoints.test.ts",
+    "test:pg": "tsx --test src/usage/postgres.integration.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -22,6 +24,8 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.15.0",
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1",
     "tsx": "^4.19.0",
     "typescript": "^5.9.3"
   }

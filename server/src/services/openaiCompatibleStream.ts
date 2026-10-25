@@ -40,6 +40,10 @@ export function recordOpenAiStreamMeta(
   const obj = chunk as Record<string, unknown>;
   const usage = asRecord(obj.usage);
   if (usage) meta.usage = usage;
+  if (typeof obj.id === "string" && obj.id.startsWith("gen-")) {
+    meta.generationId = obj.id;
+  }
+  if (typeof obj.model === "string") meta.model = obj.model;
 
   const choices = obj.choices;
   if (Array.isArray(choices) && choices.length > 0) {

@@ -1,33 +1,40 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  SlidingLimiter,
+  allowedRedirect,
+  invitationGate,
+} from "@/lib/publicEndpointGuards";
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const defaultRedirectUrl = `${baseUrl.replace(/\/$/, "")}/app`;
+const limiter = new SlidingLimiter(10, 60_000);
 
-function isValidEmail(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0 && value.includes("@");
+function clientKey(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded || "unknown";
 }
 
-export async function GET() {
-  return NextResponse.json(
-    { error: "Method not allowed" },
-    { status: 405 }
+function providedSecret(request: NextRequest): string | undefined {
+  return (
+    request.headers.get("X-Invitation-Secret") ??
+    request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim()
   );
 }
 
+export async function GET() {
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
+}
+
 export async function POST(request: NextRequest) {
-  const secret = process.env.INVITATION_SECRET;
-  if (secret) {
-    const headerSecret =
-      request.headers.get("X-Invitation-Secret") ??
-      request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
-    if (headerSecret !== secret) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+  if (!limiter.allow(clientKey(request))) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const gate = invitationGate(process.env.INVITATION_SECRET, providedSecret(request));
+  if (gate === "unconfigured") {
+    return NextResponse.json({ error: "Invitations are not configured" }, { status: 503 });
+  }
+  if (gate === "unauthorized") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: {
@@ -38,43 +45,34 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  if (!isValidEmail(body.emailAddress)) {
-    return NextResponse.json(
-      { error: "Missing or invalid emailAddress" },
-      { status: 400 }
-    );
+  if (body.publicMetadata !== undefined) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+  if (typeof body.emailAddress !== "string" || !body.emailAddress.includes("@")) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const emailAddress = body.emailAddress;
-  const redirectUrl =
-    typeof body.redirectUrl === "string" && body.redirectUrl.trim().length > 0
-      ? body.redirectUrl.trim()
-      : defaultRedirectUrl;
-  const publicMetadata =
-    body.publicMetadata && typeof body.publicMetadata === "object"
-      ? (body.publicMetadata as Record<string, unknown>)
-      : {};
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const redirectUrl = allowedRedirect(
+    typeof body.redirectUrl === "string" ? body.redirectUrl : undefined,
+    site,
+  );
+  if (!redirectUrl) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
 
   try {
     const client = await clerkClient();
     const invitation = await client.invitations.createInvitation({
-      emailAddress,
+      emailAddress: body.emailAddress,
       redirectUrl,
-      publicMetadata,
     });
     return NextResponse.json({ invitation }, { status: 201 });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to create invitation";
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    console.error("[invitations] create failed", err);
+    return NextResponse.json({ error: "Could not create invitation" }, { status: 500 });
   }
 }
