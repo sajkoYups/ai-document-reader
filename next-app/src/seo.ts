@@ -99,7 +99,17 @@ export const SEO_CONFIG: Record<string, SeoMeta> = {
   "/private-ai-vs-chatgpt": {
     title: "Private AI vs ChatGPT | Keep Documents Off Public Bots",
     description:
-      "Why not paste contracts into ChatGPT. PIA analyzes documents in your browser or via privacy-constrained Deep Analysis. Free Standard mode.",
+      "Compare PIA with ChatGPT for sensitive documents. Learn where files are processed, how consumer and business data controls differ, and when each tool fits.",
+  },
+  "/private-chatgpt-alternatives": {
+    title: "Best Private ChatGPT Alternatives in 2026 | PIA",
+    description:
+      "Compare private ChatGPT alternatives for confidential documents, including local apps and model runners. See setup, document features, and who each option fits.",
+  },
+  "/ai-pdf-analyzer-without-uploading": {
+    title: "Analyze PDFs With AI Without Uploading | PIA",
+    description:
+      "Analyze a text-layer PDF with on-device AI in your browser. Learn how to summarize it, ask questions, and map the document without uploading the file.",
   },
 };
 
@@ -116,6 +126,8 @@ export const SITEMAP_ROUTES = [
   "/privacy",
   "/cookies",
   "/private-ai-vs-chatgpt",
+  "/private-chatgpt-alternatives",
+  "/ai-pdf-analyzer-without-uploading",
 ] as const;
 
 export function pageUrl(path: string): string {
@@ -204,6 +216,24 @@ export function siteJsonLd() {
         ],
       },
     ],
+  };
+}
+
+export function articleJsonLd(path: keyof typeof SEO_CONFIG, headline: string) {
+  const seo = SEO_CONFIG[path];
+  const url = pageUrl(path);
+  const siteUrl = getSiteUrl();
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline,
+    description: seo.description,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": url,
+    },
+    publisher: { "@id": `${siteUrl}#organization` },
   };
 }
 
